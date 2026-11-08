@@ -1,0 +1,67 @@
+services:
+  falcon-mcp:
+    # eyas-mcp built from source (no published image). The commit matches
+    # versions.json "mcp-server-ref"; bump the two together.
+    build:
+      context: https://github.com/GTStagg/eyas-mcp.git#1ac3b8d93a87290a53f7010025f4474a0fbf16f9
+    image: eyas-mcp:1ac3b8d93a87
+    container_name: falcon-mcp
+    restart: unless-stopped
+    command:
+      - --transport
+      - streamable-http
+      - --host
+      - 0.0.0.0
+    environment:
+      # Falcon API credentials. The app itself reads tenant creds from its
+      # encrypted DB (single source of truth), but this eyas-mcp
+      # container has no DB — populate these in .env if you rely on the
+      # containerized falcon-mcp rather than the in-process extras sidecar.
+      FALCON_CLIENT_ID: ${FALCON_CLIENT_ID:-}
+      FALCON_CLIENT_SECRET: ${FALCON_CLIENT_SECRET:-}
+      FALCON_BASE_URL: ${FALCON_BASE_URL:-}
+      FALCON_MEMBER_CID: ${FALCON_MEMBER_CID:-}
+      FALCON_MCP_MODULES: ${FALCON_MCP_MODULES:-}
+      FALCON_MCP_API_KEY: ${FALCON_MCP_API_KEY:?set FALCON_MCP_API_KEY in .env}
+      FALCON_MCP_DEBUG: ${FALCON_MCP_DEBUG:-false}
+      # Refuse to start the HTTP endpoint without FALCON_MCP_API_KEY.
+      FALCON_MCP_REQUIRE_API_KEY: "true"
+    expose:
+      - "8000"
+    # Uncomment for local debugging (e.g., MCP Inspector on the host):
+    # ports:
+    #   - "127.0.0.1:8000:8000"
+
+  app:
+    build: .
+    container_name: falcon-mcp-app
+    restart: unless-stopped
+    depends_on:
+      - falcon-mcp
+    environment:
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-sonnet-4-6}
+      FALCON_MCP_URL: ${FALCON_MCP_URL:-http://falcon-mcp:8000/mcp}
+      FALCON_MCP_API_KEY: ${FALCON_MCP_API_KEY}
+      # Extra host names allowed to reach first-run /register (reverse proxy).
+      EYAS_ALLOWED_HOSTS: ${EYAS_ALLOWED_HOSTS:-}
+      # true only behind a reverse proxy that sets X-Forwarded-For.
+      EYAS_TRUST_PROXY: ${EYAS_TRUST_PROXY:-false}
+      AUTH_SESSION_SECRET: ${AUTH_SESSION_SECRET:?set AUTH_SESSION_SECRET in .env (e.g. openssl rand -hex 32)}
+      # falcon-extras sidecar (FalconPy). Image ships a prebuilt venv at
+      # /opt/falcon-extras-venv; FALCON_EXTRAS_PYTHON is baked in via Dockerfile.
+      # Falcon API credentials are inherited from this environment by the
+      # spawned Python process.
+      FALCON_EXTRAS_ENABLED: ${FALCON_EXTRAS_ENABLED:-true}
+      FALCON_CLIENT_ID: ${FALCON_CLIENT_ID:-}
+      FALCON_CLIENT_SECRET: ${FALCON_CLIENT_SECRET:-}
+      FALCON_BASE_URL: ${FALCON_BASE_URL:-}
+      FALCON_MEMBER_CID: ${FALCON_MEMBER_CID:-}
+    ports:
+      - "127.0.0.1:3000:3000"
+    volumes:
+      # Persists registration, runtime settings, cost log, audit log, and IR
+      # run records across container recreation. The directory is created on
+      # the host on first up; ensure it is owned by uid 1001 (the non-root
+      # container user) or run `sudo chown -R 1001:1001 ./data` once.
+      - ./data:/app/data

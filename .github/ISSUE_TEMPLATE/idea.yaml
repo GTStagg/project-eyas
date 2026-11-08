@@ -1,0 +1,52 @@
+name: 💡 Idea or Feedback
+description: Suggest a feature or improvement, or share feedback about Eyas
+title: "[Idea]: "
+labels: ["enhancement"]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for sharing an idea! Eyas doesn't accept outside pull requests, so describing what
+        you need is the best way to shape what gets built.
+
+        **Please don't include API credentials, tenant data or customer data.**
+
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What kind of idea is this?
+      options:
+        - A new dashboard, report or workflow
+        - An improvement to an existing page or agent workflow
+        - Deployment or setup
+        - Documentation
+        - General feedback
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+      description: Describe the task, and where Eyas falls short today.
+      placeholder: |
+        As a SOC analyst I want to...
+        Today I have to...
+    validations:
+      required: true
+
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: What would help?
+      description: Your suggestion, if you have one.
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Context (Optional)
+      placeholder: |
+        - Role: SOC analyst / IR / Falcon admin
+        - Deployment: dev server / bundle / Docker

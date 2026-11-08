@@ -1,0 +1,510 @@
+{
+  "version": 1,
+  "scripts": [
+    {
+      "id": "win-wsl-update",
+      "title": "Update WSL kernel + runtime",
+      "os": "windows",
+      "script": "scripts/windows/wsl-update.ps1",
+      "preambles": ["scripts/windows/_lib/require-admin.ps1"],
+      "params": {},
+      "expected_runtime_minutes": 4,
+      "reboot_risk": "low",
+      "spotlight_match": {
+        "vendor_pattern": "^Microsoft( Corporation)?$",
+        "product_pattern": "^(Windows Subsystem for Linux|WSL)"
+      },
+      "notes": "Runs `wsl --update --web-download`. Declared before win-update-install so its more-specific product pattern wins resolution; otherwise win-update-install's `^Windows` pattern would shadow it. No-ops on hosts without WSL installed; --web-download bypasses the Microsoft Store path, which is disabled or unreachable in many enterprise images."
+    },
+    {
+      "id": "win-update-install",
+      "title": "Install pending Windows Updates",
+      "os": "windows",
+      "script": "scripts/windows/windows-update-install.ps1",
+      "preambles": ["scripts/windows/_lib/require-admin.ps1"],
+      "params": {
+        "kb_filter": {
+          "type": "string",
+          "optional": true,
+          "pattern": "^KB[0-9]{6,7}(,KB[0-9]{6,7})*$",
+          "description": "Comma-separated KB ids to install. Omit to install all pending."
+        },
+        "reboot": {
+          "type": "enum",
+          "values": ["never", "if-required", "force"],
+          "default": "never",
+          "description": "Post-install reboot policy."
+        }
+      },
+      "expected_runtime_minutes": 25,
+      "reboot_risk": "high",
+      "spotlight_match": {
+        "vendor_pattern": "^Microsoft( Corporation)?$",
+        "product_pattern": "^(Windows|Microsoft Windows)"
+      }
+    },
+    {
+      "id": "win-reboot",
+      "title": "Reboot Windows host",
+      "os": "windows",
+      "script": "scripts/windows/reboot.ps1",
+      "preambles": ["scripts/windows/_lib/require-admin.ps1"],
+      "params": {},
+      "expected_runtime_minutes": 2,
+      "reboot_risk": "high",
+      "notes": "One-liner `Restart-Computer -Force`. Not auto-routed by Spotlight -- the agent invokes this explicitly when an operator asks to reboot a host (e.g. to finalize a 3010 patch return, DISM Disable-Feature, or .NET Framework install). Approval-gated through the standard extras_rtr_run_patch dry-run-first flow."
+    },
+    {
+      "id": "win-update-status",
+      "title": "Report pending Windows Updates",
+      "os": "windows",
+      "script": "scripts/windows/windows-update-status.ps1",
+      "preambles": [],
+      "params": {},
+      "expected_runtime_minutes": 3,
+      "reboot_risk": "none",
+      "read_only": true
+    },
+    {
+      "id": "app-ie-disable",
+      "title": "Disable Internet Explorer 11 (DISM)",
+      "os": "windows",
+      "script": "scripts/windows/ie-disable.ps1",
+      "preambles": ["scripts/windows/_lib/require-admin.ps1"],
+      "params": {},
+      "expected_runtime_minutes": 5,
+      "reboot_risk": "medium",
+      "spotlight_match": {
+        "vendor_pattern": "^Microsoft( Corporation)?$",
+        "product_pattern": "^(Microsoft )?Internet Explorer"
+      },
+      "notes": "IE11 is retired (Microsoft 2022-06-15) with no patch path -- Spotlight's recommended remediation is removal via the optional-feature DISM disable. Runs `dism /online /Disable-Feature /FeatureName:Internet-Explorer-Optional-amd64 /NoRestart`; idempotent (no-ops when already Disabled). Reboot required to fully apply, after which the Spotlight finding clears."
+    },
+    {
+      "id": "app-chrome",
+      "title": "Update Google Chrome",
+      "os": "windows",
+      "script": "scripts/windows/chrome-update.ps1",
+      "preambles": [
+        "scripts/windows/_lib/require-admin.ps1",
+        "scripts/windows/_lib/msi-installer.ps1"
+      ],
+      "params": {},
+      "expected_runtime_minutes": 5,
+      "reboot_risk": "none",
+      "spotlight_match": {
+        "vendor_pattern": "^Google( LLC)?$",
+        "product_pattern": "^(Google )?Chrome"
+      }
+    },
+    {
+      "id": "app-firefox",
+      "title": "Update Mozilla Firefox",
+      "os": "windows",
+      "script": "scripts/windows/firefox-update.ps1",
+      "preambles": [
+        "scripts/windows/_lib/require-admin.ps1",
+        "scripts/windows/_lib/msi-installer.ps1"
+      ],
+      "params": {},
+      "expected_runtime_minutes": 5,
+      "reboot_risk": "none",
+      "spotlight_match": {
+        "vendor_pattern": "^Mozilla( Corporation)?$",
+        "product_pattern": "^(Mozilla )?Fire[Ff]ox"
+      }
+    },
+    {
+      "id": "app-edge",
+      "title": "Update Microsoft Edge",
+      "os": "windows",
+      "script": "scripts/windows/edge-update.ps1",
+      "preambles": [
+        "scripts/windows/_lib/require-admin.ps1",
+        "scripts/windows/_lib/msi-installer.ps1"
+      ],
+      "params": {},
+      "expected_runtime_minutes": 5,
+      "reboot_risk": "none",
+      "spotlight_match": {
+        "vendor_pattern": "^Microsoft( Corporation)?$",
+        "product_pattern": "^Microsoft Edge|^Edge$"
+      }
+    },
+    {
+      "id": "app-notepadpp",
+      "title": "Update Notepad++",
+      "os": "windows",
+      "script": "scripts/windows/notepadpp-update.ps1",
+      "preambles": [
+        "scripts/windows/_lib/require-admin.ps1",
+        "scripts/windows/_lib/msi-installer.ps1"
+      ],
+      "params": {},
+      "expected_runtime_minutes": 4,
+      "reboot_risk": "none",
+      "spotlight_match": {
+        "vendor_pattern": "^(Notepad\\+\\+|Don Ho)$",
+        "product_pattern": "^Notepad\\+\\+"
+      }
+    },
+    {
+      "id": "app-office",
+      "title": "Update Microsoft 365 / Office (Click-to-Run)",
+      "os": "windows",
+      "script": "scripts/windows/office-update.ps1",
+      "preambles": ["scripts/windows/_lib/require-admin.ps1"],
+      "params": {
+        "channel": {
+          "type": "enum",
+          "values": ["current", "monthly-enterprise", "semi-annual"],
+          "default": "current",
+          "description": "Click-to-Run update channel hint (informational; binary chooses based on tenant policy)."
+        }
+      },
+      "expected_runtime_minutes": 15,
+      "reboot_risk": "low",
+      "spotlight_match": {
+        "vendor_pattern": "^Microsoft( Corporation)?$",
+        "product_pattern": "(?i)^(Microsoft )?(Office|Word|Excel|Outlook|OneNote|PowerPoint|Access)"
+      }
+    },
+    {
+      "id": "app-jre-uninstall",
+      "title": "Uninstall legacy Oracle JRE 6 / 7 / 8",
+      "os": "windows",
+      "script": "scripts/windows/jre-uninstall.ps1",
+      "preambles": ["scripts/windows/_lib/require-admin.ps1"],
+      "params": {},
+      "expected_runtime_minutes": 5,
+      "reboot_risk": "low",
+      "spotlight_match": {
+        "vendor_pattern": "^Oracle( Corporation)?$",
+        "product_pattern": "^(Oracle )?(JRE|Java Runtime)"
+      },
+      "notes": "Oracle JRE 6/7/8 are EOL with no public update path. This script removes them outright via msiexec /x. OpenJDK / Adoptium / Temurin / Azul Zulu / modern Oracle JDK 11+ are intentionally left alone."
+    },
+    {
+      "id": "app-flash-uninstall",
+      "title": "Uninstall Adobe Flash Player (NPAPI / ActiveX / PPAPI)",
+      "os": "windows",
+      "script": "scripts/windows/flash-uninstall.ps1",
+      "preambles": ["scripts/windows/_lib/require-admin.ps1"],
+      "params": {},
+      "expected_runtime_minutes": 4,
+      "reboot_risk": "low",
+      "spotlight_match": {
+        "vendor_pattern": "^Adobe( Systems( Incorporated)?)?$",
+        "product_pattern": "^(Adobe )?Flash Player"
+      },
+      "notes": "Adobe Flash Player is EOL since 2020-12-31 and has no update path. Walks the uninstall registry hives (both 64-bit and WoW6432Node), removes every Flash Player install via msiexec /x for MSI entries or the registered FlashUtil uninstaller for non-MSI ones, and scrubs leftover %WINDIR%\\System32\\Macromed\\Flash and SysWOW64 equivalents so Spotlight stops reporting the product as present."
+    },
+    {
+      "id": "app-7zip",
+      "title": "Update 7-Zip",
+      "os": "windows",
+      "script": "scripts/windows/7zip-update.ps1",
+      "preambles": [
+        "scripts/windows/_lib/require-admin.ps1",
+        "scripts/windows/_lib/msi-installer.ps1"
+      ],
+      "params": {},
+      "expected_runtime_minutes": 4,
+      "reboot_risk": "none",
+      "spotlight_match": {
+        "vendor_pattern": "^(Igor Pavlov|7-Zip)$",
+        "product_pattern": "^7-?Zip"
+      }
+    },
+    {
+      "id": "win-dotnet-framework-update",
+      "title": "Install pending .NET Framework updates (Microsoft Update)",
+      "os": "windows",
+      "script": "scripts/windows/dotnet-framework-update.ps1",
+      "preambles": ["scripts/windows/_lib/require-admin.ps1"],
+      "params": {
+        "reboot": {
+          "type": "enum",
+          "values": ["never", "if-required", "force"],
+          "default": "never",
+          "description": "Post-install reboot policy."
+        }
+      },
+      "expected_runtime_minutes": 15,
+      "reboot_risk": "medium",
+      "spotlight_match": {
+        "vendor_pattern": "^Microsoft( Corporation)?$",
+        "product_pattern": "^(Microsoft )?\\.Net Framework"
+      },
+      "notes": "Closes the gap left by win-update-install on hosts that haven't opted into Microsoft Update -- by default WUA only sees Windows OS updates. This script registers the Microsoft Update service (idempotent) and then drives WUA filtered to the .NET Framework category, so .NET-Framework Spotlight findings clear without enabling other-product updates fleet-wide."
+    },
+    {
+      "id": "app-acrobat-reader",
+      "title": "Update Adobe Acrobat Reader DC",
+      "os": "windows",
+      "script": "scripts/windows/acrobat-reader-update.ps1",
+      "preambles": [
+        "scripts/windows/_lib/require-admin.ps1",
+        "scripts/windows/_lib/msi-installer.ps1"
+      ],
+      "params": {},
+      "expected_runtime_minutes": 8,
+      "reboot_risk": "none",
+      "spotlight_match": {
+        "vendor_pattern": "^Adobe( Systems( Incorporated)?| Inc\\.?)?$",
+        "product_pattern": "^Adobe (Acrobat (Reader )?DC|Reader)"
+      }
+    },
+    {
+      "id": "app-zoom",
+      "title": "Update Zoom desktop client",
+      "os": "windows",
+      "script": "scripts/windows/zoom-update.ps1",
+      "preambles": [
+        "scripts/windows/_lib/require-admin.ps1",
+        "scripts/windows/_lib/msi-installer.ps1"
+      ],
+      "params": {},
+      "expected_runtime_minutes": 6,
+      "reboot_risk": "none",
+      "spotlight_match": {
+        "vendor_pattern": "^Zoom( Video Communications(, Inc\\.)?)?$",
+        "product_pattern": "^Zoom"
+      }
+    },
+    {
+      "id": "app-vlc",
+      "title": "Update VLC media player",
+      "os": "windows",
+      "script": "scripts/windows/vlc-update.ps1",
+      "preambles": [
+        "scripts/windows/_lib/require-admin.ps1",
+        "scripts/windows/_lib/msi-installer.ps1"
+      ],
+      "params": {},
+      "expected_runtime_minutes": 5,
+      "reboot_risk": "none",
+      "spotlight_match": {
+        "vendor_pattern": "^VideoLAN( Project)?$",
+        "product_pattern": "^VLC( media player)?"
+      }
+    },
+    {
+      "id": "app-git",
+      "title": "Update Git for Windows",
+      "os": "windows",
+      "script": "scripts/windows/git-update.ps1",
+      "preambles": [
+        "scripts/windows/_lib/require-admin.ps1",
+        "scripts/windows/_lib/msi-installer.ps1"
+      ],
+      "params": {},
+      "expected_runtime_minutes": 5,
+      "reboot_risk": "none",
+      "spotlight_match": {
+        "vendor_pattern": "^(The Git Development Community|Git for Windows)$",
+        "product_pattern": "^Git( for Windows)?"
+      }
+    },
+    {
+      "id": "app-winrar",
+      "title": "Update WinRAR",
+      "os": "windows",
+      "script": "scripts/windows/winrar-update.ps1",
+      "preambles": [
+        "scripts/windows/_lib/require-admin.ps1",
+        "scripts/windows/_lib/msi-installer.ps1"
+      ],
+      "params": {},
+      "expected_runtime_minutes": 4,
+      "reboot_risk": "none",
+      "spotlight_match": {
+        "vendor_pattern": "^(RARLAB|win\\.rar GmbH)$",
+        "product_pattern": "^WinRAR"
+      },
+      "notes": "Closes CVE-2023-38831 and similar WinRAR archive-handling CVEs. Scrapes rarlab.com/download.htm for the current English x64 build because there is no stable versionless URL."
+    },
+    {
+      "id": "app-putty",
+      "title": "Update PuTTY",
+      "os": "windows",
+      "script": "scripts/windows/putty-update.ps1",
+      "preambles": [
+        "scripts/windows/_lib/require-admin.ps1",
+        "scripts/windows/_lib/msi-installer.ps1"
+      ],
+      "params": {},
+      "expected_runtime_minutes": 4,
+      "reboot_risk": "none",
+      "spotlight_match": {
+        "vendor_pattern": "^(Simon Tatham|PuTTY)$",
+        "product_pattern": "^PuTTY"
+      }
+    },
+    {
+      "id": "app-temurin",
+      "title": "Install Eclipse Temurin (modern OpenJDK)",
+      "os": "windows",
+      "script": "scripts/windows/temurin-install.ps1",
+      "preambles": [
+        "scripts/windows/_lib/require-admin.ps1",
+        "scripts/windows/_lib/msi-installer.ps1"
+      ],
+      "params": {
+        "version": {
+          "type": "enum",
+          "values": ["21", "17", "11"],
+          "default": "21",
+          "description": "Temurin LTS feature version to install."
+        }
+      },
+      "expected_runtime_minutes": 6,
+      "reboot_risk": "none",
+      "notes": "Counterpart to app-jre-uninstall. After the legacy Oracle JRE is removed, applications that genuinely need a JRE can be migrated onto a maintained Temurin LTS JDK. Not auto-routed by Spotlight remediation matching -- the agent invokes this explicitly when the operator asks for a Java replacement."
+    },
+    {
+      "id": "win-app-install",
+      "title": "Install/upgrade a Windows app from a vendor URL",
+      "os": "windows",
+      "script": "scripts/windows/win-app-install.ps1",
+      "preambles": [
+        "scripts/windows/_lib/require-admin.ps1",
+        "scripts/windows/_lib/msi-installer.ps1"
+      ],
+      "params": {
+        "url": {
+          "type": "string",
+          "pattern": "^https://[A-Za-z0-9._~%:/?#\\[\\]@!&*+=-]{11,2048}$",
+          "description": "Vendor HTTPS download URL."
+        },
+        "kind": {
+          "type": "enum",
+          "values": ["msi", "exe"],
+          "default": "msi",
+          "description": "Installer type: msi (msiexec /qn) or exe (silent switches via silent_args)."
+        },
+        "product": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9 ._+\\-]{1,64}$",
+          "description": "Friendly name shown in logs."
+        },
+        "sha256": {
+          "type": "string",
+          "optional": true,
+          "pattern": "^[A-Fa-f0-9]{64}$",
+          "description": "Optional integrity pin; verified host-side, aborts on mismatch."
+        },
+        "silent_args": {
+          "type": "string",
+          "optional": true,
+          "default": "",
+          "pattern": "^[A-Za-z0-9 _\\-./:=\\\\,]{0,256}$",
+          "description": "exe-only silent switches (ignored for kind=msi)."
+        }
+      },
+      "expected_runtime_minutes": 8,
+      "reboot_risk": "medium",
+      "notes": "Generic runtime-extensible engine. Declared last with no spotlight_match so it never shadows a specific app script -- explicit-invoke only, reachable via extras_rtr_resolve_patch_plan(script_id=\"win-app-install\") and saved patch profiles. The MSI branch keeps fixed safe flags (/i /qn /norestart REBOOT=ReallySuppress) and ignores silent_args; silent_args applies to kind=exe only. Strongly prefer pinning sha256 -- an absent pin installs on HTTPS trust + operator approval alone and prints an UNVERIFIED banner."
+    },
+    {
+      "id": "linux-apt-apache2",
+      "title": "Upgrade Apache HTTP Server (apt)",
+      "os": "linux",
+      "script": "scripts/linux/apt-apache2.sh",
+      "preambles": [
+        "scripts/linux/_lib/require-root.sh",
+        "scripts/linux/_lib/apt-helpers.sh"
+      ],
+      "params": {},
+      "expected_runtime_minutes": 5,
+      "reboot_risk": "low",
+      "spotlight_match": {
+        "vendor_pattern": "^(The )?Apache( Software Foundation)?$",
+        "product_pattern": "^(Apache )?HTTP Server"
+      },
+      "notes": "Debian/Ubuntu only. RHEL/CentOS hosts need a separate dnf-based script."
+    },
+    {
+      "id": "linux-apt-openssh",
+      "title": "Upgrade OpenSSH (apt)",
+      "os": "linux",
+      "script": "scripts/linux/apt-openssh.sh",
+      "preambles": [
+        "scripts/linux/_lib/require-root.sh",
+        "scripts/linux/_lib/apt-helpers.sh"
+      ],
+      "params": {},
+      "expected_runtime_minutes": 4,
+      "reboot_risk": "low",
+      "spotlight_match": {
+        "vendor_pattern": "^(OpenBSD|OpenSSH)$",
+        "product_pattern": "^OpenSSH"
+      }
+    },
+    {
+      "id": "linux-apt-curl",
+      "title": "Upgrade curl / libcurl (apt)",
+      "os": "linux",
+      "script": "scripts/linux/apt-curl.sh",
+      "preambles": [
+        "scripts/linux/_lib/require-root.sh",
+        "scripts/linux/_lib/apt-helpers.sh"
+      ],
+      "params": {},
+      "expected_runtime_minutes": 3,
+      "reboot_risk": "none",
+      "spotlight_match": {
+        "vendor_pattern": "^(Haxx|curl)$",
+        "product_pattern": "^(Lib)?[Cc]url"
+      }
+    },
+    {
+      "id": "linux-pkg-upgrade",
+      "title": "Upgrade a single Linux package (apt / dnf / yum)",
+      "os": "linux",
+      "script": "scripts/linux/pkg-upgrade-generic.sh",
+      "preambles": [
+        "scripts/linux/_lib/require-root.sh",
+        "scripts/linux/_lib/pkg-helpers.sh"
+      ],
+      "params": {
+        "package": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9.+\\-]{0,49}$",
+          "description": "Package name (Debian or RPM). Strict regex — no shell metacharacters can survive validation."
+        }
+      },
+      "expected_runtime_minutes": 4,
+      "reboot_risk": "low",
+      "notes": "Generic fallback for any Linux Spotlight remediation that doesn't have a dedicated curated script. Detects the host's package manager at runtime (apt → dnf → yum) and dispatches accordingly, so the same entry covers Debian / Ubuntu / RHEL / Rocky / Alma / Fedora / Amazon Linux. Routed to by the resolver when match_remediation finds no specific Linux script and the remediation product string yields a valid package name. Single-package only — multi-package bundles like Apache still need a dedicated script."
+    },
+    {
+      "id": "macos-softwareupdate",
+      "title": "Install pending macOS security updates",
+      "os": "macos",
+      "script": "scripts/macos/softwareupdate.sh",
+      "preambles": ["scripts/macos/_lib/require-root.sh"],
+      "params": {},
+      "expected_runtime_minutes": 20,
+      "reboot_risk": "high",
+      "spotlight_match": {
+        "vendor_pattern": "^Apple( Inc\\.)?$",
+        "product_pattern": "^(macOS|Mac OS|OS X)"
+      }
+    },
+    {
+      "id": "macos-app-chrome",
+      "title": "Update Google Chrome (macOS PKG)",
+      "os": "macos",
+      "script": "scripts/macos/chrome-update.sh",
+      "preambles": ["scripts/macos/_lib/require-root.sh"],
+      "params": {},
+      "expected_runtime_minutes": 5,
+      "reboot_risk": "none",
+      "spotlight_match": {
+        "vendor_pattern": "^Google( LLC)?$",
+        "product_pattern": "^(Google )?Chrome.*([Mm]ac|[Dd]arwin)?"
+      }
+    }
+  ]
+}

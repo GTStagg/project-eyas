@@ -1,0 +1,71 @@
+{
+  "name": "project-eyas",
+  "version": "0.9.1",
+  "private": true,
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "next dev -H 127.0.0.1",
+    "build": "next build",
+    "start": "next start -H 127.0.0.1",
+    "pretypecheck": "next typegen",
+    "typecheck": "tsc --noEmit",
+    "test:smoke": "playwright test",
+    "test:sidecar": "bash ./scripts/run-sidecar-tests.sh",
+    "upgrade-mcp": "bash ./scripts/upgrade-mcp.sh",
+    "test:settings-store": "node ./scripts/test-settings-store.mjs",
+    "test:ir-run-analysis": "node ./scripts/test-ir-run-analysis.mjs",
+    "test:knowledge": "node ./scripts/test-knowledge.mjs",
+    "test:quarantine": "node ./scripts/test-quarantine.mjs",
+    "test:correlation": "node ./scripts/test-correlation.mjs",
+    "test:data-protection": "node ./scripts/test-data-protection.mjs",
+    "test:primer": "node ./scripts/test-primer.mjs",
+    "test:parse": "node ./scripts/test-parse.mjs",
+    "test:ir-eligibility": "node ./scripts/test-ir-eligibility.mjs",
+    "test:ir-ground-truth": "node ./scripts/test-ir-ground-truth.mjs",
+    "test:approvals": "node ./scripts/test-approvals.mjs",
+    "test:login-throttle": "node ./scripts/test-login-throttle.mjs",
+    "test:register-race": "node ./scripts/test-register-race.mjs",
+    "test:tool-classification": "node ./scripts/test-tool-classification.mjs",
+    "test:spawn-env": "node ./scripts/test-spawn-env.mjs",
+    "db:generate": "drizzle-kit generate --config=drizzle.config.ts",
+    "db:studio": "drizzle-kit studio --config=drizzle.config.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "file:vendor/npm-offline/anthropic-ai-sdk-0.69.0.tgz",
+    "@crowdstrike/aidr": "file:vendor/npm-offline/crowdstrike-aidr-1.2.1.tgz",
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "better-sqlite3": "^12.10.0",
+    "drizzle-orm": "^0.45.2",
+    "geist": "file:vendor/npm-offline/geist-1.7.0.tgz",
+    "iron-session": "file:vendor/npm-offline/iron-session-8.0.4.tgz",
+    "lucide-react": "^0.460.0",
+    "mammoth": "^1.13.0",
+    "next": "15.5.28",
+    "pdf-parse": "^2.4.5",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-markdown": "^9.0.1",
+    "remark-gfm": "^4.0.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.48.0",
+    "@tailwindcss/postcss": "^4.0.0",
+    "@types/better-sqlite3": "^7.6.12",
+    "@types/node": "^22.10.5",
+    "@types/react": "^19.0.7",
+    "@types/react-dom": "^19.0.3",
+    "drizzle-kit": "^0.31.8",
+    "tailwindcss": "^4.0.0",
+    "tsx": "4.20.6",
+    "typescript": "5.8.2"
+  },
+  "overrides": {
+    "tsx": "4.20.6",
+    "valibot": "1.5.0",
+    "next": {
+      "postcss": "8.5.31"
+    }
+  }
+}

@@ -1,0 +1,400 @@
+{
+  "version": 1,
+  "scripts": [
+    {
+      "id": "host-stop-service",
+      "title": "Stop and disable a Windows service",
+      "os": "windows",
+      "intent": "Stop a running service and set its startup type to Disabled. Use when a persistence audit flags a service running from a user-writable path or with a generic display name. Reversible via Set-Service if a mistake.",
+      "script": "scripts/windows/stop-service.ps1",
+      "preambles": [],
+      "params": {
+        "service_name": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_][A-Za-z0-9_. -]{0,127}$",
+          "description": "Service short name (not display name). Validated against the standard Windows service-name character set."
+        }
+      }
+    },
+    {
+      "id": "host-start-service",
+      "title": "Re-enable and start a Windows service",
+      "os": "windows",
+      "intent": "Set a service's startup type (default Automatic) and start it. Use to undo a mistaken host-stop-service, or to bring a legitimate vendor service back online after triage clears it. Refuses missing services. Reversible via host-stop-service.",
+      "script": "scripts/windows/start-service.ps1",
+      "preambles": [],
+      "params": {
+        "service_name": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_][A-Za-z0-9_. -]{0,127}$",
+          "description": "Service short name (not display name). Validated against the standard Windows service-name character set."
+        },
+        "startup_type": {
+          "type": "enum",
+          "values": [
+            "Automatic",
+            "Manual"
+          ],
+          "description": "Startup type to set before starting. Automatic for services that should run at boot; Manual for on-demand services."
+        }
+      }
+    },
+    {
+      "id": "host-remove-scheduled-task",
+      "title": "Remove a Windows scheduled task",
+      "os": "windows",
+      "intent": "Unregister a scheduled task by its full path. Use when a persistence audit flags a task with a non-vendor principal or an action pointing at a user-writable path. Irreversible without re-creating the task; the operator should capture the action / trigger first if forensic preservation is needed.",
+      "script": "scripts/windows/remove-scheduled-task.ps1",
+      "preambles": [],
+      "params": {
+        "task_path": {
+          "type": "string",
+          "pattern": "^\\\\[A-Za-z0-9_. \\-\\\\]{1,256}$",
+          "description": "Full task path including leading backslash, e.g. \\UpdaterX or \\Microsoft\\Windows\\Foo\\Bar."
+        }
+      }
+    },
+    {
+      "id": "host-remove-run-key",
+      "title": "Remove a Windows autorun registry value",
+      "os": "windows",
+      "intent": "Delete a value from HKLM or HKCU Run / RunOnce. Use when a persistence audit flags a non-vendor entry. Reversible via reg add if mistake; the operator should record the value data before removal if forensic preservation is needed.",
+      "script": "scripts/windows/remove-run-key.ps1",
+      "preambles": [],
+      "params": {
+        "hive": {
+          "type": "enum",
+          "values": [
+            "HKLM",
+            "HKCU"
+          ],
+          "description": "Registry hive."
+        },
+        "key_path": {
+          "type": "enum",
+          "values": [
+            "Run",
+            "RunOnce"
+          ],
+          "description": "Which autorun key under Software\\Microsoft\\Windows\\CurrentVersion\\."
+        },
+        "value_name": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_. \\-]{1,255}$",
+          "description": "Value name to remove."
+        }
+      }
+    },
+    {
+      "id": "host-remove-ifeo-hijack",
+      "title": "Remove an Image File Execution Options hijack (T1546.012)",
+      "os": "windows",
+      "intent": "Per-image IFEO + SilentProcessExit cleanup. Use when a RegistryPersistEdit / T1546.012 detection identifies an attacker-set Debugger or MonitorProcess on `<victim.exe>`. Walks both 64-bit and 32-bit (Wow6432Node) IFEO and SilentProcessExit subkeys for the supplied image; removes Debugger / MonitorProcess / ReportingMode unconditionally and removes GlobalFlag only when the silent-exit trigger bit (0x200) is set (Microsoft uses GlobalFlag legitimately on system processes -- wholesale removal is unsafe). Sweeps the empty subkey afterward. Refuses system-critical binaries (cmd.exe, explorer.exe, svchost.exe, lsass.exe, etc.) -- a bad revert there can lock out remote response mid-IR; remediate those by hand after confirming alternate access. Reversible by re-creating the value with reg add if forensic preservation matters; capture the prior value from the script's audit lines before approving the live run.",
+      "script": "scripts/windows/remove-ifeo-hijack.ps1",
+      "preambles": [],
+      "params": {
+        "image_name": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_.\\- ]{1,128}\\.[A-Za-z]{1,8}$",
+          "description": "Image filename (basename only, e.g. `sethc.exe`, `osk.exe`, `notepad.exe`). Not a full path -- IFEO keys are indexed by basename. Must include an extension."
+        }
+      }
+    },
+    {
+      "id": "host-set-registry-value",
+      "title": "Set or revert a security-hardening registry value",
+      "os": "windows",
+      "intent": "Slot-driven primitive for credential-theft / lateral-movement registry hardening. The script ships a curated catalog of well-understood targets (WDigest UseLogonCredential, LSA RunAsPPL / NoLMHash / LmCompatibilityLevel / DisableRestrictedAdmin, Winlogon AutoAdminLogon / DefaultPassword, PrintNightmare Point-and-Print). Each slot encodes hive + key path + value name + type + the hardened 'green' default + an allowed-values whitelist. Omit `value` to revert to the slot's green default (the common case after a persistence audit flags a weakened key). Supply `value` to write an explicit allowed value (e.g. RunAsPPL=2 for UEFI lock). Some slots delete rather than set (DefaultPassword). Reversible by re-running with the original `value`. Refuses unknown slots and out-of-list values. Adding a new finding = adding a row to the catalog -- do not use this primitive for arbitrary registry edits, build a finding-specific cleanup script for those.",
+      "script": "scripts/windows/set-registry-value.ps1",
+      "preambles": [],
+      "params": {
+        "slot": {
+          "type": "enum",
+          "values": [
+            "wdigest-uselogoncredential",
+            "lsa-runasppl",
+            "lsa-nolmhash",
+            "lsa-lmcompatibilitylevel",
+            "lsa-disablerestrictedadmin",
+            "winlogon-autoadminlogon",
+            "winlogon-defaultpassword",
+            "printnightmare-noelevation",
+            "printnightmare-updatepromptsettings"
+          ],
+          "description": "Curated hardening target. Each slot encodes the registry coordinates and a green default. See the script body for hive/path/value-name + the why."
+        },
+        "value": {
+          "type": "string",
+          "optional": true,
+          "pattern": "^[A-Za-z0-9_.\\- ]{1,64}$",
+          "description": "Explicit value to write. Must be in the slot's allowed-values list (DWord slots take a numeric string; String slots take the literal). Omit to revert to the slot's hardened green default."
+        }
+      }
+    },
+    {
+      "id": "host-delete-file",
+      "title": "Delete a file from disk",
+      "os": "windows",
+      "intent": "Remove a single file by absolute path. Use when a detection or persistence audit surfaces a malicious binary or script in a user-writable location and the operator has decided to evict it. Refuses to touch C:\\Windows, C:\\Program Files, C:\\Program Files (x86), or C:\\ProgramData\\Microsoft. Pair with host-kill-process if the file is currently mapped by a running process. Irreversible \u2014 capture forensic copy first if needed.",
+      "script": "scripts/windows/delete-file.ps1",
+      "preambles": [],
+      "params": {
+        "path": {
+          "type": "string",
+          "pattern": "^[A-Za-z]:\\\\[A-Za-z0-9_. \\-\\\\()~$]{1,512}$",
+          "description": "Absolute Windows file path, e.g. C:\\Users\\bob\\AppData\\Local\\Temp\\foo.exe. Drive-letter rooted; system directories are blocked at runtime.",
+          "evidence_pattern": "^[A-Za-z]:\\\\[^*?<>|\"]{1,512}$"
+        }
+      }
+    },
+    {
+      "id": "host-delete-folder",
+      "title": "Delete a folder and its contents recursively",
+      "os": "windows",
+      "intent": "Recursively remove a directory tree. Use when a detection or persistence audit identifies a malicious staging folder (e.g. C:\\Users\\<u>\\AppData\\Local\\Temp\\<campaign-name>) and the operator has decided to evict the entire tree. Refuses C:\\Windows, C:\\Program Files, C:\\Program Files (x86), C:\\ProgramData\\Microsoft (including subtrees) and bare C:\\Users, C:\\Users\\Public, C:\\ProgramData. Refuses paths shallower than 3 segments. Reports file count + total bytes before deletion. Pair with host-kill-process if any binary in the tree is currently mapped by a running process.",
+      "script": "scripts/windows/delete-folder.ps1",
+      "preambles": [],
+      "params": {
+        "path": {
+          "type": "string",
+          "pattern": "^[A-Za-z]:\\\\[A-Za-z0-9_. \\-\\\\()~$]{1,512}$",
+          "description": "Absolute Windows folder path. Drive-letter rooted; minimum 3 segments enforced at runtime; system trees blocked at runtime.",
+          "evidence_pattern": "^[A-Za-z]:\\\\[^*?<>|\"]{1,512}$"
+        }
+      }
+    },
+    {
+      "id": "host-quarantine-file",
+      "title": "Quarantine a file (forensics-preserving)",
+      "os": "windows",
+      "intent": "Move a file to C:\\ProgramData\\FalconCleanup\\quarantine with restricted ACL (SYSTEM + Administrators only) and write a sidecar manifest recording original path, size, mtime, and SHA-256 prefix. Use INSTEAD OF host-delete-file when forensic preservation matters (active investigation, regulated environment, ambiguous true-positive). Same protected-directory block-list as host-delete-file. Reversible by moving the .quarantined file back to its original path; refer to the .manifest.json sidecar.",
+      "script": "scripts/windows/quarantine-file.ps1",
+      "preambles": [],
+      "params": {
+        "path": {
+          "type": "string",
+          "pattern": "^[A-Za-z]:\\\\[A-Za-z0-9_. \\-\\\\()~$]{1,512}$",
+          "description": "Absolute Windows file path. Drive-letter rooted; system directories are blocked at runtime.",
+          "evidence_pattern": "^[A-Za-z]:\\\\[^*?<>|\"]{1,512}$"
+        }
+      }
+    },
+    {
+      "id": "host-list-wmi-persistence",
+      "title": "Enumerate WMI event-subscription persistence (read-only)",
+      "os": "windows",
+      "intent": "List every __EventFilter, __FilterToConsumerBinding, and EventConsumer in root\\subscription on the host, cross-link them into chains (filter \u2192 binding \u2192 consumer), and flag suspicious entries via heuristics: __InstanceModificationEvent timer queries (T1546.003), CommandLineEventConsumer invoking interpreters / lolbins / encoded commands, ActiveScriptEventConsumer (rare and attacker-favored), random-looking filter names. Microsoft-shipped defaults (SCM Event Log Filter, BVTConsumer) are excluded from the suspicious flag. Output is a JSON document with `chains[]`, `orphan_consumers[]`, `orphan_bindings[]`, and `suspicious_filter_names[]` \u2014 feed each entry in `suspicious_filter_names` to `host-remove-wmi-persistence` as the `filter_name` param. Use in IR Phase 0 \u2014 WMI persistence is invisible to the RegistryKey audit and the autorun sweep, so this is the only enumeration that catches it. The script is read-only (Get-CimInstance only) but routes through the gated cleanup channel; one approval per IR run is the cost.",
+      "script": "scripts/windows/list-wmi-persistence.ps1",
+      "preambles": [],
+      "params": {}
+    },
+    {
+      "id": "host-remove-wmi-persistence",
+      "title": "Remove a WMI event-subscription persistence chain",
+      "os": "windows",
+      "intent": "Delete the WMI persistence triple (__EventFilter + __FilterToConsumerBinding + __EventConsumer) in root\\subscription matching a given filter name. WMI subscriptions are a common attacker-persistence vector that the RegistryKey audit cannot see. Operator must supply the exact filter Name \u2014 get this from a Sysmon Event ID 19/20/21 detection or from a manual `Get-CimInstance -Namespace root\\subscription -ClassName __EventFilter` review. Irreversible; capture the Query / CommandLineTemplate beforehand if forensic preservation is needed.",
+      "script": "scripts/windows/remove-wmi-persistence.ps1",
+      "preambles": [],
+      "params": {
+        "filter_name": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_. \\-]{1,128}$",
+          "description": "Exact Name property of the __EventFilter to remove. Bindings and consumers referenced by this filter are also removed."
+        }
+      }
+    },
+    {
+      "id": "host-disable-local-user",
+      "title": "Disable a local user account",
+      "os": "windows",
+      "intent": "Disable a local Windows account via Disable-LocalUser. Use when a credential-compromise detection or persistence audit identifies an attacker-created or attacker-controlled account. Refuses Administrator, DefaultAccount, Guest, WDAGUtilityAccount, SYSTEM. Reversible via Enable-LocalUser. Domain accounts are out of scope \u2014 use AD tooling for those.",
+      "script": "scripts/windows/disable-local-user.ps1",
+      "preambles": [],
+      "params": {
+        "username": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_.\\-$]{1,64}$",
+          "description": "Local account short name (not display name)."
+        }
+      }
+    },
+    {
+      "id": "host-enable-local-user",
+      "title": "Enable a local user account",
+      "os": "windows",
+      "intent": "Re-enable a local Windows account via Enable-LocalUser. Use to undo a mistaken host-disable-local-user, or to restore a legitimate account after triage clears it. Refuses DefaultAccount, Guest, WDAGUtilityAccount, SYSTEM (Administrator is allowed since re-enabling the built-in admin can be deliberate). Refuses missing accounts. Reversible via host-disable-local-user. Domain accounts are out of scope.",
+      "script": "scripts/windows/enable-local-user.ps1",
+      "preambles": [],
+      "params": {
+        "username": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_.\\-$]{1,64}$",
+          "description": "Local account short name (not display name)."
+        }
+      }
+    },
+    {
+      "id": "host-force-logoff",
+      "title": "Force logoff an interactive user session",
+      "os": "windows",
+      "intent": "Terminate any active interactive session(s) for a given username via quser + logoff. Use during credential-compromise IR to evict an attacker's live session before they react. Refuses SYSTEM, NETWORK SERVICE, LOCAL SERVICE, DWM*, UMFD*. Pair with host-disable-local-user to prevent immediate re-login. Disruptive to legitimate work in flight \u2014 only run after the operator has confirmed the user / host pairing is hostile.",
+      "script": "scripts/windows/force-logoff.ps1",
+      "preambles": [],
+      "params": {
+        "username": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_.\\-$]{1,64}$",
+          "description": "Username whose interactive sessions will be logged off."
+        }
+      }
+    },
+    {
+      "id": "host-block-outbound-ip",
+      "title": "Block outbound traffic to a remote IP via Windows Firewall",
+      "os": "windows",
+      "intent": "Create a Windows Firewall outbound block rule (New-NetFirewallRule, Profile=Any, Enabled=True) for a single remote IPv4 address. Use to cut a host's connection to a known C2 IP without full network containment \u2014 useful when you want telemetry to keep flowing while severing the malicious channel. Refuses RFC1918 / loopback / link-local / 0.0.0.0 / 255.x ranges. Reversible via Remove-NetFirewallRule -DisplayName 'FalconCleanup-Block-<ip>'. Note: per-host firewall rules don't propagate across the fleet; for fleet-wide blocking use a Falcon Firewall Management policy or contain the host instead.",
+      "script": "scripts/windows/block-outbound-ip.ps1",
+      "preambles": [],
+      "params": {
+        "remote_ip": {
+          "type": "string",
+          "pattern": "^[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}$",
+          "description": "IPv4 address to block outbound traffic toward."
+        }
+      }
+    },
+    {
+      "id": "host-delete-service",
+      "title": "Stop and fully delete a Windows service",
+      "os": "windows",
+      "intent": "Stop the service, then sc.exe delete it (full removal of the service-control-manager registration). Use INSTEAD OF host-stop-service when the operator wants the service gone, not just disabled \u2014 typical after persistence-audit confirms the service is attacker-installed. Irreversible without re-creating the service; pair with host-delete-file or host-delete-folder to also remove the binary. The earlier host-stop-service is preferable when the entry might be benign-but-suspicious and you want a reversible action.",
+      "script": "scripts/windows/delete-service.ps1",
+      "preambles": [],
+      "params": {
+        "service_name": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_][A-Za-z0-9_. -]{0,127}$",
+          "description": "Service short name (not display name)."
+        }
+      }
+    },
+    {
+      "id": "host-kill-process",
+      "title": "Kill a running process",
+      "os": "windows",
+      "intent": "Force-stop a process by PID or by image-name regex. Use to clear an actively-running malicious process discovered during triage. Process may respawn if a parent service or scheduled task is still in place \u2014 pair with host-stop-service or host-remove-scheduled-task as appropriate.",
+      "script": "scripts/windows/kill-process.ps1",
+      "preambles": [],
+      "params": {
+        "pid": {
+          "type": "string",
+          "optional": true,
+          "pattern": "^[1-9][0-9]{0,5}$",
+          "description": "Numeric PID. Either pid or image_name must be supplied; pid wins if both."
+        },
+        "image_name": {
+          "type": "string",
+          "optional": true,
+          "pattern": "^[A-Za-z0-9_.\\- ]{1,64}$",
+          "description": "Process image name (without .exe), matched as a substring against Get-Process .ProcessName."
+        }
+      }
+    },
+    {
+      "id": "host-uninstall-appx-package",
+      "title": "Uninstall an AppX/MSIX package (generic Store-package eviction)",
+      "os": "windows",
+      "intent": "Generic eviction primitive for AppX/MSIX packages that don't have a dedicated cleanup script. Use when an IR or Shadow-AI finding identifies a Store package by name and the package is in C:\\Program Files\\WindowsApps (which host-delete-folder refuses by design — that path is system-protected and Remove-AppxPackage is the only correct cleanup). Calls Get-AppxPackage -AllUsers + Remove-AppxPackage -AllUsers per match, then Get-AppxProvisionedPackage + Remove-AppxProvisionedPackage so the package doesn't auto-install for new users on next logon. Bundled services (CoworkVMService et al. registered by the MSIX) are removed alongside the package. Refuses well-known Microsoft system packages (Edge, WebView2, AppInstaller, StorePurchaseApp, the Windows shell stack) and the bare-wildcard pattern. Match pattern supports Get-AppxPackage's -Name wildcard syntax.",
+      "script": "scripts/windows/uninstall-appx-package.ps1",
+      "preambles": [],
+      "params": {
+        "package_name_pattern": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9._*-]{1,128}$",
+          "description": "Get-AppxPackage -Name pattern. Supports `*` wildcard. Example: `Claude` matches Claude_<ver>_<arch>__<publisher>; `*Cursor*` matches any package whose family name contains Cursor."
+        }
+      }
+    },
+    {
+      "id": "host-uninstall-anydesk",
+      "title": "Uninstall AnyDesk (RMM-persistence removal)",
+      "os": "windows",
+      "intent": "Evict AnyDesk end-to-end: stop and sc.exe delete the AnyDesk service, kill any running AnyDesk.exe (covers the portable variant attackers drop in %APPDATA% / %ProgramData%), invoke the vendor uninstaller (`AnyDesk.exe --remove --silent`) from each known install root, and sweep the install + config directories. Use when a persistence audit or detection identifies AnyDesk as attacker-deployed remote-access tooling (BlackByte, Akira, BlackCat, Conti spinoffs all favor it). Irreversible. Refuse if IT has legitimately deployed AnyDesk for support \u2014 confirm with the operator before running. Config sweep is intentional: leftover settings carry the install id attackers reuse to re-authenticate.",
+      "script": "scripts/windows/uninstall-anydesk.ps1",
+      "preambles": [],
+      "params": {}
+    },
+    {
+      "id": "host-uninstall-cursor",
+      "title": "Uninstall Cursor (Shadow-AI eviction)",
+      "os": "windows",
+      "intent": "Evict Cursor end-to-end: kill running Cursor processes (Squirrel main + Electron renderer children), invoke the Squirrel uninstaller from every per-user install root (DisplayName 'Cursor' / 'Cursor (User)'), and sweep per-profile install + cache + MCP-config dirs (%LOCALAPPDATA%\\Programs\\cursor, %APPDATA%\\Cursor\\User\\globalStorage, Cache, Code Cache). Walks every user profile under SYSTEM context \u2014 Cursor is per-user Squirrel, not system-wide MSI. Project-level ~/.cursor settings intentionally preserved so re-sanctioning later restores workspace settings. Pair with extras_host_group_action(action='add-hosts', group_id=$FALCON_SHADOW_AI_BANNED_GROUP_ID) to attach the prevention policy. Irreversible. Confirm with operator that Cursor is not corp-deployed before running.",
+      "script": "scripts/windows/uninstall-cursor.ps1",
+      "preambles": [
+        "scripts/_lib/uninstall-helpers.ps1"
+      ],
+      "params": {}
+    },
+    {
+      "id": "host-uninstall-ollama",
+      "title": "Uninstall Ollama (Shadow-AI eviction)",
+      "os": "windows",
+      "intent": "Evict Ollama end-to-end: stop+delete the Ollama service (recent versions), kill tray app + daemon + ollama_llama_server children, invoke the Inno Setup uninstaller (DisplayName 'Ollama' / 'Ollama for Windows', /SILENT /SUPPRESSMSGBOXES /NORESTART), sweep install roots across every user profile, and remove the per-user Run-key autostart. Sweep includes %USERPROFILE%\\.ollama (model store, multi-GB) \u2014 main data-egress surface; preserved models would let a re-installed Ollama re-expose them without operator review. Ollama exposes a local OpenAI-compatible REST API on 11434; service teardown + process kill severs it. Pair with extras_host_group_action(add-hosts) to attach the AI prevention policy. Irreversible.",
+      "script": "scripts/windows/uninstall-ollama.ps1",
+      "preambles": [
+        "scripts/_lib/uninstall-helpers.ps1"
+      ],
+      "params": {}
+    },
+    {
+      "id": "host-uninstall-lmstudio",
+      "title": "Uninstall LM Studio (Shadow-AI eviction)",
+      "os": "windows",
+      "intent": "Evict LM Studio end-to-end: kill running LM Studio processes (Squirrel main + helper), invoke the Squirrel uninstaller (DisplayName 'LM Studio'), sweep per-profile install roots (%LOCALAPPDATA%\\Programs\\LM Studio, %APPDATA%\\LM Studio) and the model cache (%USERPROFILE%\\.cache\\lm-studio, ~\\.lmstudio). LM Studio exposes an OpenAI-compatible local server on 1234 by default; process kill severs it (no service). Model cache sweep is intentional for the same data-egress reason as Ollama. Pair with extras_host_group_action(add-hosts) to attach the AI prevention policy. Irreversible.",
+      "script": "scripts/windows/uninstall-lmstudio.ps1",
+      "preambles": [
+        "scripts/_lib/uninstall-helpers.ps1"
+      ],
+      "params": {}
+    },
+    {
+      "id": "host-uninstall-claude-desktop",
+      "title": "Uninstall Claude Desktop (Shadow-AI eviction)",
+      "os": "windows",
+      "intent": "Evict Claude Desktop (Anthropic) end-to-end: PRESERVE %APPDATA%\\Claude\\claude_desktop_config.json by renaming to .quarantined-<timestamp> BEFORE any sweep (forensic preservation of MCP-server registrations the user wired up), kill running Claude processes, invoke the Squirrel uninstaller (DisplayName 'Claude' / 'Claude Desktop'), sweep per-profile install + cache dirs (%LOCALAPPDATA%\\AnthropicClaude, %APPDATA%\\Claude\\Cache + Code Cache + GPUCache). Claude Desktop's MCP-host capability is the load-bearing concern \u2014 registered MCP servers (file-system, github, shell) inherit the user's local privileges. Always run the read-only `host-list-mcp-config` (or grab the .quarantined sidecar after) for forensic review BEFORE attaching the AI prevention policy. Pair with extras_host_group_action(add-hosts). Irreversible (config preserved as .quarantined).",
+      "script": "scripts/windows/uninstall-claude-desktop.ps1",
+      "preambles": [
+        "scripts/_lib/uninstall-helpers.ps1"
+      ],
+      "params": {}
+    },
+    {
+      "id": "host-uninstall-comfyui",
+      "title": "Uninstall ComfyUI (Shadow-AI eviction)",
+      "os": "windows",
+      "intent": "Evict ComfyUI: kill any python.exe / pythonw.exe whose CIM cmdline references ComfyUI's main.py / server.py, then sweep the install root. ComfyUI is not a packaged installer \u2014 operator clones / extracts the portable zip into a folder of their choice; supply install_root if the scan output named the path (typical), otherwise the script walks candidate locations across every user profile (Documents, Desktop, Downloads, %LOCALAPPDATA%, root-of-drive, plus Pinokio's comfy.git). Sweep removes the models/ subtree (multi-GB checkpoints \u2014 main data-egress surface). Operator should copy models/ before approving if preservation matters. Irreversible.",
+      "script": "scripts/windows/uninstall-comfyui.ps1",
+      "preambles": [
+        "scripts/_lib/uninstall-helpers.ps1"
+      ],
+      "params": {
+        "install_root": {
+          "type": "string",
+          "optional": true,
+          "pattern": "^[A-Za-z]:\\\\[A-Za-z0-9_. \\-\\\\()~$]{1,512}$",
+          "description": "Optional explicit install root from the Shadow-AI scan output (e.g. C:\\ComfyUI_windows_portable). When omitted, the script walks a candidate list of common locations across every user profile.",
+          "evidence_pattern": "^[A-Za-z]:\\\\[^*?<>|\"]{1,512}$"
+        }
+      }
+    },
+    {
+      "id": "host-reboot",
+      "title": "Reboot the host (Restart-Computer -Force)",
+      "os": "windows",
+      "intent": "Force-reboot the host. Use post-IR to (a) finalize Phase 2 cleanup actions that returned `pending_reboot` paths \u2014 locked files scheduled for next-boot delete via MoveFileEx are only removed on reboot \u2014 and (b) honor any operator-initiated reboot request after the workflow completes. NOT a Phase 2 cleanup primitive in itself; the IR playbook surfaces it after Phase 4 release if pending-reboot paths exist or the operator asks. The agent's RTR session is severed by Restart-Computer but the command completes successfully on the host. Mirror of the patching catalog's win-reboot \u2014 duplicated here so the IR-context agent doesn't have to reach across catalogs.",
+      "script": "scripts/windows/reboot.ps1",
+      "preambles": [],
+      "params": {}
+    }
+  ]
+}

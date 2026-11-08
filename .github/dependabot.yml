@@ -1,0 +1,69 @@
+version: 2
+updates:
+  # npm. Packages installed from vendor/npm-offline tarballs aren't updated here.
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    cooldown:
+      default-days: 14
+    commit-message:
+      prefix: "deps(npm):"
+    labels: ["dependencies", "javascript"]
+    groups:
+      npm-security:
+        applies-to: security-updates
+        patterns: ["*"]
+      npm-all:
+        applies-to: version-updates
+        patterns: ["*"]
+    ignore:
+      # Major upgrades (Next.js, React, MCP SDK, ...) are reviewed by hand.
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
+  # falcon-extras sidecar: requirements.in compiles to the hash-locked
+  # requirements.txt.
+  - package-ecosystem: "pip"
+    directory: "/falcon-extras"
+    schedule:
+      interval: "monthly"
+    cooldown:
+      default-days: 14
+    commit-message:
+      prefix: "deps(python):"
+    labels: ["dependencies", "python"]
+    groups:
+      python-all:
+        patterns: ["*"]
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    cooldown:
+      default-days: 14
+    commit-message:
+      prefix: "deps(actions):"
+    labels: ["dependencies", "github-actions"]
+    groups:
+      actions-all:
+        patterns: ["*"]
+
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    cooldown:
+      default-days: 14
+    commit-message:
+      prefix: "deps(docker):"
+    labels: ["dependencies", "docker"]
+    groups:
+      docker-all:
+        patterns: ["*"]
+    ignore:
+      # Base images stay on the Node / Python lines the app supports (Node 22
+      # LTS, Python 3.12); moving lines is a deliberate, tested change.
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]

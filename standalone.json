@@ -1,0 +1,10 @@
+{
+  "appName": "project-eyas",
+  "displayName": "Project Eyas",
+  "command": "eyas",
+  "defaultPort": 3000,
+  "installDir": "~/.local/share/project-eyas",
+  "dataDir": "~/.project-eyas",
+  "binDir": "~/.local/bin",
+  "zipNamePattern": "project-eyas-v<version>.zip"
+}

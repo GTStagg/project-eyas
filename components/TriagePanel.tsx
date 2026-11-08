@@ -1,0 +1,72 @@
+"use client";
+
+import { useRef, useState } from "react";
+import { Sparkles } from "lucide-react";
+import AgentRun, { type AgentRunHandle } from "@/components/AgentRun";
+
+export default function TriagePanel({
+  eyebrow,
+  title,
+  subtitle,
+  endpoint,
+  webhookSource,
+  webhookTitlePrefix,
+  emptyHintText,
+}: {
+  eyebrow: string;
+  title: string;
+  subtitle: string;
+  endpoint: string;
+  webhookSource: string;
+  webhookTitlePrefix: string;
+  emptyHintText: string;
+}) {
+  const ref = useRef<AgentRunHandle>(null);
+  const [hasRun, setHasRun] = useState(false);
+  const today = new Date().toISOString().slice(0, 10);
+
+  return (
+    <section className="mb-8 rounded-lg border border-brand-900/40 bg-gradient-to-br from-brand-950/30 via-neutral-950 to-neutral-950 p-6 shadow-lg shadow-black/40">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex items-start gap-3.5">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-brand-900/60 bg-brand-950/60 text-oxblood-300">
+            <Sparkles className="h-5 w-5" strokeWidth={1.75} />
+          </div>
+          <div>
+            <div className="font-mono text-[12px] font-semibold uppercase tracking-[0.14em] text-oxblood-300">
+              {eyebrow}
+            </div>
+            <h2 className="mt-1 text-2xl font-semibold tracking-tight text-white">
+              {title}
+            </h2>
+            <p className="mt-1.5 max-w-2xl text-base text-neutral-400">{subtitle}</p>
+          </div>
+        </div>
+        <button
+          onClick={() => {
+            setHasRun(true);
+            ref.current?.start();
+          }}
+          className="flex h-11 shrink-0 items-center gap-1.5 rounded-md bg-brand-600 px-5 font-mono text-[12px] font-semibold uppercase tracking-[0.16em] text-white shadow-[0_0_24px_-4px_rgba(220,38,38,0.55),inset_0_1px_0_rgba(255,255,255,0.12)] transition-[background-color,box-shadow] duration-150 hover:bg-brand-500 hover:shadow-[0_0_32px_-4px_rgba(239,68,68,0.7),inset_0_1px_0_rgba(255,255,255,0.18)]"
+        >
+          {hasRun ? "Regenerate" : "Generate triage"}
+        </button>
+      </div>
+
+      <div className="mt-5">
+        <AgentRun
+          ref={ref}
+          endpoint={endpoint}
+          webhookTitle={`${webhookTitlePrefix} · ${today}`}
+          webhookSource={webhookSource}
+          emptyHint={
+            <div className="border border-dashed border-neutral-800 bg-neutral-950/60 p-6 text-center text-sm text-neutral-500">
+              Click <span className="font-mono text-oxblood-300">Generate triage</span> to
+              run. {emptyHintText}
+            </div>
+          }
+        />
+      </div>
+    </section>
+  );
+}
