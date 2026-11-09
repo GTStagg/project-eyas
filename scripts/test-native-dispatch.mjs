@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-// Tests for lib/mcp/rtr-dispatch.ts: Eyas's rendered patch / cleanup scripts
+// Tests for lib/mcp/native-dispatch.ts: Eyas's rendered patch / cleanup scripts
 // run on eyas-mcp's native RTR tools (upload → run → always delete), and the
 // result keeps the shape prompts, the IR ledger and the UI read.
-// Run as: node scripts/test-rtr-dispatch.mjs — re-spawns under tsx --test.
+// Run as: node scripts/test-native-dispatch.mjs — re-spawns under tsx --test.
 
 import { spawnSync } from "node:child_process";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -11,11 +11,11 @@ import path from "node:path";
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, "..");
 
-if (!process.env.RTR_DISPATCH_CHILD) {
+if (!process.env.NATIVE_DISPATCH_CHILD) {
   const r = spawnSync(
     process.execPath,
-    [process.cwd() + "/node_modules/tsx/dist/cli.mjs", "--test", path.join(here, "test-rtr-dispatch.mjs")],
-    { cwd: root, stdio: "inherit", env: { ...process.env, RTR_DISPATCH_CHILD: "1" } },
+    [process.cwd() + "/node_modules/tsx/dist/cli.mjs", "--test", path.join(here, "test-native-dispatch.mjs")],
+    { cwd: root, stdio: "inherit", env: { ...process.env, NATIVE_DISPATCH_CHILD: "1" } },
   );
   process.exit(r.status ?? 1);
 }
@@ -24,7 +24,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 const { runDispatch, dispatchOf, DISPATCH_TOOLS } = await import(
-  pathToFileURL(path.join(root, "lib/mcp/rtr-dispatch.ts")).href
+  pathToFileURL(path.join(root, "lib/mcp/native-dispatch.ts")).href
 );
 
 const AID1 = "a".repeat(32);
@@ -51,8 +51,9 @@ const scriptResult = (over = {}) => ({
   ...over,
 });
 
-test("only the three Eyas RTR tools dispatch", () => {
+test("only the Eyas tools that hand off to eyas-mcp dispatch", () => {
   assert.deepEqual([...DISPATCH_TOOLS].sort(), [
+    "extras_close_all_open_detections_on_host",
     "extras_rtr_check_patch_status",
     "extras_rtr_run_cleanup",
     "extras_rtr_run_patch",
@@ -217,4 +218,51 @@ test("status checks go through falcon_check_rtr_admin_command_status", async () 
   assert.equal(out.complete_count, 1);
   assert.equal(out.results[0].stdout, "ok");
   assert.equal(out.results[1].error, "Failed to check");
+});
+
+test("bulk close goes through falcon_close_host_detections and keeps the old shape", async () => {
+  const n = fakeNative({
+    falcon_close_host_detections: (args) => ({
+      obj: { device_id: args.device_id, resolution: args.resolution, found: 3, closed: 3, composite_ids: ["c1", "c2", "c3"] },
+      error: null,
+    }),
+  });
+  const out = await runDispatch(
+    { ok: true, dispatch: { kind: "close_host_detections", device_id: AID1, resolution: "true_positive", comment: "post-IR" } },
+    n.call,
+  );
+  assert.deepEqual(n.calls[0], {
+    name: "falcon_close_host_detections",
+    args: { device_id: AID1, resolution: "true_positive", comment: "post-IR" },
+    opts: undefined,
+  });
+  assert.equal(out.ok, true);
+  assert.equal(out.scope_count, 3);
+  assert.equal(out.requested, 3);
+  assert.equal(out.updated, 3);
+  assert.equal(out.verdict, "true_positive");
+  assert.deepEqual(out.composite_ids, ["c1", "c2", "c3"]);
+  assert.equal(out.dispatch, undefined);
+});
+
+test("bulk close on a quiet host says there was nothing to close", async () => {
+  const n = fakeNative({
+    falcon_close_host_detections: () => ({ obj: { found: 0, closed: 0, composite_ids: [] }, error: null }),
+  });
+  const out = await runDispatch({ ok: true, dispatch: { kind: "close_host_detections", device_id: AID1, resolution: "false_positive" } }, n.call);
+  assert.equal(out.updated, 0);
+  assert.match(out.note, /nothing to close/);
+  assert.equal("comment" in n.calls[0].args, false);
+});
+
+test("bulk close refuses a malformed host id and reports upstream errors", async () => {
+  const n = fakeNative({
+    falcon_close_host_detections: () => ({ obj: null, error: "Failed to close detections (upstream HTTP 500)" }),
+  });
+  const bad = await runDispatch({ ok: true, dispatch: { kind: "close_host_detections", device_id: "x", resolution: "true_positive" } }, n.call);
+  assert.equal(bad.ok, false);
+  assert.equal(n.calls.length, 0);
+  const err = await runDispatch({ ok: true, dispatch: { kind: "close_host_detections", device_id: AID1, resolution: "true_positive" } }, n.call);
+  assert.equal(err.ok, false);
+  assert.match(err.error, /500/);
 });

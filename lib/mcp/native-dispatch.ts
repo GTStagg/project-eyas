@@ -1,4 +1,7 @@
-// Run Eyas's patch / cleanup scripts through eyas-mcp's native RTR tools.
+// Run Eyas tools' Falcon writes through eyas-mcp's native tools.
+//
+// Patch / cleanup scripts (below) and the on-request bulk close of a host's
+// detections (close_host_detections → falcon_close_host_detections).
 //
 // The sidecar is Eyas's content layer: extras_rtr_run_patch / _run_cleanup
 // validate the agent's script id + params against the manifest and render the
@@ -19,7 +22,7 @@
 // DISPATCH_TOOLS, which are approval-gated (runs) or read-only (status).
 //
 // Pure apart from the injected `callNative`, so it is unit-tested with a fake
-// (scripts/test-rtr-dispatch.mjs).
+// (scripts/test-native-dispatch.mjs).
 
 type Obj = Record<string, unknown>;
 
@@ -27,6 +30,7 @@ export const DISPATCH_TOOLS: ReadonlySet<string> = new Set([
   "extras_rtr_run_patch",
   "extras_rtr_run_cleanup",
   "extras_rtr_check_patch_status",
+  "extras_close_all_open_detections_on_host",
 ]);
 
 /** Call one eyas-mcp tool; resolve to its first JSON object, or an error. */
@@ -76,6 +80,7 @@ export async function runDispatch(
   void _drop;
 
   if (dispatch.kind === "rtr_status") return checkStatus(dispatch, callNative);
+  if (dispatch.kind === "close_host_detections") return { ...meta, ...(await closeHostDetections(dispatch, callNative)) };
   if (dispatch.kind === "rtr_script") return { ...meta, ...(await runScript(dispatch, callNative, newScriptName)) };
   return { ok: false, error: `Unknown dispatch kind ${str(dispatch.kind)}.` };
 }
@@ -204,5 +209,37 @@ async function checkStatus(dispatch: Obj, callNative: CallNative): Promise<Obj> 
     count: results.length,
     complete_count: results.filter((r) => r.complete).length,
     results,
+  };
+}
+
+// Bulk close on the operator's request ("the host is clean, close everything
+// open on it"). IR Phase 4 doesn't use this: it closes only what the
+// remediation ledger matched (extras_ir_close_remediated). eyas-mcp closes
+// every open detection tied to the host, from any product, in batches.
+// The result keeps the sidecar's former shape (scope_count / updated /
+// requested / composite_ids) that the IR record, summaries and UI read.
+async function closeHostDetections(dispatch: Obj, callNative: CallNative): Promise<Obj> {
+  const deviceId = str(dispatch.device_id);
+  const resolution = str(dispatch.resolution);
+  if (!AID.test(deviceId)) return { ok: false, error: "device_id must be a 32-character host ID." };
+  const res = await callNative("falcon_close_host_detections", {
+    device_id: deviceId,
+    resolution,
+    ...(typeof dispatch.comment === "string" && dispatch.comment.trim() ? { comment: dispatch.comment } : {}),
+  });
+  const o = res.obj;
+  if (res.error || !o) return { ok: false, device_id: deviceId, verdict: resolution, error: res.error ?? "The close returned nothing." };
+  const found = typeof o.found === "number" ? o.found : 0;
+  const closed = typeof o.closed === "number" ? o.closed : 0;
+  return {
+    ok: true,
+    device_id: deviceId,
+    verdict: resolution,
+    scope_count: found,
+    requested: found,
+    updated: closed,
+    composite_ids: Array.isArray(o.composite_ids) ? o.composite_ids : [],
+    ...(found === 0 ? { note: "No open detections on this host — nothing to close." } : {}),
+    ...(typeof o.warning === "string" ? { warning: o.warning } : {}),
   };
 }
