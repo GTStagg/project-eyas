@@ -25,7 +25,6 @@ from falconpy import (
     MLExclusions,
     NGSIEM,
     PreventionPolicy,
-    Recon,
     Workflows,
 )
 
@@ -142,8 +141,6 @@ def _get_alerts_client() -> Alerts:
     return Alerts(**_falcon_kwargs())
 
 
-def _get_recon_client() -> Recon:
-    return Recon(**_falcon_kwargs())
 
 
 def _get_discover_client() -> Discover:
@@ -312,78 +309,3 @@ _VERDICT_TAG = {
 }
 
 
-# ---------------------------------------------------------------------------
-# Recon FQL input validation — strict allowlists. Recon's filter language
-# uses single-quoted literals, so a value with an embedded apostrophe would
-# either error or change query semantics.
-# ---------------------------------------------------------------------------
-
-
-_RECON_DOMAIN_RX = re.compile(r"^[a-z0-9][a-z0-9.\-]{0,253}$")
-_RECON_EMAIL_RX = re.compile(r"^[a-z0-9._%+\-]+@[a-z0-9.\-]+$")
-_RECON_FREETEXT_RX = re.compile(r"^[A-Za-z0-9 ._%+@:/\-]{1,200}$")
-
-
-def _project_exposed_record(rec: dict[str, Any]) -> dict[str, Any]:
-    """Strip heavy fields and produce a flat row the agent can table directly.
-    The full `rec` payload is large (full file metadata, location, financial
-    fields). We keep just what a credential-exposure decision document needs.
-
-    Field names confirmed against a live us-2 dump (2026-06-29): the identity
-    field is `full_name` (NOT user_name, which the API does not return); `rule`
-    and `file` are nested objects. The raw leaked-credential file payload is
-    deliberately omitted — only file.name + exposure metadata surface.
-    """
-    rule_block = rec.get("rule") or {}
-    file_block = rec.get("file") or {}
-    return {
-        "id": rec.get("id"),
-        "email": rec.get("email"),
-        "domain": rec.get("domain"),
-        "credentials_domain": rec.get("credentials_domain"),
-        "credential_status": rec.get("credential_status"),
-        "full_name": rec.get("full_name"),
-        "source_category": rec.get("source_category"),
-        "site": rec.get("site"),
-        "exposure_date": rec.get("exposure_date"),
-        "event_date": rec.get("event_date"),
-        "created_date": rec.get("created_date"),
-        "notification_id": rec.get("notification_id"),
-        "rule_id": rule_block.get("id"),
-        "rule_topic": rule_block.get("topic"),
-        "file_name": file_block.get("name"),
-    }
-
-
-def _project_notification(rec: dict[str, Any]) -> dict[str, Any]:
-    """Flatten a Recon notification into a compact row.
-
-    GetNotificationsDetailedV1 returns each record as
-    {id, notification: {...}, breach_details}, so the useful fields are nested
-    under `notification` (rule_* are flat INSIDE that object; there is no
-    top-level `content` — the substance of a breach hit is `breach_summary`).
-    Confirmed against a live us-2 dump (2026-06-29). Falls back to the top level
-    so a future flattened passthrough still projects. The bulky logs[] /
-    risk_score_matching_criteria[] / breach_details are dropped.
-    """
-    note = rec.get("notification")
-    if not isinstance(note, dict):
-        note = rec
-    return {
-        "id": rec.get("id") or note.get("id"),
-        "status": note.get("status"),
-        "created_date": note.get("created_date"),
-        "updated_date": note.get("updated_date"),
-        "rule_id": note.get("rule_id"),
-        "rule_name": note.get("rule_name"),
-        "rule_topic": note.get("rule_topic"),
-        "rule_priority": note.get("rule_priority"),
-        "item_type": note.get("item_type"),
-        "item_date": note.get("item_date"),
-        "item_site": note.get("item_site"),
-        "item_author": note.get("item_author"),
-        "source_category": note.get("source_category"),
-        "actor_slug": note.get("actor_slug"),
-        "risk_score_label": note.get("risk_score_label"),
-        "breach_summary": note.get("breach_summary"),
-    }

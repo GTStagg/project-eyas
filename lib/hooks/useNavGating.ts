@@ -29,7 +29,7 @@ export function useNavGating(): { visibleGroups: NavGroup[]; hiddenHrefs: Set<st
         // /pivot stays visible even without Threat Graph scope — cross-source
         // lookup still works; lineage mode just shows a scope-pending message.
         if (mc.malQuery === false) hidden.add("/malquery");
-        if (ec.recon === false) hidden.add("/recon");
+        if (mc.recon === false) hidden.add("/recon");
         if (ec.workflows === false) hidden.add("/workflows");
         if (ec.discover === false) hidden.add("/discover");
         if (mc.intel === false) hidden.add("/intel");

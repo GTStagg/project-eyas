@@ -23,6 +23,9 @@
   ship with the bundle.
 
 ### Changed
+- **Recon runs on the MCP server natively.** The `/recon` exposure report,
+  the intel dossier's underground-mention counts and the Recon nav check now
+  use `eyas-mcp`'s Recon tools; the four add-on Recon tools are retired.
 - **Threat Graph runs on the MCP server natively** (first capability migrated
   from the Falcon operations add-on into `eyas-mcp`). Artifact pivots and host
   investigations now list every device that ran a file with when it was seen,
