@@ -27,7 +27,7 @@ def _dispatch_script(plan: Any, device_ids: list[str]) -> dict[str, Any]:
 
     The sidecar no longer talks to RTR for patch / cleanup runs. It validates
     and renders (the Eyas content layer), and the Next.js tool bridge
-    (lib/mcp/rtr-dispatch.ts) uploads the bytes as a one-off custom script,
+    (lib/mcp/native-dispatch.ts) uploads the bytes as a one-off custom script,
     runs it on the hosts and deletes it, all with eyas-mcp's native RTR tools,
     then replaces this envelope with the per-host results. The envelope never
     reaches the agent, and the agent still never supplies script bytes.
@@ -258,7 +258,7 @@ def rtr_check_patch_status(
             entry where `complete` was false.
     """
     # Checked by Eyas through eyas-mcp's falcon_check_rtr_admin_command_status
-    # (lib/mcp/rtr-dispatch.ts); the sidecar only validates the input.
+    # (lib/mcp/native-dispatch.ts); the sidecar only validates the input.
     ids = [i for i in (cloud_request_ids or []) if isinstance(i, str) and i.strip()]
     if not ids:
         return {"ok": False, "error": "cloud_request_ids is empty"}

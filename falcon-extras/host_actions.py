@@ -215,126 +215,20 @@ def close_all_open_detections_on_host(
             f"on host {device_id}"
         )
 
-    # Step 1: server-side scope walk. Reuse the Phase 0 scope tool's logic
-    # inline to avoid the cross-tool indirection (and to give a single
-    # well-defined wrapper to the operator approval card).
-    PAGE = 200
-    HARD_CAP = 5000
-    OPEN_STATUSES = {"new", "reopened", "in_progress"}
-
-    try:
-        client = _get_alerts_client()
-    except Exception as exc:  # noqa: BLE001
-        return swallow_exc(exc)
-
-    composite_ids: list[str] = []
-    offset = 0
-    while offset < HARD_CAP:
-        q = client.query_alerts_v2(
-            filter=f"product:'epp'+device.device_id:'{device_id}'",
-            limit=PAGE,
-            offset=offset,
-            sort="created_timestamp.desc",
-        )
-        guard = _check_response(q, "Alerts")
-        if guard is not None:
-            return guard
-        ids = ((q or {}).get("body") or {}).get("resources") or []
-        if not ids:
-            break
-        for chunk_start in range(0, len(ids), 100):
-            chunk = ids[chunk_start : chunk_start + 100]
-            d = client.get_alerts_v2(body={"composite_ids": chunk})
-            d_guard = _check_response(d, "Alerts")
-            if d_guard is not None:
-                return d_guard
-            recs = ((d or {}).get("body") or {}).get("resources") or []
-            for r in recs:
-                if not isinstance(r, dict):
-                    continue
-                status = (r.get("status") or "").lower()
-                if status not in OPEN_STATUSES:
-                    continue
-                cid = r.get("composite_id") or r.get("id")
-                if cid:
-                    composite_ids.append(cid)
-        if len(ids) < PAGE:
-            break
-        offset += PAGE
-
-    scope_count = len(composite_ids)
-    if scope_count == 0:
-        return {
-            "ok": True,
-            "device_id": device_id,
-            "scope_count": 0,
-            "updated": 0,
-            "requested": 0,
-            "batches": 0,
-            "composite_ids": [],
-            "note": "No open detections on this host — nothing to close.",
-        }
-
-    # Step 2: chunked bulk close. Mirrors extras_update_detection_status's
-    # internal chunking but invoked from the same tool to keep the operator's
-    # approval card single-shot.
-    BATCH_SIZE = 500
-    actions = [
-        {"name": "update_status", "value": "closed"},
-        {"name": "add_tag", "value": _VERDICT_TAG[verdict]},
-        {"name": "append_comment", "value": comment},
-    ]
-    updated = 0
-    batch_errors: list[dict[str, Any]] = []
-    for batch_start in range(0, scope_count, BATCH_SIZE):
-        chunk = composite_ids[batch_start : batch_start + BATCH_SIZE]
-        try:
-            r = client.update_alerts_v3(
-                body={"composite_ids": chunk, "action_parameters": actions}
-            )
-            if _is_permission_error(r):
-                if updated == 0:
-                    return _scope_denied_payload(r, "Alerts")
-                batch_errors.append(
-                    {"batch_start": batch_start, "error": "scope_pending"}
-                )
-                break
-            err = _upstream_error(r)
-            if err:
-                batch_errors.append(
-                    {"batch_start": batch_start, "error": err, "size": len(chunk)}
-                )
-                continue
-            updated += len(chunk)
-        except Exception as exc:  # noqa: BLE001
-            batch_errors.append(
-                {
-                    "batch_start": batch_start,
-                    "error": f"{type(exc).__name__}: {exc}",
-                    "size": len(chunk),
-                }
-            )
-
-    result: dict[str, Any] = {
-        "ok": updated > 0 or scope_count == 0,
-        "device_id": device_id,
-        "scope_count": scope_count,
-        "updated": updated,
-        "requested": scope_count,
-        "batches": (scope_count + BATCH_SIZE - 1) // BATCH_SIZE,
-        "verdict": verdict,
-        "composite_ids": composite_ids,
+    # Closed by Eyas through eyas-mcp's falcon_close_host_detections
+    # (lib/mcp/native-dispatch.ts): it finds every open detection on the host
+    # (status new / in_progress / reopened, any product), closes them in
+    # batches with the verdict tag and comment, and reports the ids. The
+    # sidecar only validates and supplies Eyas's default audit comment.
+    return {
+        "ok": True,
+        "dispatch": {
+            "kind": "close_host_detections",
+            "device_id": device_id.lower(),
+            "resolution": verdict,
+            "comment": comment,
+        },
     }
-    if batch_errors:
-        result["batch_errors"] = batch_errors
-        if updated == 0:
-            result["ok"] = False
-            result["error"] = (
-                f"all {len(batch_errors)} batches failed; "
-                f"first error: {batch_errors[0].get('error')}"
-            )
-    return result
-
 
 def host_list_contained(limit: int = 100) -> dict[str, Any]:
     """List hosts currently in network containment (or with a containment

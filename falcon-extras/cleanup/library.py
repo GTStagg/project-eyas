@@ -14,7 +14,7 @@ Reuses the render-time security primitives from patching.library —
 _validate_params, _render_params_block, _ascii_coerce — so both catalogs
 get the same regex enforcement, $Params encoding, and ASCII coercion. The
 RTR transport (CloudFile upload + runscript) is eyas-mcp's: Eyas runs the
-rendered script with its native RTR tools (lib/mcp/rtr-dispatch.ts).
+rendered script with its native RTR tools (lib/mcp/native-dispatch.ts).
 """
 
 from __future__ import annotations

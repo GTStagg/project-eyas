@@ -4,7 +4,7 @@ import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { projectToolResult } from "./projections";
 import { detectFalconError, parseToolResultObjects } from "./parse";
 import { EXTRAS_READ_ONLY, REQUIRES_APPROVAL } from "./write-tools";
-import { DISPATCH_TOOLS, dispatchOf, runDispatch, type CallNative } from "./rtr-dispatch";
+import { DISPATCH_TOOLS, dispatchOf, runDispatch, type CallNative } from "./native-dispatch";
 
 export type FalconResource = {
   uri: string;
@@ -172,7 +172,7 @@ export function enforceToolArgs(
 }
 
 // eyas-mcp tools the agent must not call directly. The RTR script tools are
-// what Eyas's patch / cleanup runs execute on (lib/mcp/rtr-dispatch.ts), but
+// what Eyas's patch / cleanup runs execute on (lib/mcp/native-dispatch.ts), but
 // the agent reaches them only through extras_rtr_run_patch / _run_cleanup /
 // _check_patch_status, so it can never upload script bytes the library didn't
 // render. The rest are hidden until their family moves over; delete an entry
@@ -184,8 +184,9 @@ export const PENDING_NATIVE_MIGRATION: ReadonlySet<string> = new Set<string>([
   "falcon_check_rtr_admin_command_status",
   "falcon_delete_rtr_scripts",
   "falcon_search_rtr_scripts",
-  // → extras_close_all_open_detections_on_host (IR Phase 4 closure stays
-  // ledger-driven through extras_ir_close_remediated).
+  // Bridge-only: the on-request bulk close extras_close_all_open_detections_on_host
+  // dispatches through it (one approval card, Eyas's verdict + audit comment).
+  // IR Phase 4 closure stays ledger-driven through extras_ir_close_remediated.
   "falcon_close_host_detections",
 ]);
 

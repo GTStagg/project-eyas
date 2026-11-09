@@ -24,6 +24,11 @@
   ship with the bundle.
 
 ### Changed
+- **Closing every open detection on a host goes through the MCP server.** The
+  on-request bulk close (one approval) now uses `eyas-mcp`, and covers open
+  detections from every product on the host, not only endpoint detections.
+  Incident response still closes only the detections its remediation
+  touched.
 - **MCP server pinned to eyas-mcp 2703a99.**
 - **Incident response waits for the quarantine policy through the MCP
   server.** Before cleanup, Phase 1.5 uses `eyas-mcp`'s readiness wait with
