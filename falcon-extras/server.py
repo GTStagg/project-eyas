@@ -1210,55 +1210,6 @@ def extras_host_group_remove_members(
 
 
 @mcp.tool()
-def extras_workflows_list_definitions(
-    filter: str | None = None, limit: int = 50
-) -> dict[str, Any]:
-    """List Fusion SOAR workflow definitions in the tenant. Read-only.
-
-    Returns each definition's id, name, description, status (enabled?),
-    trigger type, last modified. Use this to answer "what automation does
-    this tenant have" without going to the console.
-
-    Args:
-        filter: Optional FQL filter (e.g. status:'enabled', trigger.kind:'detection').
-        limit: Max definitions to return (1-500). Default 50.
-    """
-    from workflows import workflows_list_definitions as _impl
-    return _impl(filter, limit)
-
-
-@mcp.tool()
-def extras_workflows_list_executions(
-    filter: str | None = None, limit: int = 50
-) -> dict[str, Any]:
-    """List recent Fusion SOAR workflow executions. Read-only.
-
-    Returns each execution's id, definition id, status (success / failed /
-    in-progress), start/end timestamps, trigger source. Use this to surface
-    "which automations fired in the last 24h, which failed, which are
-    still in flight."
-
-    A default 7-day recency window is applied when no `filter` is supplied —
-    without it the upstream WorkflowExecutionsCombined endpoint walks the
-    entire execution ledger and times out on busy tenants. Pass an explicit
-    filter to override (e.g. `started_timestamp:>'<iso>'`, `status:'failed'`,
-    or any combination). The response echoes the resolved filter in
-    `filter_applied` and `default_window_applied`.
-
-    Args:
-        filter: Optional FQL filter (e.g. `status:'failed'`,
-            `started_timestamp:>'<iso>'`). Field is `started_timestamp`,
-            NOT `start_timestamp`. When supplied, replaces the default
-            7-day recency window.
-        limit: Max executions to return (1-200). Default 50. Hard-capped
-            at 200 — the upstream endpoint times out past that on busy
-            tenants. Paginate via `started_timestamp:<` if you need more.
-    """
-    from workflows import workflows_list_executions as _impl
-    return _impl(filter, limit)
-
-
-@mcp.tool()
 def extras_workflows_execute(
     definition_id: str,
     payload: dict[str, Any] | None = None,
@@ -1271,13 +1222,13 @@ def extras_workflows_execute(
 
     Payload shape is per-workflow: it must match the workflow's expected
     on-demand trigger inputs. Discover available workflows + their schemas
-    via extras_workflows_list_definitions; the trigger contract lives on
+    via falcon_search_workflow_definitions; the trigger contract lives on
     each definition. If the workflow has no on-demand trigger, execute will
     fail upstream — list the triggers first via falcon_list_workflow_triggers
     if uncertain.
 
-    The response contains the new execution_id; poll
-    extras_workflows_execution_result to retrieve outputs.
+    The response contains the new execution_id; read its outputs with
+    falcon_get_workflow_execution_results.
 
     Args:
         definition_id: The workflow definition id (preferred over name; ids
@@ -1288,22 +1239,6 @@ def extras_workflows_execute(
     """
     from workflows import workflows_execute as _impl
     return _impl(definition_id, payload, key)
-
-
-@mcp.tool()
-def extras_workflows_execution_result(execution_id: str) -> dict[str, Any]:
-    """Fetch the result of a workflow execution. Read-only. Use after
-    extras_workflows_execute to confirm completion + retrieve outputs.
-
-    Workflow executions are asynchronous — a freshly-returned execution id
-    may not have results yet. If the result set is empty, wait briefly and
-    retry; do not interpret an empty result as a failed execution.
-
-    Args:
-        execution_id: Execution id returned by extras_workflows_execute.
-    """
-    from workflows import workflows_execution_result as _impl
-    return _impl(execution_id)
 
 
 # ---------------------------------------------------------------------------

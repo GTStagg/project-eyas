@@ -24,6 +24,10 @@
   ship with the bundle.
 
 ### Changed
+- **Fusion workflow reads run on the MCP server natively.** The `/workflows`
+  report and the failed-run hand-off use `eyas-mcp`'s definition, execution
+  and execution-result tools; running a workflow still goes through the
+  approval-gated add-on tool.
 - **Recon runs on the MCP server natively.** The `/recon` exposure report,
   the intel dossier's underground-mention counts and the Recon nav check now
   use `eyas-mcp`'s Recon tools; the four add-on Recon tools are retired.

@@ -46,7 +46,7 @@ export default async function Status() {
     recon: mcpCaps?.recon,
     malQuery: mcpCaps?.malQuery,
     threatGraph: mcpCaps?.threatGraph,
-    workflows: extrasCaps?.workflows,
+    workflows: mcpCaps?.workflows,
     idp: mcpCaps?.idp,
     discover: extrasCaps?.discover,
   };
