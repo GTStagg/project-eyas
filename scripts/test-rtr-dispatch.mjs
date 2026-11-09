@@ -120,6 +120,21 @@ test("the script is deleted even when the run fails", async () => {
   assert.match(out.error, /404/);
 });
 
+test("a failed delete is reported, not dropped", async () => {
+  const n = fakeNative({
+    falcon_create_rtr_script: () => ({ obj: { id: "sid-6" }, error: null }),
+    falcon_run_rtr_script_on_hosts: () => ({
+      obj: { results: [{ device_id: AID1, complete: true, task_id: "t", stdout: "x" }], failed_hosts: [] },
+      error: null,
+    }),
+    falcon_delete_rtr_scripts: () => ({ obj: null, error: "Permission denied (upstream HTTP 403)" }),
+  });
+  const out = await runDispatch(scriptResult(), n.call, () => "eyas-run-y");
+  assert.equal(out.ok, true);
+  assert.match(out.cleanup_warning, /eyas-run-y/);
+  assert.match(out.cleanup_warning, /403/);
+});
+
 test("the script is deleted even when the run call throws", async () => {
   const n = fakeNative({
     falcon_create_rtr_script: () => ({ obj: { created: true, id: "sid-3" }, error: null }),

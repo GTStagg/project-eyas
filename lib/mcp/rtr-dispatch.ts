@@ -112,6 +112,7 @@ async function runScript(dispatch: Obj, callNative: CallNative, newScriptName: (
   }
 
   let run: { obj: Obj | null; error: string | null };
+  let deleteError: string | null = null;
   try {
     run = await callNative(
       "falcon_run_rtr_script_on_hosts",
@@ -120,12 +121,21 @@ async function runScript(dispatch: Obj, callNative: CallNative, newScriptName: (
     );
   } finally {
     // Commands already sent keep running; this only removes the library entry.
-    await callNative("falcon_delete_rtr_scripts", { ids: [scriptId] }).catch(() => undefined);
+    const del = await callNative("falcon_delete_rtr_scripts", { ids: [scriptId] }).catch((e: unknown) => ({
+      obj: null,
+      error: e instanceof Error ? e.message : String(e),
+    }));
+    deleteError = del.error;
   }
+  // A leftover one-off script is harmless to the hosts but clutters the
+  // library, so say so rather than drop it.
+  const cleanup = deleteError
+    ? { cleanup_warning: `Couldn't delete the one-off script ${name} (${deleteError}). Remove it from the custom script library.` }
+    : {};
   if (run.error || !run.obj) {
-    return { ok: false, stage: "run_script", error: run.error ?? "The run returned nothing." };
+    return { ok: false, stage: "run_script", error: run.error ?? "The run returned nothing.", ...cleanup };
   }
-  return shapeRun(run.obj);
+  return { ...shapeRun(run.obj), ...cleanup };
 }
 
 /** Native run result → the sidecar's former run_batch shape. */
