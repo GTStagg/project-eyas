@@ -272,7 +272,6 @@ export const EXTRAS_READ_ONLY: ReadonlySet<string> = new Set<string>([
   "extras_list_ioa_exclusions",
   "extras_list_ml_exclusions",
   "extras_list_patch_profiles",
-  "extras_prevention_policy_posture",
   "extras_rtr_check_patch_status",
   "extras_rtr_list_cleanup_scripts",
   "extras_rtr_list_patch_scripts",

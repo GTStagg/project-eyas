@@ -24,6 +24,12 @@
   ship with the bundle.
 
 ### Changed
+- **Prevention posture comes from the MCP server.** `/prevention`, the home
+  dashboard, Shadow-AI setup and the posture history read `eyas-mcp`'s
+  prevention posture, and the chat agent uses it directly. Eyas still flags a
+  policy as detect-only only when sensor machine learning or cloud antivirus
+  detects without preventing. All policies are now included, not just the
+  first 200. Policy descriptions are no longer shown in this view.
 - **Patch and cleanup runs go through the MCP server.** Eyas still checks and
   builds every script from its own library (the agent picks a vetted script and
   parameters, never script text), then uploads it as a one-off private script,

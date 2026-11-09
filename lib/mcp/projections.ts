@@ -638,7 +638,7 @@ const PROJECTIONS: Record<string, Projection> = {
     // groups[] lists the host GROUPS the policy targets (not resolved hosts);
     // surface names (id fallback). The heavy prevention_settings / settings
     // slider blob is dropped — route posture questions to
-    // extras_prevention_policy_posture, which enriches it deterministically.
+    // falcon_get_prevention_posture, which summarizes it per slider.
     groups: Array.isArray(p.groups)
       ? (p.groups as Array<Record<string, unknown>>).map((g) => g.name ?? g.id).filter(Boolean)
       : undefined,
@@ -1007,6 +1007,53 @@ function projectNgsiemSearch(rawText: string): string {
   return capLength(rawText, GENERIC_CAP_BYTES);
 }
 
+// falcon_get_prevention_posture returns every ML slider and toggle count per
+// policy (~1 KB each), so a tenant with many policies blows past the generic cap and
+// the agent sees a handful of policies. Render one line per policy instead,
+// keeping the two sliders Eyas treats as protection (sensor ML, cloud AV) plus
+// the names of any other detect-only sliders.
+const POSTURE_CAP_BYTES = 24_000;
+function projectPreventionPosture(rawText: string): string {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(rawText);
+  } catch {
+    return capLength(rawText, GENERIC_CAP_BYTES);
+  }
+  const obj = parsed as { summary?: unknown; policies?: unknown; warning?: unknown };
+  if (!obj || typeof obj !== "object" || !Array.isArray(obj.policies)) return capLength(rawText, GENERIC_CAP_BYTES);
+  const lv = (s: unknown) => {
+    const o = (s ?? {}) as { detection?: unknown; prevention?: unknown };
+    return `${String(o.detection ?? "-")}/${String(o.prevention ?? "-")}`;
+  };
+  const lines = (obj.policies as Array<Record<string, unknown>>).map((p) => {
+    const sliders = (p.ml_sliders ?? {}) as Record<string, unknown>;
+    const groups = Array.isArray(p.groups) ? p.groups.length : 0;
+    const other = (Array.isArray(p.detect_only_sliders) ? (p.detect_only_sliders as string[]) : []).filter(
+      (s) => s !== "OnSensorMLSlider" && s !== "CloudAntiMalware",
+    );
+    const flags = Array.isArray(p.flags) ? (p.flags as string[]).join(",") : "";
+    return [
+      p.name,
+      p.platform,
+      p.enabled === false ? "disabled" : "enabled",
+      `groups=${groups}`,
+      `sensorML=${lv(sliders.OnSensorMLSlider)}`,
+      `cloudAV=${lv(sliders.CloudAntiMalware)}`,
+      `flags=${flags || "-"}`,
+      other.length ? `other_detect_only=${other.join(",")}` : "",
+    ]
+      .filter(Boolean)
+      .join(" | ");
+  });
+  const header = [
+    `summary: ${JSON.stringify(obj.summary ?? {})}`,
+    ...(typeof obj.warning === "string" ? [`warning: ${obj.warning}`] : []),
+    `${lines.length} policies (name | platform | state | host groups | sensor ML det/prev | cloud AV det/prev | flags | other detect-only sliders):`,
+  ];
+  return capLength([...header, ...lines].join("\n"), POSTURE_CAP_BYTES);
+}
+
 export function projectToolResult(
   toolName: string,
   rawText: string,
@@ -1018,6 +1065,9 @@ export function projectToolResult(
   if (!rawText) return "";
   if (toolName === "falcon_run_falcon_script") {
     return projectFalconScriptRun(rawText);
+  }
+  if (toolName === "falcon_get_prevention_posture") {
+    return projectPreventionPosture(rawText);
   }
   if (toolName === "falcon_search_ngsiem") {
     return projectNgsiemSearch(rawText);

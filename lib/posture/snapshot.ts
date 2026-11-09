@@ -14,6 +14,7 @@ import {
 } from "@/lib/dataprotection/posture";
 import { fetchDataSecurityEntities } from "@/lib/dataprotection/fetch";
 import { fetchDiscoverSnapshot } from "@/lib/discover/native";
+import { fetchPreventionPosture } from "@/lib/prevention/posture";
 import { nativeSidecarPayload } from "@/lib/mcp/native-payload";
 import { clusterCampaigns } from "@/lib/queue/campaigns";
 import type { RankInput } from "@/lib/queue/rank";
@@ -276,25 +277,17 @@ async function captureIdentity(
 
 // ---- prevention -----------------------------------------------------------
 
-async function capturePrevention(
-  extras: Client,
-): Promise<Pick<PostureMetrics, "prevention">> {
-  const r = await extras.callTool({
-    name: "extras_prevention_policy_posture",
-    arguments: { limit: 500 },
-  });
-  const p = parseExtras(r);
-  if (!p || p.ok !== true || !Array.isArray(p.items)) {
+async function capturePrevention(mcp: Client): Promise<Pick<PostureMetrics, "prevention">> {
+  const p = await fetchPreventionPosture(mcp);
+  if (!p.ok || "scope_pending" in p) {
     return { prevention: { policies_preventing: null, policies_detect_only: null } };
   }
-  const items = p.items as Array<{ enabled?: boolean; flags?: string[] }>;
   let preventing = 0;
   let detectOnly = 0;
-  for (const it of items) {
-    const flags = Array.isArray(it.flags) ? it.flags : [];
-    const isDetectOnly = flags.some((f) => f.endsWith("_detect_only"));
+  for (const it of p.items) {
+    const isDetectOnly = it.flags.some((f) => f.endsWith("_detect_only"));
     if (isDetectOnly) detectOnly += 1;
-    if (it.enabled === true && !isDetectOnly) preventing += 1;
+    if (it.enabled && !isDetectOnly) preventing += 1;
   }
   return {
     prevention: { policies_preventing: preventing, policies_detect_only: detectOnly },
@@ -450,7 +443,7 @@ export async function captureSnapshot(): Promise<CaptureResult> {
           captureVulns(mcp),
           captureCoverage(mcp),
           captureIdentity(mcp, extras),
-          capturePrevention(extras),
+          capturePrevention(mcp),
           captureDataProtection(mcp),
           captureCases(mcp),
         ]);
