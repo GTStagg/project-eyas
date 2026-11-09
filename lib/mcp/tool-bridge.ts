@@ -45,9 +45,9 @@ const READ_RESOURCE_TOOL_NAME = "falcon_read_resource";
 // agent treats a still-propagating sensor as a hard failure (skips to HOLD).
 // See mcp_timeout_vs_falcon_wait.
 const LONG_RUNNING_TOOL_TIMEOUT_MS: Record<string, number> = {
-  // Phase 1.5 propagation wait — impl clamps timeout_s to a 600s ceiling; give
-  // the transport headroom over that plus per-probe round-trip overhead.
-  extras_rtr_wait_until_ready: 660_000,
+  // Phase 1.5 propagation wait — eyas-mcp caps timeout_seconds at 600; give
+  // the transport headroom over that plus probe upload / cleanup overhead.
+  falcon_wait_for_rtr_sessions: 660_000,
 };
 
 // Native write tools from falcon-mcp's detections / host_groups / exclusions /
@@ -162,6 +162,12 @@ export function enforceToolArgs(
   if (name === "falcon_get_host_group_membership" && input.verify !== "all") {
     return { ...input, verify: "static" };
   }
+  // IR Phase 1.5 waits for the quarantine policy + IOA exclusion to reach the
+  // sensor. A session can open before runscript works, so Eyas only ever
+  // waits on a real probe script (eyas-mcp ≥ 2703a99; needs RTR Admin write).
+  if (name === "falcon_wait_for_rtr_sessions") {
+    return { ...input, probe: "runscript" };
+  }
   return input;
 }
 
@@ -178,8 +184,6 @@ export const PENDING_NATIVE_MIGRATION: ReadonlySet<string> = new Set<string>([
   "falcon_check_rtr_admin_command_status",
   "falcon_delete_rtr_scripts",
   "falcon_search_rtr_scripts",
-  // IR Phase 1.5 → extras_rtr_wait_until_ready (has a long transport timeout).
-  "falcon_wait_for_rtr_sessions",
   // → extras_close_all_open_detections_on_host (IR Phase 4 closure stays
   // ledger-driven through extras_ir_close_remediated).
   "falcon_close_host_detections",

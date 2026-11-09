@@ -177,11 +177,11 @@ export const REQUIRES_APPROVAL: ReadonlySet<string> = new Set<string>([
   // falcon-extras — RTR-driven host cleanup (incident-response remediation).
   // Only the executor is gated; list / resolve are read-only.
   "extras_rtr_run_cleanup",
-  // RTR readiness probe. The payload is a fixed no-op (`exit 0`), but each
-  // probe uploads a cloud script, opens an RTR admin session and runs
-  // `runscript` on whichever device_id the agent picks, so it gates like
-  // the other RTR admin paths.
-  "extras_rtr_wait_until_ready",
+  // RTR readiness probe (eyas-mcp; the bridge forces probe="runscript"). The
+  // payload is a fixed marker script, but each attempt uploads a custom
+  // script, opens an RTR admin session and runs `runscript` on whichever
+  // device_id the agent picks, so it gates like the other RTR admin paths.
+  "falcon_wait_for_rtr_sessions",
   // falcon-extras — detection-tuning exclusion CREATES. Long-lived artifacts;
   // create is the consequential write and stays on the sidecar because it runs
   // the IOA zero-width-assertion + single-quote pre-flight before writing.

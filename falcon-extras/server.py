@@ -924,42 +924,6 @@ def extras_provision_shadow_ai_banned_policy(
 
 
 @mcp.tool()
-def extras_rtr_wait_until_ready(
-    device_id: str,
-    timeout_s: int = 300,
-    interval_s: int = 15,
-) -> dict[str, Any]:
-    """Block until RTR cleanup is actually executable on the target host.
-    Not read-only: each probe uploads a no-op cloud script, opens an RTR
-    admin session and runs it, then deletes the script. Approval-gated.
-
-    Probes the full ``runscript -CloudFile=`` transport in a loop (uploading
-    a no-op `exit 0` PowerShell payload, opening a session, dispatching the
-    runscript, then deleting the script) until the probe succeeds or
-    ``timeout_s`` elapses. Each iteration takes ~5–10s of API work; the
-    loop sleeps ``interval_s`` between probes. The first probe fires
-    immediately, so a sensor that's already ready returns in one round trip.
-
-    Use between Phase 1 (host moved into the quarantine host group) and
-    Phase 2 (first cleanup primitive). The new prevention policy + IOA
-    exclusion typically take 60–90s to propagate from backend to sensor;
-    until that completes, every cleanup primitive returns
-    ``batch_init_sessions: 404`` and Phase 2 is silently a no-op.
-
-    Returns ``{ok, ready, waited_s, iterations, first_ready_iteration,
-    last_error, timed_out}``. ``ok`` is whether the tool itself ran;
-    ``ready`` is the actual outcome. When ``timed_out`` is true, the
-    ``last_error`` field carries the most recent probe failure shape so
-    the playbook can decide whether to HOLD the workflow or retry with
-    operator confirmation.
-
-    Bounds: ``timeout_s`` is clamped to [30, 600], ``interval_s`` to [5, 60].
-    """
-    from ir.wait_for_rtr import wait_until_rtr_ready as _impl
-    return _impl(device_id=device_id, timeout_s=timeout_s, interval_s=interval_s)
-
-
-@mcp.tool()
 def extras_save_patch_profile(
     name: str,
     product: str,

@@ -13,8 +13,8 @@ Distinct from patching/ in intent:
 Reuses the render-time security primitives from patching.library —
 _validate_params, _render_params_block, _ascii_coerce — so both catalogs
 get the same regex enforcement, $Params encoding, and ASCII coercion. The
-RTR transport (CloudFile upload + runscript) lives in patching.rtr and is
-generic; cleanup tools call into it directly without duplication.
+RTR transport (CloudFile upload + runscript) is eyas-mcp's: Eyas runs the
+rendered script with its native RTR tools (lib/mcp/rtr-dispatch.ts).
 """
 
 from __future__ import annotations

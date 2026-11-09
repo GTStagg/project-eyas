@@ -65,7 +65,7 @@ The workflow trusts the contract above. The only timing concern it actively mana
 
 - **Phase 1 — Quarantine.** Host is added to the IR quarantine group. Falcon's backend writes the membership; the sensor will receive the new prevention policy + IOA exclusion within 60–90 seconds typically.
 
-- **Phase 1.5 — Wait for sensor-side propagation.** The workflow blocks on `extras_rtr_wait_until_ready` until a probe `runscript -CloudFile=` round-trip succeeds (or a 5-minute ceiling is reached). This is the gate that ensures Phase 2 cleanup actually executes rather than silently no-op'ing.
+- **Phase 1.5 — Wait for sensor-side propagation.** The workflow blocks on `falcon_wait_for_rtr_sessions` with `probe="runscript"` until a probe `runscript -CloudFile=` round-trip succeeds (or a 5-minute ceiling is reached). The probe uploads and deletes a temporary custom script, so the API client needs the RTR Admin write scope. This is the gate that ensures Phase 2 cleanup actually executes rather than silently no-op'ing.
 
 - **Phases 2–4** proceed normally. The workflow does not audit the prevention policy mid-run.
 
