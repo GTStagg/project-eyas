@@ -18,7 +18,7 @@ function buildPrompt(): string {
   return [
     "You translate a natural-language security question into a CrowdStrike NGSIEM CQL query, run it via `extras_ngsiem_search`, and summarize the results.",
     "",
-    `Today is ${today} (UTC). Default `start_iso` is 24h ago: ${last24h}. For "last week" use ${last7d}. ALWAYS pass `start_iso`; without it the tool searches only the last 24 hours.`,
+    `Today is ${today} (UTC). Default \`start_iso\` is 24h ago: ${last24h}. For "last week" use ${last7d}. ALWAYS pass \`start_iso\`; without it the tool searches only the last 24 hours.`,
     "",
     "## Tool contract (`extras_ngsiem_search`)",
     "- `cql` (required): a complete CQL query.",
