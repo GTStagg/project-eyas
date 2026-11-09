@@ -27,6 +27,12 @@
 - **Recon runs on the MCP server natively.** The `/recon` exposure report,
   the intel dossier's underground-mention counts and the Recon nav check now
   use `eyas-mcp`'s Recon tools; the four add-on Recon tools are retired.
+- **NGSIEM searches from `/ngsiem` honour the requested time window.** The
+  prompt named the start and end parameters wrongly, so a "last week"
+  question could search only the last 24 hours.
+- **Retired the add-on NGSIEM provisioning-status tool.** It sent customer IDs
+  to an endpoint that takes data connection IDs; `eyas-mcp`'s
+  `falcon_get_ngsiem_data_connection_status` does this correctly.
 - **Threat Graph runs on the MCP server natively** (first capability migrated
   from the Falcon operations add-on into `eyas-mcp`). Artifact pivots and host
   investigations now list every device that ran a file with when it was seen,

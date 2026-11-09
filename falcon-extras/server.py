@@ -1381,34 +1381,6 @@ def extras_identity_ir_workflow_playbook(
     return _impl(entity_id, sam_account_name)
 
 
-# ---------------------------------------------------------------------------
-# NGSIEM operational introspection (read-only)
-# ---------------------------------------------------------------------------
-#
-# These tools answer the operational questions "what's plumbed in, what's
-# parsing, what lookup data is available" — distinct from query execution
-# (which falcon-mcp's falcon_search_ngsiem already covers). Closes the gap
-# where an agent runs a CQL query, gets zero results, and has no way to
-# diagnose whether the query was wrong or the data simply isn't ingested.
-
-
-@mcp.tool()
-def extras_ngsiem_provisioning_status(cids: list[str]) -> dict[str, Any]:
-    """Get NGSIEM provisioning status for one or more CIDs. Read-only.
-
-    The endpoint is MSSP-shaped: it returns provisioning health for a list
-    of customer IDs you supply. NOT a tenant-wide health check — for that,
-    look at falcon_list_ngsiem_data_connections + falcon_list_ngsiem_lookup_files
-    + falcon_list_ngsiem_parsers, which collectively prove the API and ingest
-    paths work.
-
-    Args:
-        cids: One or more Falcon customer IDs (UUIDs). 1-100 entries.
-    """
-    from ngsiem.management import ngsiem_provisioning_status as _impl
-    return _impl(cids)
-
-
 # Known remote-access-tool image-name catalog. Each entry is
 # (regex_alternation_atom, canonical_tool, family). The regex atoms are
 # joined into one CQL alternation; a match on the image basename routes
