@@ -1,10 +1,14 @@
+/* eslint-disable @next/next/no-img-element */
+
 import BrandMark from "./BrandMark";
 import Wordmark from "./Wordmark";
+import { SHOW_CROWDSTRIKE_LOCKUP } from "./attribution";
 
 /**
  * Login / register hero. Eyas leads with its own identity (BrandMark
- * + Wordmark + tagline). One small line below names the data source and
- * carries the "Unofficial" disclaimer — there's no other disclosure on the
+ * + Wordmark + tagline). Data-source attribution sits below it (the
+ * CrowdStrike lockup image, or text when SHOW_CROWDSTRIKE_LOCKUP is off) and a
+ * small "Unofficial" line carries the disclaimer — there's no other disclosure on the
  * unauthed pages, so this is the load-bearing one. Authed pages get the
  * disclaimer from the global footer instead.
  */
@@ -20,10 +24,15 @@ export default function ClassificationBanner() {
         </p>
       </div>
 
-      {/* Data-source attribution and disclaimer, as text: the CrowdStrike
-          logo is their trademark and isn't redistributed with Eyas. */}
+      {/* Data-source attribution: the lockup image, or text when it's off (the
+          logo is CrowdStrike's trademark and isn't redistributed). */}
+      {SHOW_CROWDSTRIKE_LOCKUP && (
+        <img src="/crowdstrike-lockup.png" alt="CrowdStrike" className="mt-1 h-12 w-auto" />
+      )}
+
       <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-neutral-600">
-        Data sourced from CrowdStrike Falcon · Not an official CrowdStrike product
+        {SHOW_CROWDSTRIKE_LOCKUP ? "" : "Data sourced from CrowdStrike Falcon · "}Not an official
+        CrowdStrike product
       </p>
     </div>
   );

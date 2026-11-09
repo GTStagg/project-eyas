@@ -11,6 +11,7 @@ import {
 import { AlertCircle, Loader2, Square } from "lucide-react";
 import SectionedMarkdown from "./SectionedMarkdown";
 import { PrintReportButton, WebhookSendButton } from "./AgentArtifactActions";
+import { SHOW_CROWDSTRIKE_LOCKUP } from "./attribution";
 
 type ToolUse = {
   id: string;
@@ -371,9 +372,13 @@ const AgentRun = forwardRef<AgentRunHandle, AgentRunProps>(function AgentRun(
             </div>
             <div className="flex items-center gap-4">
               <div className="text-right text-[9px] uppercase tracking-[0.18em] text-neutral-600">
-                <div>Data sourced from CrowdStrike Falcon</div>
+                <div>{SHOW_CROWDSTRIKE_LOCKUP ? "Data sourced from" : "Data sourced from CrowdStrike Falcon"}</div>
                 <div>Not an official CrowdStrike product</div>
               </div>
+              {SHOW_CROWDSTRIKE_LOCKUP && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src="/crowdstrike-lockup.png" alt="CrowdStrike" className="h-10 w-auto" />
+              )}
             </div>
           </div>
 

@@ -17,7 +17,8 @@
 - **The dev and production servers bind to 127.0.0.1**, the Anthropic base URL
   must be https (http only for localhost), and bundles never ship the
   builder's `.env`.
-- **Dependency updates:** Next.js 15.5.28, `mammoth` 1.13.0 (directory
+- **Dependency updates:** React 19.3, lucide-react 0.577, drizzle-orm 0.45.4,
+  better-sqlite3 12.11, FalconPy 1.6.6, Next.js 15.5.28, `mammoth` 1.13.0 (directory
   traversal), MCP SDK 1.32.2, `proxy-addr` 2.0.8, Python `mcp` 1.30.0; the
   sidecar's Python dependencies are hash-locked. Third-party license notices
   ship with the bundle.

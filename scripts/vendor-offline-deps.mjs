@@ -4,16 +4,21 @@
 // into vendor/npm-offline/*.tgz, so `npm ci` resolves offline against the
 // reachable mirror + these local tarballs.
 //
-// Source is unpkg, which serves the PUBLISHED package contents (the built
+// Source is jsDelivr, which serves the PUBLISHED package contents (the built
 // dist/, fonts, etc.) — not the GitHub source — so no build/prepare step runs.
-// We assemble the tarball manually under a `package/` prefix (the npm tarball
-// layout) so no lifecycle script (e.g. aidr's `prepare: pnpm build`) fires.
+// Files are fetched in parallel and packed under a `package/` prefix (the npm
+// tarball layout) so no lifecycle script (e.g. aidr's `prepare: pnpm build`)
+// fires.
 //
-// Re-run after bumping any of these pins, then `npm install` to refresh the
-// lockfile. Network egress here goes through the corporate TLS-intercepting
-// proxy; curl uses -k for that reason (the proxy is the MITM either way).
+//   node scripts/vendor-offline-deps.mjs                 # every package below
+//   node scripts/vendor-offline-deps.mjs lucide-react    # just the named ones
+//
+// Re-packing changes a tarball's bytes (and its lockfile integrity hash), so
+// only re-vendor the packages you're bumping. Then point package.json at
+// `file:vendor/npm-offline/<tarball>` and run `npm install` to refresh the
+// lockfile.
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, mkdirSync, rmSync, existsSync } from "node:fs";
+import { mkdirSync, rmSync, writeFileSync, mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -26,63 +31,52 @@ const PACKAGES = [
   // CVE-2025-11849 path-traversal fix.
   { name: "mammoth", version: "1.13.0" },
   { name: "@modelcontextprotocol/sdk", version: "1.32.2" },
+  { name: "drizzle-orm", version: "0.45.4" },
+  { name: "drizzle-kit", version: "0.31.11" },
+  { name: "lucide-react", version: "0.577.0" },
 ];
 
 const REPO_ROOT = path.resolve(import.meta.dirname, "..");
 const OUT_DIR = path.join(REPO_ROOT, "vendor", "npm-offline");
-const UNPKG = "https://unpkg.com";
+const CONCURRENCY = 32;
 
-function curl(url, { binary = false } = {}) {
-  // -k: corporate proxy intercepts TLS with its own CA.
-  // -g: some published paths (e.g. geist's `Geist-Italic[wght].ttf`) contain
-  // literal brackets that curl would otherwise parse as glob ranges.
-  const args = ["-k", "-g", "-sS", "-fL", "--max-time", "60", url];
-  return execFileSync("curl", args, {
-    encoding: binary ? "buffer" : "utf8",
-    maxBuffer: 256 * 1024 * 1024,
-  });
-}
-
-function listFiles(spec) {
-  // unpkg ?meta returns a recursive file tree for the published package.
-  const meta = JSON.parse(curl(`${UNPKG}/${spec}/?meta`));
-  const files = [];
-  // unpkg ?meta: directory nodes (and the root) carry a `files[]` array; file
-  // nodes carry a `path` and a MIME `type` (e.g. "text/javascript"), not
-  // type:"file". Recurse on anything with `files`, collect anything with `path`.
-  const walk = (node) => {
-    if (Array.isArray(node.files)) node.files.forEach(walk);
-    else if (node.path) files.push(node.path);
-  };
-  walk(meta);
-  return files;
-}
-
-function vendorOne({ name, version }) {
-  const spec = `${name}@${version}`;
-  const tarName = `${name.replace("/", "-").replace("@", "")}-${version}.tgz`;
-  const outPath = path.join(OUT_DIR, tarName);
-  process.stdout.write(`  ${spec} ... `);
-
-  const work = mkdtempSync(path.join(tmpdir(), "vendor-"));
-  const pkgRoot = path.join(work, "package");
-  try {
-    const files = listFiles(spec);
-    for (const rel of files) {
-      const dest = path.join(pkgRoot, rel);
-      mkdirSync(path.dirname(dest), { recursive: true });
-      const bytes = curl(`${UNPKG}/${spec}${rel}`, { binary: true });
-      execFileSync("tee", [dest], { input: bytes, stdio: ["pipe", "ignore", "inherit"] });
-    }
-    // npm tarball layout: every entry under `package/`.
-    execFileSync("tar", ["-czf", outPath, "-C", work, "package"]);
-    console.log(`${files.length} files -> ${path.relative(REPO_ROOT, outPath)}`);
-  } finally {
-    rmSync(work, { recursive: true, force: true });
+async function fetchRetry(url) {
+  for (let attempt = 0; ; attempt++) {
+    const res = await fetch(url).catch(() => null);
+    if (res?.ok) return res;
+    if (attempt >= 4) throw new Error(`GET ${url} -> ${res?.status ?? "network error"}`);
+    await new Promise((r) => setTimeout(r, 500 * (attempt + 1)));
   }
 }
 
-if (!existsSync(OUT_DIR)) mkdirSync(OUT_DIR, { recursive: true });
-console.log(`Vendoring ${PACKAGES.length} offline tarballs from unpkg:`);
-for (const p of PACKAGES) vendorOne(p);
-console.log("Done.");
+async function vendorOne({ name, version }) {
+  const spec = `${name}@${version}`;
+  const listing = await (await fetchRetry(`https://data.jsdelivr.com/v1/package/npm/${spec}/flat`)).json();
+  const files = listing.files.map((f) => f.name);
+  const work = mkdtempSync(path.join(tmpdir(), "vendor-"));
+  let next = 0;
+  const worker = async () => {
+    while (next < files.length) {
+      const f = files[next++];
+      const res = await fetchRetry(`https://cdn.jsdelivr.net/npm/${spec}${f}`);
+      const dest = path.join(work, "package", f);
+      mkdirSync(path.dirname(dest), { recursive: true });
+      writeFileSync(dest, Buffer.from(await res.arrayBuffer()));
+    }
+  };
+  await Promise.all(Array.from({ length: CONCURRENCY }, worker));
+  const tarName = `${name.replace("/", "-").replace("@", "")}-${version}.tgz`;
+  execFileSync("tar", ["-czf", path.join(OUT_DIR, tarName), "-C", work, "package"]);
+  rmSync(work, { recursive: true, force: true });
+  console.log(`  ${spec} ... ${files.length} files -> vendor/npm-offline/${tarName}`);
+}
+
+const wanted = process.argv.slice(2);
+const targets = wanted.length ? PACKAGES.filter((p) => wanted.includes(p.name)) : PACKAGES;
+if (wanted.length && targets.length !== wanted.length) {
+  console.error(`Unknown package(s): ${wanted.filter((w) => !PACKAGES.some((p) => p.name === w)).join(", ")}`);
+  process.exit(1);
+}
+mkdirSync(OUT_DIR, { recursive: true });
+console.log(`Vendoring ${targets.length} offline tarball(s) from jsDelivr:`);
+for (const p of targets) await vendorOne(p);
