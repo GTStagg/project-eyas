@@ -3,7 +3,7 @@
 A 15–20 minute live walkthrough for two audiences:
 
 - **CrowdStrike customers** (SOC, IR, Falcon administrators) — show how an agent layer on top of Falcon turns multi-tab investigations and remediation work into one prompt with full audit trace.
-- **CrowdStrike Sales Engineers** — show what `falcon-mcp` + FalconPy + Claude can do together, with the codebase itself as a working reference for customers asking "how would we build this?"
+- **CrowdStrike Sales Engineers** — show what an MCP server for Falcon (`eyas-mcp`) + FalconPy + Claude can do together, with the codebase itself as a working reference for customers asking "how would we build this?"
 
 Adjust depth per audience. Section headers are the beats; quoted lines are what to say while clicking; *italics* are the points to actually land. Keep the **Unofficial** framing visible — the footer disclaimer carries it on every page.
 
@@ -21,7 +21,7 @@ Adjust depth per audience. Section headers are the beats; quoted lines are what 
 
 ## Beat 1 — Frame the project (60 seconds)
 
-> "This is **Eyas** — a self-hosted Next.js app that drives CrowdStrike Falcon through Claude, wrapping the official `falcon-mcp` MCP server and a FalconPy sidecar. *Eyas* is the falconry term for a young falcon in training — fitting, because it's raised on the same craft as Falcon but is distinctly its own thing. Unofficial — not a CrowdStrike product, not a replacement for the Falcon console. The question it answers: *what does an analyst's day look like when the agent does the cross-module joins, the deterministic enrichment, and the plan-execute-verify loops, and you just talk to Falcon?*"
+> "This is **Eyas** — a self-hosted Next.js app that drives CrowdStrike Falcon through Claude, wrapping `eyas-mcp` — a maintained continuation of CrowdStrike's `falcon-mcp` server — and a FalconPy sidecar. *Eyas* is the falconry term for a young falcon in training — fitting, because it's raised on the same craft as Falcon but is distinctly its own thing. Unofficial — not a CrowdStrike product, not a replacement for the Falcon console. The question it answers: *what does an analyst's day look like when the agent does the cross-module joins, the deterministic enrichment, and the plan-execute-verify loops, and you just talk to Falcon?*"
 
 *Land:* the agent is the method; Falcon is still the subject. Every tool call is gated, traced, and auditable.
 
@@ -65,7 +65,7 @@ If it finishes with a useful answer, *that's the headline moment.* If it finds n
 
 While the trace from beat 3 is still on screen:
 
-> "Quick architecture note. The agent loop runs *inside* this Next.js process — we discover tools from `falcon-mcp`, hand them to Claude as tool definitions, and dispatch the calls ourselves. We could've used Anthropic's hosted MCP connector with one config field, but then Falcon detection data would traverse Anthropic's infrastructure on every tool call. *In-process keeps our Falcon credentials and API calls on our host — the model only sees what the agent asks for.* It also gives us the hook for the next beat."
+> "Quick architecture note. The agent loop runs *inside* this Next.js process — we discover tools from the MCP server, hand them to Claude as tool definitions, and dispatch the calls ourselves. We could've used Anthropic's hosted MCP connector with one config field, but then Falcon detection data would traverse Anthropic's infrastructure on every tool call. *In-process keeps our Falcon credentials and API calls on our host — the model only sees what the agent asks for.* It also gives us the hook for the next beat."
 
 *Land:* the in-process design is what enables both privacy and the gating story.
 
@@ -153,7 +153,7 @@ Back to the chat tab. Paste:
 
 Let the agent answer. It should mention `falcon_contain_hosts` and `falcon_lift_host_containment`.
 
-> "Quick story. Upstream `falcon-mcp` doesn't expose host containment — its Hosts module is read-only. So I wrote a small Python sidecar called `falcon-extras` that uses [FalconPy](https://falconpy.io) — CrowdStrike's official Python SDK — to fill the gap. It's a separate MCP server, spawned over stdio by this Next.js process at startup. The agent loop merges its tools into the same tool list with no protocol-level differences."
+> "Quick story. Upstream `falcon-mcp` never exposed host containment — its Hosts module was read-only. So I wrote a small Python sidecar called `falcon-extras` on [FalconPy](https://falconpy.io), CrowdStrike's official Python SDK, to fill the gap: a second MCP server, spawned over stdio by this Next.js process, merged into the same tool list with no protocol-level differences. Containment has since moved into `eyas-mcp` itself, and the sidecar keeps the workflows that are uniquely ours — patching, IR, provisioning."
 
 > "*This is the headline architectural property.* Any new MCP server I want to plug in — internal one we write, third-party, doesn't matter — slots into the same agent loop and gets the same approval gating for free."
 

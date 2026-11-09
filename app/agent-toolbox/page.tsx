@@ -13,7 +13,7 @@ function StatStrip({
 }) {
   const items = [
     { value: counts.total, label: "tools" },
-    { value: counts.falconMcp, label: "falcon-mcp" },
+    { value: counts.falconMcp, label: "eyas-mcp" },
     { value: counts.extension, label: "extension" },
     { value: counts.readOnly, label: "read-only" },
     { value: counts.gated, label: "approval-gated" },

@@ -51,6 +51,8 @@
   identities, sensor posture, policy rules, user → host history, and the
   host → identity correlation behind the triage queue's identity overlap.
   Identity detections and the identity response workflow are unchanged.
+- **Agent toolbox labels native tools `eyas-mcp`** (was `falcon-mcp`); the
+  user guides, architecture and demo docs describe the eyas-mcp setup.
 - **Host containment runs on the MCP server natively** — every contain and
   lift still requires approval, and incident response still lifts only a
   containment it applied. Verified end to end on a lab host (contained in

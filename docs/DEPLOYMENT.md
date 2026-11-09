@@ -2,7 +2,7 @@
 
 This document covers the Docker-based self-hosted deployment of **Eyas** on a Linux server. For the macOS standalone (no-Docker) path, see [`STANDALONE.md`](./STANDALONE.md). For local development, see [`../QUICKSTART.md`](../QUICKSTART.md).
 
-The multi-stage Dockerfile bundles the `falcon-extras` Python sidecar by default — host containment, agentic patching, agentic IR cleanup, RTR introspection, Recon, MalQuery, Workflows execute, Identity Protection, Threat Graph, NGSIEM ops, Prevention Policy posture, and Shadow-AI hunting all light up in the compose stack with no extra steps. Compose mounts `./data:/app/data` by default so registration, runtime settings, cost log, audit log, and IR run records persist across container recreation; `falcon-mcp` is pinned to the version in `versions.json` rather than `:latest` for reproducibility.
+The multi-stage Dockerfile bundles the `falcon-extras` Python sidecar by default — agentic patching, agentic IR cleanup and its playbooks, Recon, Workflows execute, identity response, NGSIEM search linting, Prevention Policy posture, and Shadow-AI hunting all light up in the compose stack with no extra steps. Compose mounts `./data:/app/data` by default so registration, runtime settings, cost log, audit log, and IR run records persist across container recreation; `falcon-mcp` is pinned to the version in `versions.json` rather than `:latest` for reproducibility.
 
 ---
 
@@ -17,7 +17,7 @@ internet ─ TLS ───▶ │  TLS termination, real-IP fwd        │ ─�
                        ┌──────────────┴───────────────────┐
                        │  docker compose (private bridge) │
                        │  ┌─────────────┐  ┌────────────┐ │
-                       │  │ app         │  │ falcon-mcp │ │
+                       │  │ app         │  │ eyas-mcp   │ │
                        │  │ Next.js +   │──│ :8000 HTTP │ │
                        │  │ falcon-     │  │ x-api-key  │ │
                        │  │ extras      │  └────────────┘ │
@@ -26,7 +26,7 @@ internet ─ TLS ───▶ │  TLS termination, real-IP fwd        │ ─�
                        └──────────────────────────────────┘
 ```
 
-`falcon-mcp` is **not** internet-reachable — only the `app` service can talk to it on the bridge network. Only `127.0.0.1:3000` is published to the host, so the reverse proxy is the only public ingress. The `falcon-extras` sidecar runs inside the `app` container as a stdio child — no separate port, no separate service.
+`eyas-mcp` (built from source at the pinned commit) is **not** internet-reachable — only the `app` service can talk to it on the bridge network. Only `127.0.0.1:3000` is published to the host, so the reverse proxy is the only public ingress. The `falcon-extras` sidecar runs inside the `app` container as a stdio child — no separate port, no separate service.
 
 ---
 
@@ -154,7 +154,7 @@ A graceful restart checkpoints the WAL (`SIGTERM`/`SIGINT`/`SIGHUP` → `wal_che
 - [ ] `.env` is mode 600, owned by the deploy user, not world-readable
 - [ ] `AUTH_SESSION_SECRET` set (32+ chars; `openssl rand -hex 32`); first hit prompts password registration → `data/eyas.db`
 - [ ] Reverse proxy enforces TLS, redirects HTTP, forwards real client IP
-- [ ] Falcon API client granted the **minimum** scopes for the surfaces you actually use (see the in-app scope checklist on `/status`); every `falcon-mcp` module loads by default and capability-gates surfaces against actual scopes, so `FALCON_MCP_MODULES` only needs setting if you want to narrow further
+- [ ] Falcon API client granted the **minimum** scopes for the surfaces you actually use (see the in-app scope checklist on `/status`); every MCP-server module loads by default and capability-gates surfaces against actual scopes, so `FALCON_MCP_MODULES` only needs setting if you want to narrow further
 - [ ] `OUTBOUND_WEBHOOK_URL` (if set) points at a target you control — it receives full agentic-report markdown
 - [ ] Anthropic spend cap configured at the org level; `DAILY_COST_BUDGET_USD` set as a UI guardrail
 - [ ] `EYAS_TRUST_PROXY=true` only if the app is reachable solely through your proxy (per-client login throttling)

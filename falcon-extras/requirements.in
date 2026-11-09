@@ -1,6 +1,5 @@
 # Top-level sidecar dependencies. Edit this file, then regenerate the
 # hash-locked requirements.txt:
-#   uv pip compile falcon-extras/requirements.in --universal --generate-hashes \
-#     --python-version 3.12 -o falcon-extras/requirements.txt
-crowdstrike-falconpy==1.6.6
+#   uv pip compile falcon-extras/requirements.in --universal --generate-hashes \n#     --python-version 3.12 -o falcon-extras/requirements.txt
+crowdstrike-falconpy==1.6.2
 mcp==1.30.0

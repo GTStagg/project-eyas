@@ -69,12 +69,12 @@ test("agent toolbox renders the live tool catalog with working filters", async (
   await why.locator("summary").click();
   await expect(why.getByText("falcon_update_detections", { exact: true })).toBeVisible();
 
-  // The page is reachable from the sidebar's dedicated Reference group — a
+  // The page is reachable from the nav rail's dedicated Reference group — a
   // developer surface intentionally segregated from the operator nav groups.
-  await page.getByRole("button", { name: "Open menu" }).click();
-  const sidebar = page.getByRole("complementary", { name: "Primary navigation" });
-  await expect(sidebar.getByText("Reference", { exact: true })).toBeVisible();
-  await expect(sidebar.getByRole("link", { name: "Agent toolbox" })).toBeVisible();
+  // Desktop (0.9.0+): icon rail; hovering a group opens its flyout.
+  const rail = page.getByRole("complementary", { name: "Primary navigation" });
+  await rail.getByRole("button", { name: "Reference", exact: true }).hover();
+  await expect(rail.getByRole("link", { name: "Agent toolbox" })).toBeVisible();
 
   expect(consoleErrors.filter(filterDevModeNoise)).toEqual([]);
 });

@@ -373,7 +373,7 @@ Run dev with `npm run dev` (port 3000). Standalone notes live in a dedicated sec
 
 **Expected**
 
-- Hero is labeled **Reference · developer surface**; a stat strip shows non-zero counts (total / falcon-mcp / extension / read-only / approval-gated).
+- Hero is labeled **Reference · developer surface**; a stat strip shows non-zero counts (total / eyas-mcp / extension / read-only / approval-gated).
 - Real tool **rows** render (not just header counts) — e.g. `falcon_search_detections` (read-only) and `falcon_contain_hosts` (approval-gated) are both present by default.
 - The search box and the provider / access filter chips narrow the list; expanding a tool row reveals its JSON input schema.
 - The "why are some native writes not shown?" disclosure lists the suppressed native writes (e.g. `falcon_update_detections`) — and those names are **absent** from the catalog rows themselves.

@@ -13,7 +13,7 @@ This document is the architectural narrative — what we built, why we made each
 
 ## What this is
 
-**Eyas** is a self-hosted Next.js application that drives CrowdStrike Falcon through Claude — wrapping CrowdStrike's official [`falcon-mcp`](https://github.com/crowdstrike/falcon-mcp) Model Context Protocol server and a [FalconPy](https://falconpy.io)-based Python sidecar. The name *eyas* is the falconry term for a young falcon being trained: Eyas is raised on the same craft as Falcon, distinctly its own thing. **Unofficial** and explicitly not a Falcon Console replacement — quality is measured by whether the agentic workflows are useful, not by feature parity. The codebase is intended as a working reference for two audiences: customer security teams (SOC, IR, Falcon administration) evaluating an agent layer for their own tenant, and CrowdStrike Sales Engineers demonstrating what `falcon-mcp` + FalconPy + Claude can do together.
+**Eyas** is a self-hosted Next.js application that drives CrowdStrike Falcon through Claude — wrapping [`eyas-mcp`](https://github.com/GTStagg/eyas-mcp) — a maintained continuation of CrowdStrike's [`falcon-mcp`](https://github.com/crowdstrike/falcon-mcp) Model Context Protocol server, which upstream moved to maintenance mode — and a [FalconPy](https://falconpy.io)-based Python sidecar. The name *eyas* is the falconry term for a young falcon being trained: Eyas is raised on the same craft as Falcon, distinctly its own thing. **Unofficial** and explicitly not a Falcon Console replacement — quality is measured by whether the agentic workflows are useful, not by feature parity. The codebase is intended as a working reference for two audiences: customer security teams (SOC, IR, Falcon administration) evaluating an agent layer for their own tenant, and CrowdStrike Sales Engineers demonstrating what `falcon-mcp` + FalconPy + Claude can do together.
 
 The core thesis: a security console is a particularly good fit for an agentic MCP-based interaction model, because:
 
@@ -42,7 +42,7 @@ We picked B. Concretely that means:
 
 Direct consequences this audience will care about:
 
-- **No public-internet ingress on the Falcon side.** falcon-mcp lives on a private Docker bridge or as a stdio child of the standalone bundle. Only the app talks to it.
+- **No public-internet ingress on the Falcon side.** The MCP server lives on a private Docker bridge or as a stdio child of the standalone bundle. Only the app talks to it.
 - **Per-tool approval gates.** A registry in `lib/mcp/write-tools.ts` declares which tools are read versus write; the agent loop pauses on any write call, emits an SSE `approval_required` event, and waits up to 5 minutes for the operator decision before resuming. Default-deny on timeout.
 - **Audit log is ours.** Every tool call (name, args, duration, result digest) is appended to the local SQLite database (token usage) and `data/perf-log.jsonl` when `PERF_LOG=true` (timing). No external service holds the trail.
 - **Composition is trivial.** Adding a third MCP server (NGSIEM ingest, identity vendor, ticketing) is a transport configuration change, not a protocol or prompt change.
@@ -101,23 +101,22 @@ The route does ~25-35 deterministic API calls. The agent does **zero** tool call
 
 Two MCP servers compose into one logical tool surface for the agent:
 
-### 1. `falcon-mcp` (upstream, ~125 tools in 0.16.0)
+### 1. `eyas-mcp` (the MCP server, ~200 tools)
 
-CrowdStrike's official MCP server. Read-only; covers Detections, Hosts, Vulnerabilities, Indicators (Intel), Actors (Intel), Recon, MalQuery, Workflows (read-only), Discover, IOCs (read), Sensor Usage, Scheduled Reports, NGSIEM, Threat Graph.
+The MCP server: a maintained continuation of CrowdStrike's `falcon-mcp` (upstream is in maintenance mode), pinned by git commit in `versions.json`. It covers Detections, Hosts, Vulnerabilities, Intel (search plus full report and actor content), Recon, Cases, Quarantine, Correlation Rules, Data Security, Discover, Fusion workflows, NGSIEM (search, listings, CQL function lookup), Threat Graph, MalQuery, Identity Protection reads, CAO hunting guides, Guardian, network containment, and read-only RTR — single-host, multi-host, and CrowdStrike-published scripts. Most of these were first built in the FalconPy sidecar below and have since moved into the server.
 
-We run it as a Docker sidecar in production, or as a `uvx`-spawned child process in the standalone bundle. Either way the transport is `StreamableHTTPClientTransport` with `x-api-key` injected by us — the credential never leaves the host the app runs on.
+It runs as a `uvx`-spawned stdio child in dev and the standalone bundle, or as an HTTP service on a private Docker network in the Compose path (`x-api-key` injected by us). Either way Falcon credentials never leave the host the app runs on.
 
-### 2. `falcon-extras` (our sidecar, ~96 tools)
+### 2. `falcon-extras` (our sidecar, ~70 tools)
 
-A Python MCP server in `falcon-extras/` we wrote on top of FalconPy. Fills the gaps where upstream falcon-mcp is missing pieces or where the agent needs a higher-level primitive than the raw API:
+A Python MCP server in `falcon-extras/` we wrote on top of FalconPy. It holds what the MCP server doesn't cover, and the curated workflows the agent needs a higher-level primitive for:
 
-- **Host containment** (read + write) — falcon-mcp's Hosts module is read-only.
 - **Agentic patching** (read + write) — Spotlight remediation manifest, RTR script library, CloudFile transport. ~30 patching scripts in a manifest schema with parameter validation.
-- **Agentic IR cleanup catalog** (read + write) — companion manifest for incident-response remediation primitives (host-quarantine-file, host-delete-folder, host-kill-process, host-remove-ifeo-hijack, etc.).
-- **Process-tree reconstruction** — `extras_host_process_tree` walks NGSIEM `ProcessRollup2` events, builds the ancestry chain via `ParentProcessId`, and runs a deterministic classifier that returns a delivery-vector verdict (`phishing_doc` / `c2_agent` / `lateral_winrm` / `ifeo_hijack` / etc.) with confidence + rationale. Anchor recovery handles behavioral detections whose alert timestamp is hours after the actual process launch.
-- **NGSIEM operational depth** — `extras_host_rat_install_scan` (17-product image-name regex catalog), `extras_host_recent_logons`, etc.
-- **Identity Protection** — staged-build-pattern surface; tools registered, lights up automatically when `idp:read` scope is granted.
-- **Falcon-published RTR scripts** — read-only `falconscript -Name=...` invocation for live host introspection (Process, Service, RegistryKey, EventLog, etc.).
+- **Agentic IR** — the five-phase playbook, campaign scoping, the cleanup catalog (host-quarantine-file, host-delete-folder, host-kill-process, host-remove-ifeo-hijack, etc.), and ledger-driven closure.
+- **Process-tree reconstruction** — `extras_host_process_tree` walks NGSIEM `ProcessRollup2` events, builds the ancestry chain via `ParentProcessId`, and runs Eyas's deterministic classifier, which returns a delivery-vector verdict (`phishing_doc` / `c2_agent` / `lateral_winrm` / `ifeo_hijack` / etc.) with confidence + rationale. (The MCP server has its own process-tree tool with a generic heuristic; Eyas keeps this one because IR branches on its verdicts.)
+- **Authoritative host-group membership** — walks every group rather than trusting the host record, because IR restores the captured list verbatim.
+- **Provisioning and setup** — canonical-named host groups, prevention policies, IOA rules and exclusions for IR quarantine and Shadow-AI, monitor-first data-protection creates, and tenant teardown.
+- **NGSIEM search with a CQL pre-flight linter**, `extras_host_rat_install_scan` (17-product image-name regex catalog), and Shadow-AI hunting.
 
 The sidecar follows two conventions worth calling out for a peer reviewer:
 
@@ -126,7 +125,7 @@ The sidecar follows two conventions worth calling out for a peer reviewer:
 
 ### 3. The bridge
 
-`lib/mcp/tool-bridge.ts` merges the two tool lists into one for the agent. There are no protocol differences — they look identical to the loop. `lib/mcp/parse.ts::detectFalconError` recognizes upstream falcon-mcp's habit of packaging Falcon API 500s as `{ isError: false, content: [{ text: "{\"error\": ...}" }] }` and surfaces them as real errors instead of letting the agent see "isError: false" and treat the failure as a clean empty result.
+`lib/mcp/tool-bridge.ts` merges the two tool lists into one for the agent. There are no protocol differences — they look identical to the loop. `lib/mcp/parse.ts::detectFalconError` recognizes the MCP server's habit of packaging Falcon API 500s as `{ isError: false, content: [{ text: "{\"error\": ...}" }] }` and surfaces them as real errors instead of letting the agent see "isError: false" and treat the failure as a clean empty result.
 
 ---
 
@@ -194,7 +193,7 @@ For an AI specialist reviewing this for the first time:
 For the reviewer who wants to dig in after the demo:
 
 - `lib/chat/agent-loop.ts` — the manual Anthropic tool-use loop, including approval pause, cancellation, SSE event emission, per-tool duration tracking. ~400 lines; the whole loop fits in your head.
-- `lib/mcp/tool-bridge.ts` + `lib/mcp/projections.ts` + `lib/mcp/write-tools.ts` — the bridge that merges falcon-mcp + falcon-extras tool lists, the projection layer that bounds tokens per tool, and the write-tool registry that gates approvals.
+- `lib/mcp/tool-bridge.ts` + `lib/mcp/projections.ts` + `lib/mcp/write-tools.ts` — the bridge that merges eyas-mcp + falcon-extras tool lists (and hides native tools the sidecar still does better), the projection layer that bounds tokens per tool, and the write-tool registry that gates approvals.
 - `lib/intel/attribution.ts` + `app/api/intel/route.ts` — the deterministic-enrichment-plus-agentic-synthesis pattern at its clearest. ~700 lines combined.
 - `falcon-extras/server.py` — the FalconPy sidecar, including `_check_response(resp, surface)` (the response guard that catches scope-denied and upstream errors uniformly), `_run_ngsiem_search` (the canonical NGSIEM helper), and the staged-build-pattern envelope for pending scopes.
 - `falcon-extras/patching/library.py` + `falcon-extras/patching/manifest.json` — the render-time-security model for RTR script execution. The agent supplies an id + params; never bytes.

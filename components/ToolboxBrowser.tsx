@@ -8,7 +8,7 @@ type FilterKey = "all" | "falcon-mcp" | "extension" | "read" | "gated";
 
 const FILTERS: { key: FilterKey; label: string }[] = [
   { key: "all", label: "All" },
-  { key: "falcon-mcp", label: "falcon-mcp" },
+  { key: "falcon-mcp", label: "eyas-mcp" },
   { key: "extension", label: "Extension" },
   { key: "read", label: "Read-only" },
   { key: "gated", label: "Approval-gated" },

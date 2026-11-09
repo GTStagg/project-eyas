@@ -1,6 +1,6 @@
 # Eyas — macOS onboarding
 
-End-to-end walkthrough from a clean macOS install to a fully provisioned tenant. One linear read; follow top to bottom. No Docker, no reverse proxy, no separate sidecar container — the Next.js process spawns `falcon-mcp` and the `falcon-extras` Python sidecar locally and binds to loopback.
+End-to-end walkthrough from a clean macOS install to a fully provisioned tenant. One linear read; follow top to bottom. No Docker, no reverse proxy, no separate sidecar container — the Next.js process spawns the `eyas-mcp` MCP server and the `falcon-extras` Python sidecar locally and binds to loopback.
 
 > Looking for the Linux/Docker deployment? See [`DEPLOYMENT.md`](./DEPLOYMENT.md). Deep references for IR and Shadow-AI provisioning live in [`IR-SETUP.md`](./IR-SETUP.md) and [`SHADOW-AI-SETUP.md`](./SHADOW-AI-SETUP.md). Once the tool is running, the operator-facing tour is [`USERGUIDE.md`](./USERGUIDE.md).
 
@@ -49,7 +49,7 @@ Verify: `node --version` should print `v22.x` or `v24.x`.
 
 ### 1.3 Python 3.12
 
-Hosts the bundled `falcon-mcp` server and the `falcon-extras` FalconPy sidecar. macOS ships Python 3.9, which is too old (falcon-mcp requires ≥3.10). The standalone bundle's wheels are built for 3.12 by default, so install that minor version explicitly.
+Hosts the bundled `eyas-mcp` server and the `falcon-extras` FalconPy sidecar. macOS ships Python 3.9, which is too old (eyas-mcp requires ≥3.11). The standalone bundle's wheels are built for 3.12 by default, so install that minor version explicitly.
 
 ```sh
 brew install python@3.12
@@ -57,7 +57,7 @@ brew install python@3.12
 
 Verify: `python3.12 --version` should print `Python 3.12.x`.
 
-The same `python3.12` is reused by both `falcon-mcp` and the `falcon-extras` sidecar — no second install needed.
+The same `python3.12` is reused by both `eyas-mcp` and the `falcon-extras` sidecar — no second install needed.
 
 ### 1.4 uv (online bundles only)
 
@@ -313,9 +313,9 @@ Most values land in `data/eyas.db` via the wizard. `.env` is only consulted for 
 | `FALCON_CLIENT_SECRET` | first-run bootstrap | Same. |
 | `FALCON_BASE_URL` | first-run bootstrap | Same. |
 | `FALCON_MEMBER_CID` | no | MSSP / Flight Control child CID. Bootstrap-only; per-env after first run. |
-| `FALCON_MCP_MODULES` | no | Comma-separated subset of `falcon-mcp` modules. Default loads every module; capability gating follows your actual API scopes, so there's normally no reason to set this. |
+| `FALCON_MCP_MODULES` | no | Comma-separated subset of the MCP server's modules. Default loads every module; capability gating follows your actual API scopes, so there's normally no reason to set this. |
 | `FALCON_MCP_COMMAND` | no | Override the stdio command (default `uvx`). |
-| `FALCON_MCP_ARGS` | no | Override the stdio args (default `falcon-mcp --transport stdio`). |
+| `FALCON_MCP_ARGS` | no | Override the stdio args (default `eyas-mcp --transport stdio`). |
 | `AUTH_SESSION_SECRET` | auto | Encrypts the session cookie. `start.sh` auto-generates one and writes it to `.env` on first run. |
 | `OUTBOUND_WEBHOOK_URL` | no | If set, agentic outputs render a "Send to webhook" button that POSTs the report as JSON. |
 | `CHAT_MAX_ITERATIONS` | no | Cap on agent-loop iterations per chat turn. Default `25`. |
@@ -342,10 +342,10 @@ First-launch macOS Gatekeeper warning on the unsigned native database binding. `
 **`ERROR: uv (uvx) is not installed`** (online bundles only)
 `brew install uv` — or `curl -LsSf https://astral.sh/uv/install.sh | sh`. Restart your terminal so the new PATH takes effect.
 
-**`uvx could not run 'falcon-mcp'`**
-You're on the online path and PyPI is unreachable. Run `uvx falcon-mcp --help` directly to see the underlying error.
-- `invalid peer certificate: UnknownIssuer` → corp TLS interception. Try `UV_NATIVE_TLS=1 uvx falcon-mcp --help` (uses the macOS keychain instead of rustls). Add `export UV_NATIVE_TLS=1` to `.env` if it works.
-- `No solution found ... no version of falcon-mcp` → corp PyPI mirror without the package. Try `UV_INDEX_URL=https://pypi.org/simple uvx falcon-mcp --help`.
+**`uvx could not run the MCP server`**
+You're on the online path (a bundle built without wheels, or a source checkout) and `uvx` couldn't build `eyas-mcp` from the commit pinned in `versions.json`. Run `npm run upgrade-mcp` (source checkout) to see the underlying error.
+- `invalid peer certificate: UnknownIssuer` → TLS interception on your network. Add `UV_SYSTEM_CERTS=true` to `.env` (uses the macOS keychain instead of uv's bundled roots).
+- `No solution found ...` for a dependency → a package mirror that lacks it. Set `UV_INDEX_URL` in `.env` to an index that has it (e.g. `https://pypi.org/simple`).
 - `client error (Connect)` and you're behind browser isolation / strict egress → switch to the offline bundle (rebuild with `uv` on a non-isolated host so wheels get pre-downloaded; see *Building the bundle* below).
 
 **Offline install fails: `Could not find a version that satisfies the requirement`**
@@ -355,7 +355,7 @@ The bundled wheels don't match your `python3` version. The bundle is built for o
 Wheels were built for the wrong CPU architecture. Apple Silicon Macs need `macosx_11_0_arm64` (default); Intel Macs need `WHEELS_PIP_PLATFORM=macosx_10_9_x86_64` at build time.
 
 **The browser opens but the chat says "MCP connection failed"**
-Check `FALCON_CLIENT_ID` / `FALCON_CLIENT_SECRET` / `FALCON_BASE_URL` are correct for your region and that the API client has the scopes for the modules you've enabled. The terminal running `start.sh` will print the underlying `falcon-mcp` stderr.
+Check `FALCON_CLIENT_ID` / `FALCON_CLIENT_SECRET` / `FALCON_BASE_URL` are correct for your region and that the API client has the scopes for the modules you've enabled. The terminal running `start.sh` will print the underlying MCP server stderr.
 
 **Anthropic calls are blocked by the corporate gateway**
 In the wizard, switch to *Gateway* — supply `ANTHROPIC_AUTH_TOKEN` (the gateway's bearer token) plus the gateway's base URL. The Anthropic SDK then sends `Authorization: Bearer <token>` against that URL.
@@ -409,7 +409,7 @@ By default the bundle accepts either a direct Anthropic API key or a gateway on 
 ANTHROPIC_GATEWAY_BASE_URL=https://gateway.example.com ./make-dist.sh
 ```
 
-If `uv` is on the build host, the script pre-downloads `falcon-mcp` wheels into `vendor/falcon-mcp-wheels/` inside the bundle, producing the **offline bundle**. If `uv` is missing, the script warns and produces an **online bundle** (smaller, but the target Mac needs PyPI access at first launch).
+The script builds the `eyas-mcp` wheel from the commit pinned in `versions.json` and downloads every runtime dependency into `vendor/falcon-mcp-wheels/` (the sidecar's hash-locked dependencies go to `vendor/falcon-extras-wheels/`), so the bundle installs **offline** on the target Mac. If any download fails, the build stops rather than ship a bundle that needs network access at first launch.
 
 Override the Python version / platform the wheels are built for:
 
@@ -442,7 +442,7 @@ project-eyas-v<version>/
 ├── public/                  ← static assets
 ├── node_modules/            ← minimal runtime deps
 ├── falcon-extras/           ← FalconPy Python sidecar (always-on)
-├── vendor/falcon-mcp-wheels/    ← (offline bundles only) pre-downloaded falcon-mcp wheels
+├── vendor/falcon-mcp-wheels/    ← pre-downloaded eyas-mcp wheels + dependencies
 ├── vendor/falcon-extras-wheels/ ← (offline bundles only) pre-downloaded falcon-extras wheels
 ├── vendor/falcon-mcp-venv/      ← created on first launch by start.sh (offline path)
 ├── start.sh                 ← launcher (prereq checks + .env load + open browser)
