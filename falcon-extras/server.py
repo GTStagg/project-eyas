@@ -225,6 +225,7 @@ def extras_ir_close_remediated(
     remediated: list[dict[str, Any]],
     verdict: str = "true_positive",
     comment: str | None = None,
+    before_iso: str | None = None,
 ) -> dict[str, Any]:
     """Production Phase 4 closer. WRITE — gated.
 
@@ -270,6 +271,9 @@ def extras_ir_close_remediated(
             `false_positive` (only if you can attest detections are noise).
         comment: optional one-line audit string. Defaults to a generic
             "remediation-ledger close via Project Eyas IR" if omitted.
+        before_iso: the Phase 1 quarantine time (ISO 8601). When given, the
+            result adds `unmatched_prior_count` + `unmatched_prior_sample`:
+            the untouched Phase 0 detections that still block release.
 
     Returns:
         ok, device_id, scope_count, matched_count, unmatched_count,
@@ -285,7 +289,45 @@ def extras_ir_close_remediated(
         batch_errors? (only if any batch failed).
     """
     from ir.close_remediated import close_remediated as _impl
-    return _impl(device_id, remediated, verdict, comment)
+    return _impl(device_id, remediated, verdict, comment, before_iso)
+
+
+@mcp.tool()
+def extras_ir_close_untouched_originals(
+    device_id: str,
+    before_iso: str,
+    verdict: str,
+    comment: str | None = None,
+) -> dict[str, Any]:
+    """Close the Phase 0 detections the IR workflow did not remediate. WRITE — gated.
+
+    Use ONLY in IR Phase 4, AFTER extras_ir_close_remediated, and ONLY when
+    the operator has said to close them (with the verdict they chose). Eyas's
+    release safeguard refuses to lift containment or remove the host from
+    quarantine while any Phase 0 detection is still open; this is the
+    operator's way past that for detections the workflow never touched.
+
+    Closes, server-side, every endpoint detection on the host that is still
+    open AND was created before `before_iso` (the Phase 1 quarantine time).
+    After the ledger close those are exactly the untouched originals.
+    Anything that fired during the engagement is left alone; a detection
+    with no readable creation time is never closed. Don't pass ids — the
+    tool finds them itself.
+
+    Args:
+        device_id: Falcon AID of the host.
+        before_iso: the Phase 1 quarantine call's ISO 8601 timestamp (the
+            same value passed to extras_ir_phase3_verification_scope).
+        verdict: `true_positive` or `false_positive`, as the operator chose.
+        comment: optional audit string. Defaults to "closed at the operator's
+            request after IR: open before the engagement and not remediated".
+
+    Returns:
+        ok, device_id, verdict, before_iso, scope_count, updated,
+        composite_ids, left_open_after_cutoff, batch_errors?.
+    """
+    from ir.close_remediated import close_untouched_originals as _impl
+    return _impl(device_id, before_iso, verdict, comment)
 
 
 @mcp.tool()

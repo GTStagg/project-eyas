@@ -199,6 +199,27 @@ test("extractOutcome parses extras_ir_close_remediated payload", () => {
   assert.equal(o.ledgerEvidenceCaptured, true);
 });
 
+test("closing untouched originals moves them from left-open to closed", () => {
+  const r = record([
+    turn(0, [
+      call("extras_ir_close_remediated", {
+        approval: "allow",
+        text: JSON.stringify({ closed: [{ composite_id: "a", evidence: ["pid"] }], unmatched: [{}, {}, {}] }),
+      }),
+    ]),
+    turn(1, [
+      call("extras_ir_close_untouched_originals", {
+        approval: "allow",
+        text: JSON.stringify({ updated: 2, scope_count: 2 }),
+      }),
+    ]),
+  ]);
+  const o = extractOutcome(r);
+  assert.equal(o.detectionsClosed, 3);
+  assert.equal(o.detectionsLeftOpen, 1);
+  assert.equal(o.bulkClosedHost, false);
+});
+
 test("extractOutcome flags bulk closer", () => {
   const r = record([
     turn(0, [

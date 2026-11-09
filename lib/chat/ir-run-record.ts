@@ -121,6 +121,7 @@ function extractResultMetrics(toolName: string, fullContent: string): ToolResult
         closedHasEvidence,
       };
     }
+    case "extras_ir_close_untouched_originals":
     case "extras_close_all_open_detections_on_host": {
       if (!obj) return undefined;
       return {

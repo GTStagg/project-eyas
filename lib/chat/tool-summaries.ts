@@ -135,6 +135,17 @@ export function summarizeToolResult(
     return parts.join(" · ");
   }
 
+  if (toolName === "extras_ir_close_untouched_originals") {
+    const updated = asNumber(p.updated) ?? 0;
+    const scope = asNumber(p.scope_count) ?? 0;
+    const verdict = verdictLabel(p.verdict);
+    const parts: string[] = [scope === 0 ? "nothing left from before the engagement" : `closed ${updated} of ${scope} untouched`];
+    if (verdict) parts.push(`verdict: ${verdict}`);
+    const batchErrors = asArray(p.batch_errors).length;
+    if (batchErrors > 0) parts.push(`${batchErrors} batch error${batchErrors === 1 ? "" : "s"}`);
+    return parts.join(" · ");
+  }
+
   if (toolName === "extras_close_all_open_detections_on_host") {
     const updated = asNumber(p.updated) ?? 0;
     const scope = asNumber(p.scope_count) ?? 0;

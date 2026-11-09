@@ -47,6 +47,7 @@ const NATURAL_PHASE: Record<string, Phase> = {
   extras_ir_phase3_verification_scope: 3,
   // Phase 4 — Closure
   extras_ir_close_remediated: 4,
+  extras_ir_close_untouched_originals: 4,
   extras_close_all_open_detections_on_host: 4,
   extras_update_detection_status: 4,
   falcon_lift_host_containment: 4,
@@ -216,6 +217,21 @@ export function extractOutcome(record: IrRunRecord): Outcome {
               ledgerEvidenceCaptured = true;
             }
           }
+          break;
+        }
+        case "extras_ir_close_untouched_originals": {
+          // Operator-approved close of the Phase 0 originals the ledger
+          // didn't match: they move from "left open" to "closed".
+          const m = c.result?.metrics;
+          let updated = 0;
+          if (m && m.updatedCount !== undefined) {
+            updated = m.updatedCount;
+          } else {
+            const parsed = c.result ? tryParse(c.result.contentExcerpt) : null;
+            if (isObj(parsed) && typeof parsed.updated === "number") updated = parsed.updated;
+          }
+          detectionsClosed += updated;
+          detectionsLeftOpen = Math.max(0, detectionsLeftOpen - updated);
           break;
         }
         case "extras_close_all_open_detections_on_host": {
