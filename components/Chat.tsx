@@ -1355,6 +1355,20 @@ const CLEANUP_NARRATION: Record<string, { title: string; what: string; denied: s
   },
 };
 
+// Network containment runs on eyas-mcp (`ids`); the retired sidecar names
+// (`device_ids`) stay so resumed conversations still render their cards.
+// Mirrors CONTAIN_TOOLS / LIFT_TOOLS in lib/chat/ir-ground-truth-pure.ts.
+const CONTAIN_TOOL_NAMES: ReadonlySet<string> = new Set(["falcon_contain_hosts", "extras_host_contain"]);
+const LIFT_TOOL_NAMES: ReadonlySet<string> = new Set([
+  "falcon_lift_host_containment",
+  "extras_host_lift_containment",
+]);
+
+function containmentTargets(input: Record<string, unknown>): string[] {
+  const raw = input.ids ?? input.device_ids;
+  return Array.isArray(raw) ? raw.map(String) : [];
+}
+
 /** Server-verified ground truth for the contain / lift / group-remove approval
  *  cards (S4/F5). Renders facts the route computed independently of the agent —
  *  containment provenance (did THIS workflow contain the host / add it to the
@@ -1364,8 +1378,8 @@ const CLEANUP_NARRATION: Record<string, { title: string; what: string; denied: s
 function VerifiedFacts({ tool }: { tool: ToolUse }) {
   const v = tool.verified;
   if (!v) return null;
-  const isLift = tool.name === "extras_host_lift_containment";
-  const isContain = tool.name === "extras_host_contain";
+  const isLift = LIFT_TOOL_NAMES.has(tool.name);
+  const isContain = CONTAIN_TOOL_NAMES.has(tool.name);
   const isRemove = tool.name === "extras_host_group_remove_members";
   if (!isLift && !isContain && !isRemove) return null;
 
@@ -1522,16 +1536,16 @@ function ApprovalSummary({ tool }: { tool: ToolUse }) {
     if (params && typeof params === "object" && Object.keys(params).length > 0) {
       rows.push({ label: "Params", value: JSON.stringify(params), mono: true });
     }
-  } else if (tool.name === "extras_host_contain") {
+  } else if (CONTAIN_TOOL_NAMES.has(tool.name)) {
     title = "Network-contain host(s)";
-    const ids = Array.isArray(input.device_ids) ? (input.device_ids as string[]) : [];
+    const ids = containmentTargets(input);
     rows = [{ label: "Hosts", value: String(ids.length) }];
     if (ids.length > 0) rows.push({ label: "Sample", value: ids.slice(0, 3).join(", "), mono: true });
     whatHappens = "Severs all network communication on the host except the Falcon sensor channel. Active C2 / data egress stops immediately.";
     ifDenied = "The host stays connected to the network. Policy-level quarantine still applies its stricter prevention, but active outbound communication continues.";
-  } else if (tool.name === "extras_host_lift_containment") {
+  } else if (LIFT_TOOL_NAMES.has(tool.name)) {
     title = "Lift containment on host(s)";
-    const ids = Array.isArray(input.device_ids) ? (input.device_ids as string[]) : [];
+    const ids = containmentTargets(input);
     rows = [{ label: "Hosts", value: String(ids.length) }];
     if (ids.length > 0) rows.push({ label: "Sample", value: ids.slice(0, 3).join(", "), mono: true });
     whatHappens = "Restores the host's network connectivity. The sensor channel was always available; this re-opens the rest.";
