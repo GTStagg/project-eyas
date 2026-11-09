@@ -55,7 +55,7 @@ function buildPrompt(): string {
     "- known-bad C2 IPv4 the host is talking to (and full containment is overkill) → `host-block-outbound-ip` (param: `remote_ip`)",
     "",
     "**Falcon API remediation (sidecar, dispatched via approval-gated `extras_*` tools — NOT the cleanup catalog):**",
-    "- active C2 / lateral-movement / hands-on-keyboard activity where you want the host fully off the network (telemetry continues, all other comms blocked) → `falcon_contain_hosts` (param: `device_ids=[<AID>]`). Use when blocking a single C2 IP is insufficient or unknown.",
+    "- active C2 / lateral-movement / hands-on-keyboard activity where you want the host fully off the network (telemetry continues, all other comms blocked) → `falcon_contain_hosts` (param: `ids=[<AID>]`). Use when blocking a single C2 IP is insufficient or unknown.",
     "- malicious file hash that the operator wants blocked tenant-wide (not just on this host) → `falcon_add_ioc` for the SHA-256, `action: block`. SKIP this suggestion if the hash is already in Falcon Intel with `malicious_confidence: high` (Falcon already covers it) — the chat surface enforces a `falcon_search_indicators` + `falcon_search_iocs` precheck before any IOC write, so don't second-guess that gate, but don't waste an approval prompt on a known-covered hash either.",
     "",
     "Pairing rules:",
