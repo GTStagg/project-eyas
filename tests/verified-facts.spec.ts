@@ -13,7 +13,7 @@ import { test, expect } from "@playwright/test";
 // We stub /api/chat with a hand-crafted SSE body (same pattern as
 // phase0-receipts.spec.ts) so the test never touches Falcon/Anthropic. Two
 // pending tools exercise both verified shapes:
-//   * extras_host_lift_containment — DC blast-radius warning + "already contained
+//   * falcon_lift_host_containment — DC blast-radius warning + "already contained
 //     before this investigation began" provenance (agentContained=false,
 //     containedAtStart=true) + the detection-status release caveat.
 //   * extras_host_group_remove_members — "membership predates this engagement"
@@ -33,13 +33,13 @@ function ssePayload(): string {
     // agent-loop order: agent-loop.ts:326 then :422).
     `event: tool_use\ndata: ${JSON.stringify({
       id: "tu-lift",
-      name: "extras_host_lift_containment",
-      input: { device_ids: [AID] },
+      name: "falcon_lift_host_containment",
+      input: { ids: [AID] },
     })}\n\n`,
     `event: tool_pending_approval\ndata: ${JSON.stringify({
       id: "tu-lift",
-      name: "extras_host_lift_containment",
-      input: { device_ids: [AID] },
+      name: "falcon_lift_host_containment",
+      input: { ids: [AID] },
       verified: {
         hostRole: "Domain Controller",
         isDomainController: true,

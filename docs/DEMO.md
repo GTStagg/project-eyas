@@ -151,7 +151,7 @@ Back to the chat tab. Paste:
 
 > **What tools do you have for host containment?**
 
-Let the agent answer. It should mention `extras_host_contain` and `extras_host_lift_containment`.
+Let the agent answer. It should mention `falcon_contain_hosts` and `falcon_lift_host_containment`.
 
 > "Quick story. Upstream `falcon-mcp` doesn't expose host containment — its Hosts module is read-only. So I wrote a small Python sidecar called `falcon-extras` that uses [FalconPy](https://falconpy.io) — CrowdStrike's official Python SDK — to fill the gap. It's a separate MCP server, spawned over stdio by this Next.js process at startup. The agent loop merges its tools into the same tool list with no protocol-level differences."
 

@@ -1176,7 +1176,7 @@ export async function POST(request: Request) {
       // warning.) No aid-keyed fallback: a contain from another session isn't
       // part of THIS workflow's Phase 1, and surfacing a prior run's
       // containedAtStart against it would misrepresent.
-      if (toolName === "extras_host_contain") {
+      if (CONTAIN_TOOLS.has(toolName)) {
         if (!sessionIdentity || !containTargetsAid(input, sessionIdentity.aid)) {
           return undefined;
         }

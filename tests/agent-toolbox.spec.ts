@@ -34,20 +34,20 @@ test("agent toolbox renders the live tool catalog with working filters", async (
   const readTool = page.getByText("falcon_search_detections", { exact: true });
   await expect(readTool).toBeVisible();
   // A known approval-gated extension tool is also present by default.
-  await expect(page.getByText("extras_host_contain", { exact: true })).toBeVisible();
+  await expect(page.getByText("falcon_contain_hosts", { exact: true })).toBeVisible();
 
   // Search narrows the list: "host_contain" keeps the containment tool and drops
   // the detections search tool entirely.
   const search = page.getByPlaceholder("Filter tools…");
   await search.fill("host_contain");
-  await expect(page.getByText("extras_host_contain", { exact: true })).toBeVisible();
+  await expect(page.getByText("falcon_contain_hosts", { exact: true })).toBeVisible();
   await expect(page.getByText("falcon_search_detections", { exact: true })).toHaveCount(0);
   await search.fill("");
   await expect(page.getByText("falcon_search_detections", { exact: true })).toBeVisible();
 
   // Approval-gated chip shows gated tools and hides read-only ones.
   await page.getByRole("button", { name: "Approval-gated" }).click();
-  await expect(page.getByText("extras_host_contain", { exact: true })).toBeVisible();
+  await expect(page.getByText("falcon_contain_hosts", { exact: true })).toBeVisible();
   await expect(page.getByText("falcon_search_detections", { exact: true })).toHaveCount(0);
   // Back to the full catalog.
   await page.getByRole("button", { name: "All" }).click();
@@ -55,7 +55,7 @@ test("agent toolbox renders the live tool catalog with working filters", async (
 
   // Expanding a tool row reveals its JSON input schema.
   const containRow = page.locator("details", {
-    has: page.getByText("extras_host_contain", { exact: true }),
+    has: page.getByText("falcon_contain_hosts", { exact: true }),
   });
   await expect(containRow.getByText("Input schema", { exact: true })).not.toBeVisible(); // collapsed
   await containRow.locator("summary").click();

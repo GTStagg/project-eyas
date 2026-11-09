@@ -111,11 +111,6 @@ NATIVE_WRITES=(
   # falcon-mcp 0.20.0 Data Security (#576) — KEEP: the create twins
   # (extras_create_data_protection_*) apply monitor-first defaults pre-write.
   "falcon_create_data_security_entity"
-  # eyas-mcp's sidecar port — native ports of sidecar writes, held until their
-  # family migrates (contain/lift: IR ledger). Multi-host read-only RTR and
-  # run_falcon_script are annotation-exempt read-only, not listed here.
-  "falcon_contain_hosts"
-  "falcon_lift_host_containment"
 )
 
 # The adopted natives — exposed to the agent (NOT in NATIVE_WRITE_SUPPRESS) and
@@ -138,6 +133,10 @@ NATIVE_ADOPTED=(
   # falcon-mcp 0.20.0 Data Security — edit any DLP entity (policy, pattern,
   # classification, …). No sidecar twin; user-approved adopt (exposed + gated).
   "falcon_update_data_security_entity"
+  # eyas-mcp network containment — replaced the sidecar twins (live contain +
+  # lift verified); exposed + gated, IR lift backstop applies.
+  "falcon_contain_hosts"
+  "falcon_lift_host_containment"
 )
 
 BRIDGE_FILE="lib/mcp/tool-bridge.ts"

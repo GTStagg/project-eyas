@@ -98,7 +98,10 @@ const LONG_RUNNING_TOOL_TIMEOUT_MS: Record<string, number> = {
 // falcon_delete_host_groups, falcon_update_policy, falcon_perform_policy_action)
 // plus falcon_manage_host_grouping_tags (0.16.0), falcon_invoke_agentworks_agent
 // (0.17.0, Charlotte AI — user-approved adopt, human-gated), and
-// falcon_update_data_security_entity (0.20.0 — no twin; user-approved adopt). They remain in
+// falcon_update_data_security_entity (0.20.0 — no twin; user-approved adopt), and
+// falcon_contain_hosts / falcon_lift_host_containment (eyas-mcp — replaced the
+// sidecar twins after a live contain + lift confirmed the result shape; IR
+// ground truth reads succeeded_ids via containResultConfirms). They remain in
 // REQUIRES_APPROVAL (exposed-and-gated, like UPSTREAM_WRITES). NATIVE_ADOPTED in
 // /audit-write-tools is the authoritative list.
 //
@@ -121,12 +124,6 @@ export const NATIVE_WRITE_SUPPRESS: ReadonlySet<string> = new Set<string>([
   // Data Security (0.20.0 #576) — KEEP: the create twins
   // (extras_create_data_protection_*) apply monitor-first defaults pre-write.
   "falcon_create_data_security_entity",
-  // eyas-mcp's sidecar port — native ports of sidecar writes, held until their
-  // family migrates (see PENDING_NATIVE_MIGRATION):
-  //   - contain / lift → extras_host_contain / _lift_containment, which the IR
-  //     ledger (contained_at_start vs agent_contained) is built on.
-  "falcon_contain_hosts",
-  "falcon_lift_host_containment",
 ]);
 
 // eyas-mcp's sidecar port baked most of the falcon-extras sidecar into the

@@ -126,8 +126,9 @@ export const REQUIRES_APPROVAL: ReadonlySet<string> = new Set<string>([
   //     flip a fleet-wide DLP policy to enforce, so the gate is load-bearing.
   "falcon_create_data_security_entity",
   "falcon_update_data_security_entity",
-  // eyas-mcp's sidecar port native ports of sidecar writes — KEEP suppressed
-  // until their family migrates (NATIVE_WRITE_SUPPRESS); gated regardless.
+  // Network containment (eyas-mcp) — ADOPTED, replacing the sidecar's
+  // extras_host_contain / extras_host_lift_containment. Every call pauses for
+  // approval; the IR lift backstop (route guard) gates lift aid-keyed.
   "falcon_contain_hosts",
   "falcon_lift_host_containment",
   // Data Protection (DLP) configuration writes. These FalconPy-backed sidecar
@@ -138,8 +139,6 @@ export const REQUIRES_APPROVAL: ReadonlySet<string> = new Set<string>([
   "extras_create_data_protection_classification",
   "extras_create_data_protection_policy",
   // falcon-extras (FalconPy-backed sidecar) — host containment
-  "extras_host_contain",
-  "extras_host_lift_containment",
   // falcon-extras — detection lifecycle. Verdict transitions (true_positive,
   // false_positive, closed, ignored, reopened) come through the agent loop
   // and gate here. The `in_progress` claim fires server-side on Queue button

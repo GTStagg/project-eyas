@@ -51,6 +51,11 @@
   identities, sensor posture, policy rules, user → host history, and the
   host → identity correlation behind the triage queue's identity overlap.
   Identity detections and the identity response workflow are unchanged.
+- **Host containment runs on the MCP server natively** — every contain and
+  lift still requires approval, and incident response still lifts only a
+  containment it applied. Verified end to end on a lab host (contained in
+  ~10 s, released in ~40 s). A contain covering several hosts now reports
+  exactly which ones succeeded.
 - **Falcon-published live-response scripts (Process, Service, RegistryKey, …)
   run on the MCP server natively**, still without an approval click (they
   only inspect the host). The agent now sees each script's input fields, so

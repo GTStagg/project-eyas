@@ -12,7 +12,6 @@ from falcon_helpers import (
     _get_alerts_client,
     _get_client,
     _is_permission_error,
-    _perform,
     _scope_denied_payload,
     _upstream_error,
     _VALID_DETECTION_STATUSES,
@@ -21,29 +20,6 @@ from falcon_helpers import (
     reject_unsafe_device_id,
 )
 from falcon_helpers import swallow_exc
-
-def host_contain(device_ids: list[str]) -> dict[str, Any]:
-    """Network-contain one or more hosts. Isolates the host(s) from the network
-    while leaving the Falcon sensor able to communicate with the cloud. Use
-    when you want to stop active spread before remediation. WRITE ACTION —
-    requires explicit user approval in the UI before execution.
-
-    Args:
-        device_ids: List of Falcon device (AID) IDs to contain.
-    """
-    return _perform("contain", device_ids)
-
-
-def host_lift_containment(device_ids: list[str]) -> dict[str, Any]:
-    """Lift network containment from one or more hosts, restoring normal
-    network connectivity. Use after remediation is complete. WRITE ACTION —
-    requires explicit user approval in the UI before execution.
-
-    Args:
-        device_ids: List of Falcon device (AID) IDs to release.
-    """
-    return _perform("lift_containment", device_ids)
-
 
 def update_detection_status(
     composite_ids: list[str],
@@ -362,8 +338,8 @@ def close_all_open_detections_on_host(
 
 def host_list_contained(limit: int = 100) -> dict[str, Any]:
     """List hosts currently in network containment (or with a containment
-    state change pending). Read-only. Pairs with extras_host_contain /
-    extras_host_lift_containment so the agent can answer "which hosts are
+    state change pending). Read-only. Pairs with falcon_contain_hosts /
+    falcon_lift_host_containment so the agent can answer "which hosts are
     contained right now?" without the operator having to remember.
 
     Returns hostname + AID + platform + last_seen + status. Status values

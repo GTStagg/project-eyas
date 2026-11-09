@@ -29,8 +29,8 @@ Exits 0 if all gates accounted for, non-zero otherwise. Output format:
 
 ```
 [1mWrite-shape sidecar tools[0m
-  ✓ extras_host_contain (gated)
-  ✓ extras_host_lift_containment (gated)
+  ✓ extras_host_group_add_members (gated)
+  ✓ extras_host_group_remove_members (gated)
   …
   ✗ extras_new_thing (UNGATED — add to REQUIRES_APPROVAL)
 

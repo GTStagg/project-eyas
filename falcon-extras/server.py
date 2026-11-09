@@ -87,33 +87,6 @@ def about() -> str:
 
 
 @mcp.tool()
-def extras_host_contain(device_ids: list[str]) -> dict[str, Any]:
-    """Network-contain one or more hosts. Isolates the host(s) from the network
-    while leaving the Falcon sensor able to communicate with the cloud. Use
-    when you want to stop active spread before remediation. WRITE ACTION —
-    requires explicit user approval in the UI before execution.
-
-    Args:
-        device_ids: List of Falcon device (AID) IDs to contain.
-    """
-    from host_actions import host_contain as _impl
-    return _impl(device_ids)
-
-
-@mcp.tool()
-def extras_host_lift_containment(device_ids: list[str]) -> dict[str, Any]:
-    """Lift network containment from one or more hosts, restoring normal
-    network connectivity. Use after remediation is complete. WRITE ACTION —
-    requires explicit user approval in the UI before execution.
-
-    Args:
-        device_ids: List of Falcon device (AID) IDs to release.
-    """
-    from host_actions import host_lift_containment as _impl
-    return _impl(device_ids)
-
-
-@mcp.tool()
 def extras_update_detection_status(
     composite_ids: list[str],
     status: str | None = None,
@@ -320,8 +293,8 @@ def extras_ir_close_remediated(
 @mcp.tool()
 def extras_host_list_contained(limit: int = 100) -> dict[str, Any]:
     """List hosts currently in network containment (or with a containment
-    state change pending). Read-only. Pairs with extras_host_contain /
-    extras_host_lift_containment so the agent can answer "which hosts are
+    state change pending). Read-only. Pairs with falcon_contain_hosts /
+    falcon_lift_host_containment so the agent can answer "which hosts are
     contained right now?" without the operator having to remember.
 
     Returns hostname + AID + platform + last_seen + status. Status values

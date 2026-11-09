@@ -339,3 +339,19 @@ test("deriveDisposition returns 'errored' when any tool errored", () => {
   const o = extractOutcome(r);
   assert.equal(deriveDisposition(r, o), "errored");
 });
+
+
+// eyas-mcp containment names (current) count the same as the retired sidecar
+// names (still present in older ir_run_turns).
+test("extractOutcome + callsByPhase recognize the native contain / lift names", () => {
+  const r = record([
+    turn(0, [call("falcon_contain_hosts", { approval: "allow", input: { ids: ["a"] } })]),
+    turn(1, [call("falcon_lift_host_containment", { approval: "allow", input: { ids: ["a"] } })]),
+  ]);
+  const o = extractOutcome(r);
+  assert.equal(o.hostContained, true);
+  assert.equal(o.hostContainmentLifted, true);
+  const buckets = callsByPhase(r);
+  assert.equal(buckets[1].length, 1);
+  assert.equal(buckets[4].length, 1);
+});

@@ -285,30 +285,6 @@ def _check_response(
 
 
 # ---------------------------------------------------------------------------
-# Host actions (contain / lift) — used by extras_host_contain etc.
-# ---------------------------------------------------------------------------
-
-
-def _perform(action: str, device_ids: list[str]) -> dict[str, Any]:
-    if not device_ids:
-        return {"ok": False, "error": "device_ids must be a non-empty list"}
-    hosts = _get_client()
-    resp = hosts.perform_action(action_name=action, ids=device_ids)
-    body = resp.get("body", {}) if isinstance(resp, dict) else {}
-    status = resp.get("status_code") if isinstance(resp, dict) else None
-    errors = body.get("errors") or []
-    resources = body.get("resources") or []
-    return {
-        "ok": not errors and (status is None or 200 <= int(status) < 300),
-        "action": action,
-        "status_code": status,
-        "device_ids": device_ids,
-        "resources": resources,
-        "errors": errors,
-    }
-
-
-# ---------------------------------------------------------------------------
 # Cross-cutting constants
 # ---------------------------------------------------------------------------
 

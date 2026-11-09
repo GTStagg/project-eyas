@@ -33,7 +33,8 @@ const NATURAL_PHASE: Record<string, Phase> = {
   extras_host_group_membership_for_device: 0,
   // Phase 1 — Quarantine
   extras_host_group_add_members: 1,
-  extras_host_contain: 1,
+  falcon_contain_hosts: 1,
+  extras_host_contain: 1, // retired sidecar name — older runs
   // Phase 2 — Remediation
   extras_rtr_run_cleanup: 2,
   falcon_add_ioc: 2,
@@ -47,7 +48,8 @@ const NATURAL_PHASE: Record<string, Phase> = {
   extras_ir_close_remediated: 4,
   extras_close_all_open_detections_on_host: 4,
   extras_update_detection_status: 4,
-  extras_host_lift_containment: 4,
+  falcon_lift_host_containment: 4,
+  extras_host_lift_containment: 4, // retired sidecar name — older runs
   extras_host_group_remove_members: 4,
 };
 
@@ -158,9 +160,11 @@ export function extractOutcome(record: IrRunRecord): Outcome {
         case "extras_host_group_add_members":
           hostQuarantined = true;
           break;
+        case "falcon_contain_hosts":
         case "extras_host_contain":
           hostContained = true;
           break;
+        case "falcon_lift_host_containment":
         case "extras_host_lift_containment":
           hostContainmentLifted = true;
           break;

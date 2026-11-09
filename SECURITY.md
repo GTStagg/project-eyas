@@ -146,9 +146,9 @@ reading the engagement's *ground truth* from `ir_runs` / `ir_run_turns` (the
 kickoff facts + the persisted per-turn record), never the model's narration or
 the playbook's advisory flags:
 
-- **Lift backstop (F1):** `extras_host_lift_containment` targeting the run's host
+- **Lift backstop (F1):** `falcon_lift_host_containment` targeting the run's host
   is refused unless THIS workflow is the one that applied containment (derived
-  from the persisted approved+successful `extras_host_contain` turns). A
+  from the persisted approved contain turns whose result confirms the host in `succeeded_ids`). A
   containment that predates the engagement, or one applied by another actor, is
   the operator's to lift from the Falcon Console — the workflow will not undo it.
 - **Group-remove backstop (F1-group):** `extras_host_group_remove_members` is
