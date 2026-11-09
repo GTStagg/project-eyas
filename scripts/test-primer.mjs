@@ -181,7 +181,7 @@ const CASES = [
   {
     name: "workflow failure",
     instruction:
-      "Investigate Fusion workflow execution `exec-1` from `Nightly Sync` (failed at 2026-06-01). Call extras_workflows_execution_result.",
+      "Investigate Fusion workflow execution `exec-1` from `Nightly Sync` (failed at 2026-06-01). Read its results with falcon_get_workflow_execution_results and explain the failure root cause.",
     kind: "workflow",
     titleIncludes: 'failed automation "Nightly Sync"',
   },

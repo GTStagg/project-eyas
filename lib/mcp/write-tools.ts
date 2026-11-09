@@ -160,8 +160,8 @@ export const REQUIRES_APPROVAL: ReadonlySet<string> = new Set<string>([
   // falcon-extras — host group membership (static groups only)
   "extras_host_group_add_members",
   "extras_host_group_remove_members",
-  // falcon-extras — Fusion workflow on-demand execution. The READ companion
-  // (extras_workflows_execution_result) is intentionally NOT gated.
+  // falcon-extras — Fusion workflow on-demand execution. Its results are read
+  // with the native falcon_get_workflow_execution_results (not gated).
   "extras_workflows_execute",
   // falcon-extras — RTR-driven patching. Only the executor is gated; the
   // catalog/resolver tools are read-only.
@@ -285,7 +285,4 @@ export const EXTRAS_READ_ONLY: ReadonlySet<string> = new Set<string>([
   "extras_shadow_ai_check_prevention_binding",
   "extras_shadow_ai_prevention_status",
   "extras_shadow_ai_workflow_playbook",
-  "extras_workflows_execution_result",
-  "extras_workflows_list_definitions",
-  "extras_workflows_list_executions",
 ]);

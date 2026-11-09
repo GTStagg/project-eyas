@@ -62,9 +62,6 @@
     "extras_shadow_ai_prevention_status",
     "extras_shadow_ai_workflow_playbook",
     { "name": "extras_update_detection_status", "required_params": ["composite_ids"] },
-    "extras_workflows_execute",
-    "extras_workflows_execution_result",
-    "extras_workflows_list_definitions",
-    "extras_workflows_list_executions"
+    "extras_workflows_execute"
   ]
 }

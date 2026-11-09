@@ -30,7 +30,7 @@ export function useNavGating(): { visibleGroups: NavGroup[]; hiddenHrefs: Set<st
         // lookup still works; lineage mode just shows a scope-pending message.
         if (mc.malQuery === false) hidden.add("/malquery");
         if (mc.recon === false) hidden.add("/recon");
-        if (ec.workflows === false) hidden.add("/workflows");
+        if (mc.workflows === false) hidden.add("/workflows");
         if (ec.discover === false) hidden.add("/discover");
         if (mc.intel === false) hidden.add("/intel");
         if (mc.cases === false) hidden.add("/cases");
