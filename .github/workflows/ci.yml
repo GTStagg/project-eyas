@@ -1,14 +1,13 @@
 name: CI
 
-# Kept small for the Actions minute budget: one job for every check that
-# needs no Docker, and the image test only on main (or on demand). Docs-only
-# changes don't run anything.
+# One job for every check that needs no Docker, and the image test only on
+# main (or on demand). Every pull request runs `checks`, because the main
+# ruleset requires it; docs-only pushes to main skip CI.
 on:
   push:
     branches: [main]
     paths-ignore: ["**/*.md", "docs/**", "licenses/**", "LICENSE", ".github/ISSUE_TEMPLATE/**"]
   pull_request:
-    paths-ignore: ["**/*.md", "docs/**", "licenses/**", "LICENSE", ".github/ISSUE_TEMPLATE/**"]
   workflow_dispatch:
 
 concurrency:
