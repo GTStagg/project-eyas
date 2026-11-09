@@ -33,6 +33,7 @@
     "extras_identity_ir_workflow_playbook",
     "extras_ir_campaign_scope",
     { "name": "extras_ir_close_remediated", "required_params": ["device_id", "remediated"] },
+    { "name": "extras_ir_close_untouched_originals", "required_params": ["device_id", "before_iso", "verdict"] },
     "extras_ir_phase0_actionable_check",
     "extras_ir_phase0_detection_scope",
     "extras_ir_phase3_verification_scope",

@@ -157,6 +157,8 @@ export const REQUIRES_APPROVAL: ReadonlySet<string> = new Set<string>([
   // triggered each close. This is the IR-context closer; the bulk
   // closer above is for out-of-band rescue / queue drain.
   "extras_ir_close_remediated",
+  // Post-ledger close of the untouched Phase 0 originals, on the operator's say-so.
+  "extras_ir_close_untouched_originals",
   // falcon-extras — host group membership (static groups only)
   "extras_host_group_add_members",
   "extras_host_group_remove_members",

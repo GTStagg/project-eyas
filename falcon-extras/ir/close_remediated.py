@@ -16,6 +16,7 @@ thin ``@mcp.tool()`` wrapper that delegates here.
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from typing import Any
 
 from falcon_helpers import (
@@ -55,6 +56,7 @@ def close_remediated(
     remediated: list[dict[str, Any]],
     verdict: str = "true_positive",
     comment: str | None = None,
+    before_iso: str | None = None,
 ) -> dict[str, Any]:
     """Implementation for ``extras_ir_close_remediated``.
 
@@ -101,40 +103,9 @@ def close_remediated(
     # Step 1: enumerate open detections AND hydrate each — we need the full
     # record (cmdline / behaviors / parent_details) for ledger matching, not
     # just composite_ids.
-    full_alerts: list[dict[str, Any]] = []
-    offset = 0
-    while offset < _HARD_CAP:
-        q = client.query_alerts_v2(
-            filter=f"product:'epp'+device.device_id:'{device_id}'",
-            limit=_QUERY_PAGE,
-            offset=offset,
-            sort="created_timestamp.desc",
-        )
-        guard = _check_response(q, "Alerts")
-        if guard is not None:
-            return guard
-        ids = ((q or {}).get("body") or {}).get("resources") or []
-        if not ids:
-            break
-        for chunk_start in range(0, len(ids), 100):
-            chunk = ids[chunk_start : chunk_start + 100]
-            d = client.get_alerts_v2(body={"composite_ids": chunk})
-            d_guard = _check_response(d, "Alerts")
-            if d_guard is not None:
-                return d_guard
-            recs = ((d or {}).get("body") or {}).get("resources") or []
-            for r in recs:
-                if not isinstance(r, dict):
-                    continue
-                status = (r.get("status") or "").lower()
-                if status not in _OPEN_STATUSES:
-                    continue
-                if not (r.get("composite_id") or r.get("id")):
-                    continue
-                full_alerts.append(r)
-        if len(ids) < _QUERY_PAGE:
-            break
-        offset += _QUERY_PAGE
+    full_alerts, guard = _open_epp_alerts(client, device_id)
+    if guard is not None:
+        return guard
 
     scope_count = len(full_alerts)
     if scope_count == 0:
@@ -170,39 +141,29 @@ def close_remediated(
     updated = 0
     batch_errors: list[dict[str, Any]] = []
     if matched_count > 0:
-        for batch_start in range(0, matched_count, _UPDATE_BATCH):
-            chunk = matched_composite_ids[batch_start : batch_start + _UPDATE_BATCH]
-            try:
-                r = client.update_alerts_v3(
-                    body={"composite_ids": chunk, "action_parameters": actions}
-                )
-                if _is_permission_error(r):
-                    # First batch with no successful close yet → render the
-                    # canonical scope-denied payload so the operator sees one
-                    # clean message instead of "0 of N closed".
-                    if updated == 0:
-                        return _scope_denied_payload(r, "Alerts")
-                    batch_errors.append(
-                        {"batch_start": batch_start, "error": "scope_pending"}
-                    )
-                    break
-                err = _upstream_error(r)
-                if err:
-                    batch_errors.append(
-                        {"batch_start": batch_start, "error": err, "size": len(chunk)}
-                    )
-                    continue
-                updated += len(chunk)
-            except Exception as exc:  # noqa: BLE001
-                batch_errors.append(
-                    {
-                        "batch_start": batch_start,
-                        "error": f"{type(exc).__name__}: {exc}",
-                        "size": len(chunk),
-                    }
-                )
+        updated, batch_errors, denied = _close_ids(client, matched_composite_ids, actions)
+        if denied is not None:
+            return denied
 
     unused = [i for i, _ in valid_entries if i not in used_indices]
+
+    # With the quarantine start time, count the unmatched detections that
+    # predate the engagement: the untouched Phase 0 originals that block
+    # release until the operator decides on them
+    # (extras_ir_close_untouched_originals).
+    prior: dict[str, Any] = {}
+    if before_iso:
+        cutoff = _parse_iso(before_iso)
+        if cutoff is None:
+            prior = {"before_iso_error": f"before_iso is not an ISO 8601 timestamp: {before_iso!r}"}
+        else:
+            before = [u for u in unmatched_records if _created_before(u, cutoff)]
+            prior = {
+                "unmatched_prior_count": len(before),
+                "unmatched_prior_sample": [
+                    u.get("display_name") for u in before[:10] if u.get("display_name")
+                ],
+            }
 
     result: dict[str, Any] = {
         "ok": (matched_count == 0) or (updated > 0),
@@ -217,6 +178,7 @@ def close_remediated(
         "ledger_entries_used": len(used_indices),
         "ledger_entries_unused": unused,
         "invalid_ledger_indices": invalid_indices,
+        **prior,
         "note": (
             f"Closed {updated} of {matched_count} matched detection(s) as "
             f"{verdict}. {unmatched_count} unmatched left open for operator "
@@ -284,3 +246,205 @@ def _classify_alerts_against_ledger(
                 }
             )
     return closed_records, unmatched_records, matched_composite_ids, used_indices
+
+
+def _open_epp_alerts(
+    client: Any, device_id: str
+) -> tuple[list[dict[str, Any]], dict[str, Any] | None]:
+    """Every open endpoint detection on the host, hydrated. (alerts, error)."""
+    full_alerts: list[dict[str, Any]] = []
+    offset = 0
+    while offset < _HARD_CAP:
+        q = client.query_alerts_v2(
+            filter=f"product:'epp'+device.device_id:'{device_id}'",
+            limit=_QUERY_PAGE,
+            offset=offset,
+            sort="created_timestamp.desc",
+        )
+        guard = _check_response(q, "Alerts")
+        if guard is not None:
+            return [], guard
+        ids = ((q or {}).get("body") or {}).get("resources") or []
+        if not ids:
+            break
+        for chunk_start in range(0, len(ids), 100):
+            chunk = ids[chunk_start : chunk_start + 100]
+            d = client.get_alerts_v2(body={"composite_ids": chunk})
+            d_guard = _check_response(d, "Alerts")
+            if d_guard is not None:
+                return [], d_guard
+            recs = ((d or {}).get("body") or {}).get("resources") or []
+            for r in recs:
+                if not isinstance(r, dict):
+                    continue
+                status = (r.get("status") or "").lower()
+                if status not in _OPEN_STATUSES:
+                    continue
+                if not (r.get("composite_id") or r.get("id")):
+                    continue
+                full_alerts.append(r)
+        if len(ids) < _QUERY_PAGE:
+            break
+        offset += _QUERY_PAGE
+    return full_alerts, None
+
+
+def _close_ids(
+    client: Any, composite_ids: list[str], actions: list[dict[str, Any]]
+) -> tuple[int, list[dict[str, Any]], dict[str, Any] | None]:
+    """Close ids in API-sized batches. (updated, batch_errors, scope_denied)."""
+    updated = 0
+    batch_errors: list[dict[str, Any]] = []
+    for batch_start in range(0, len(composite_ids), _UPDATE_BATCH):
+        chunk = composite_ids[batch_start : batch_start + _UPDATE_BATCH]
+        try:
+            r = client.update_alerts_v3(
+                body={"composite_ids": chunk, "action_parameters": actions}
+            )
+            if _is_permission_error(r):
+                # First batch with no successful close yet → render the
+                # canonical scope-denied payload so the operator sees one
+                # clean message instead of "0 of N closed".
+                if updated == 0:
+                    return 0, [], _scope_denied_payload(r, "Alerts")
+                batch_errors.append({"batch_start": batch_start, "error": "scope_pending"})
+                break
+            err = _upstream_error(r)
+            if err:
+                batch_errors.append(
+                    {"batch_start": batch_start, "error": err, "size": len(chunk)}
+                )
+                continue
+            updated += len(chunk)
+        except Exception as exc:  # noqa: BLE001
+            batch_errors.append(
+                {
+                    "batch_start": batch_start,
+                    "error": f"{type(exc).__name__}: {exc}",
+                    "size": len(chunk),
+                }
+            )
+    return updated, batch_errors, None
+
+
+def _parse_iso(value: str) -> datetime | None:
+    try:
+        dt = datetime.fromisoformat(str(value).strip().replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+
+
+def _created_before(alert: dict[str, Any], cutoff: datetime) -> bool:
+    """True when the detection was created strictly before ``cutoff``. A
+    detection without a readable creation time is NOT treated as prior: it
+    stays open rather than being closed on a guess."""
+    created = alert.get("created_timestamp")
+    if not isinstance(created, str):
+        return False
+    dt = _parse_iso(created)
+    return dt is not None and dt < cutoff
+
+
+def select_untouched_originals(
+    alerts: list[dict[str, Any]], cutoff: datetime
+) -> list[str]:
+    """Composite ids of open detections created before the engagement began.
+    Pure; unit-tested in ir/test_close_untouched.py."""
+    out: list[str] = []
+    for a in alerts:
+        cid = a.get("composite_id") or a.get("id")
+        if isinstance(cid, str) and _created_before(a, cutoff):
+            out.append(cid)
+    return out
+
+
+def close_untouched_originals(
+    device_id: str,
+    before_iso: str,
+    verdict: str,
+    comment: str | None = None,
+) -> dict[str, Any]:
+    """Implementation for ``extras_ir_close_untouched_originals``.
+
+    Run after the ledger close (``extras_ir_close_remediated``) and only on
+    the operator's say-so: closes every endpoint detection on the host that
+    is still open and was created before ``before_iso`` (the Phase 1
+    quarantine time). After the ledger close those are exactly the Phase 0
+    originals no remediation touched, which otherwise block release.
+    Detections that fired during the engagement are left alone.
+    """
+    if not device_id or not isinstance(device_id, str):
+        return {"ok": False, "error": "device_id required"}
+    bad = reject_unsafe_device_id(device_id)
+    if bad is not None:
+        return bad
+    if verdict not in _VALID_DETECTION_VERDICTS:
+        return {
+            "ok": False,
+            "error": (
+                f"verdict must be one of {sorted(_VALID_DETECTION_VERDICTS)}; "
+                f"got '{verdict}'"
+            ),
+        }
+    cutoff = _parse_iso(before_iso) if isinstance(before_iso, str) else None
+    if cutoff is None:
+        return {
+            "ok": False,
+            "error": (
+                "before_iso must be the Phase 1 quarantine time as ISO 8601, "
+                "e.g. 2026-05-01T12:00:00Z"
+            ),
+        }
+    if comment is None:
+        comment = (
+            "Closed at the operator's request after a Project Eyas IR engagement: "
+            "open before the engagement began and not remediated by the workflow"
+        )
+
+    try:
+        client = _get_alerts_client()
+    except Exception as exc:  # noqa: BLE001
+        return swallow_exc(exc)
+
+    alerts, guard = _open_epp_alerts(client, device_id)
+    if guard is not None:
+        return guard
+    ids = select_untouched_originals(alerts, cutoff)
+    if not ids:
+        return {
+            "ok": True,
+            "device_id": device_id,
+            "verdict": verdict,
+            "before_iso": before_iso,
+            "scope_count": 0,
+            "updated": 0,
+            "composite_ids": [],
+            "note": "No open detections from before the engagement — nothing to close.",
+        }
+
+    actions = [
+        {"name": "update_status", "value": "closed"},
+        {"name": "add_tag", "value": _VERDICT_TAG[verdict]},
+        {"name": "append_comment", "value": comment},
+    ]
+    updated, batch_errors, denied = _close_ids(client, ids, actions)
+    if denied is not None:
+        return denied
+    result: dict[str, Any] = {
+        "ok": updated > 0,
+        "device_id": device_id,
+        "verdict": verdict,
+        "before_iso": before_iso,
+        "scope_count": len(ids),
+        "updated": updated,
+        "composite_ids": ids,
+        "left_open_after_cutoff": len(alerts) - len(ids),
+    }
+    if batch_errors:
+        result["batch_errors"] = batch_errors
+        if updated == 0:
+            result["error"] = (
+                f"all close batches failed; first error: {batch_errors[0].get('error')}"
+            )
+    return result

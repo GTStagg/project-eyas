@@ -1627,6 +1627,15 @@ function ApprovalSummary({ tool }: { tool: ToolUse }) {
     ];
     whatHappens = "Walks every open detection on the host and closes ONLY those whose evidence intersects an entry in the supplied remediation ledger. Each close carries per-id evidence linking it to the specific ledger entry that justified it.";
     ifDenied = "Detections stay open. The ledger is preserved — operator can review the entries and close manually from the queue.";
+  } else if (tool.name === "extras_ir_close_untouched_originals") {
+    title = "Close detections the IR workflow didn't remediate";
+    rows = [
+      { label: "Host", value: get("device_id") ?? "(unspecified)", mono: true },
+      { label: "Verdict", value: get("verdict") ?? "(unspecified)" },
+      { label: "Open before", value: get("before_iso") ?? "(unspecified)", mono: true },
+    ];
+    whatHappens = "Closes every detection on this host that is still open and was raised before the engagement began. These are the original detections no remediation touched; they block release until closed. Anything raised during the engagement is left alone.";
+    ifDenied = "Those detections stay open and the host stays held in quarantine.";
   } else if (tool.name === "extras_close_all_open_detections_on_host") {
     title = "Bulk-close every open detection on the host";
     rows = [

@@ -24,6 +24,13 @@
   ship with the bundle.
 
 ### Changed
+- **Incident response no longer stalls on detections it never touched.**
+  After closing what its remediation matched, the agent counts the original
+  detections from before the engagement that are still open, which block
+  releasing the host. It stops and asks you whether to close them as true
+  positive or false positive, or keep the host held. On a close, Eyas closes
+  exactly those detections in one approved step. Anything raised during the
+  engagement is left alone.
 - **Closing every open detection on a host goes through the MCP server.** The
   on-request bulk close (one approval) now uses `eyas-mcp`, and covers open
   detections from every product on the host, not only endpoint detections.
