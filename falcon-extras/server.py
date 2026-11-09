@@ -1669,25 +1669,6 @@ def extras_ir_phase0_actionable_check(device_id: str) -> dict[str, Any]:
     return _impl(device_id)
 
 
-@mcp.tool()
-def extras_prevention_policy_posture(limit: int = 100) -> dict[str, Any]:
-    """List prevention policies across every platform with a posture summary
-    per policy. Returns:
-      - per-policy: id, name, platform, enabled, description, key prevention
-        settings (ML detection/prevention, AV detection/prevention, etc.),
-        posture flags (disabled / ml_detect_only / cloud_av_detect_only /
-        sensor_av_detect_only)
-      - per-platform breakdown
-      - tenant-level flags
-
-    Operator question this answers: "what do we have set to detect-only that
-    should be blocking?" — escalates the no-redundant-custom-coverage idea
-    from chat-time precheck to dashboard-time review.
-    """
-    from prevention import prevention_policy_posture as _impl
-    return _impl(limit)
-
-
 # ---------------------------------------------------------------------------
 # ML + IOA exclusions
 #

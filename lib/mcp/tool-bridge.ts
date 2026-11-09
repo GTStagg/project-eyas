@@ -183,8 +183,6 @@ export const PENDING_NATIVE_MIGRATION: ReadonlySet<string> = new Set<string>([
   // → extras_close_all_open_detections_on_host (IR Phase 4 closure stays
   // ledger-driven through extras_ir_close_remediated).
   "falcon_close_host_detections",
-  // → extras_prevention_policy_posture (flag names differ).
-  "falcon_get_prevention_posture",
 ]);
 
 // Native tools that advertise readOnlyHint:false but are INTENTIONALLY ungated

@@ -40,7 +40,6 @@
     "extras_list_ioa_exclusions",
     "extras_list_ml_exclusions",
     "extras_list_patch_profiles",
-    "extras_prevention_policy_posture",
     "extras_provision_quarantine_policy",
     "extras_provision_shadow_ai_banned_policy",
     "extras_teardown_project_eyas_managed",

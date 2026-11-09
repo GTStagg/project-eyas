@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getRuntimeConfig } from "@/lib/config/runtime";
 import { withFalconExtrasClient } from "@/lib/mcp/falcon-extras-client";
+import { withFalconMcpClient } from "@/lib/mcp/falcon-client";
+import { fetchPreventionPosture } from "@/lib/prevention/posture";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -9,7 +11,7 @@ export const dynamic = "force-dynamic";
 //   - bannedGroupId       — from active environment config (32-hex)
 //   - rule group state    — from extras_shadow_ai_prevention_status
 //   - bound prevention policies — resolved server-side by walking
-//     extras_prevention_policy_posture and matching `groups[].id` against
+//     the prevention posture (lib/prevention/posture.ts) and matching `groups[].id` against
 //     the configured banned group id. The operator usually only knows the
 //     host group; the policy id is the parameter `extras_shadow_ai_adopt_prevention`
 //     wants. Resolving here means the "Adopt prevention rules" button can
@@ -73,20 +75,17 @@ export async function GET() {
     });
   }
 
-  return withFalconExtrasClient(async (client) => {
-    const [statusRaw, postureRaw] = await Promise.all([
+  return withFalconMcpClient((mcp) => withFalconExtrasClient(async (client) => {
+    const [statusRaw, posturePayload] = await Promise.all([
       client.callTool({
         name: "extras_shadow_ai_prevention_status",
         arguments: {},
       }),
-      client.callTool({
-        name: "extras_prevention_policy_posture",
-        arguments: { limit: 200 },
-      }),
+      fetchPreventionPosture(mcp),
     ]);
 
     const status = (parseToolResult(statusRaw) as StatusResp | null) ?? {};
-    const posture = (parseToolResult(postureRaw) as PostureResp | null) ?? {};
+    const posture: PostureResp = posturePayload.ok ? { ok: true, items: posturePayload.items as PosturePolicy[] } : {};
 
     const boundPolicies = (posture.items ?? [])
       .filter((p) =>
@@ -118,5 +117,5 @@ export async function GET() {
       },
       boundPolicies,
     });
-  });
+  }));
 }
