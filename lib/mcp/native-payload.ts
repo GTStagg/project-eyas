@@ -1,6 +1,6 @@
 import "server-only";
 import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { parseConcatenatedJson, detectFalconError, isScopeDenied } from "@/lib/mcp/parse";
+import { shapeNativePayload } from "@/lib/mcp/native-shape";
 
 // Call a native MCP-server search tool and shape the result like the former
 // falcon-extras sidecar payloads that deterministic consumers already read:
@@ -8,7 +8,7 @@ import { parseConcatenatedJson, detectFalconError, isScopeDenied } from "@/lib/m
 // Used while sidecar twins are retired in favor of eyas-mcp natives, so the
 // normalizers downstream (Discover inventory, Identity posture, the posture
 // snapshot) keep a single input contract. `total` is the search envelope's
-// pagination.total when present.
+// pagination.total when present. Shaping rules: lib/mcp/native-shape.ts.
 export async function nativeSidecarPayload(
   mcp: Client,
   name: string,
@@ -20,16 +20,5 @@ export async function nativeSidecarPayload(
     text?: string;
   }>;
   const text = content.map((c) => (c.type === "text" && c.text ? c.text : "")).join("\n");
-  if (isScopeDenied(text)) return { ok: true, scope_pending: true };
-  const items = parseConcatenatedJson<Record<string, unknown>>(text);
-  const err = detectFalconError(items);
-  if (err) return { ok: false, error: err };
-  let total: number | undefined;
-  try {
-    const t = (JSON.parse(text) as { pagination?: { total?: unknown } })?.pagination?.total;
-    if (typeof t === "number") total = t;
-  } catch {
-    // not a single envelope — consumers fall back to items.length
-  }
-  return { ok: true, items, count: items.length, total };
+  return shapeNativePayload(text);
 }

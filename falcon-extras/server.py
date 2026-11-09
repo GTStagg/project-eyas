@@ -65,7 +65,6 @@ def about() -> str:
             "Hosts:write",  # containment
             "Real Time Response:read",  # patch-plan resolve (catalog only, no host I/O yet)
             "Real Time Response (Admin):write",  # reserved for run_patch (Phase 2)
-            "Assets (Falcon Discover):read",  # /discover surface (console label may be "Assets" or "Falcon Discover" by edition)
             "Host Group:read",  # /host-groups surface listing
             "Host Group:write",  # add/remove members on static groups
             "Workflow:read",  # /workflows surface listing
@@ -1044,58 +1043,6 @@ def extras_classify_patch_coverage(
     """
     from rtr_tools import classify_patch_coverage as _impl
     return _impl(remediations)
-
-
-# ---------------------------------------------------------------------------
-# Falcon Discover — asset / application / account inventory (read-only)
-# ---------------------------------------------------------------------------
-
-
-@mcp.tool()
-def extras_discover_assets(
-    filter: str | None = None, limit: int = 100, scope: str = "all"
-) -> dict[str, Any]:
-    """List endpoint assets from Falcon Discover (managed + unmanaged). Read-only.
-    Managed = a Falcon sensor is installed; unmanaged = discovered on the network
-    with no sensor (a coverage gap worth surfacing). Returns hostname, platform,
-    OS, IPs, first/last-seen, manufacturer and entity_type per asset.
-
-    Args:
-        filter: Optional FQL filter (e.g. platform_name:'Windows',
-            last_seen_timestamp:>'now-30d').
-        limit: Max assets to return (1-100). Default 100.
-        scope: 'managed', 'unmanaged', or 'all' (default).
-    """
-    from discover import discover_assets as _impl
-    return _impl(filter, limit, scope)
-
-
-@mcp.tool()
-def extras_discover_applications(
-    filter: str | None = None, limit: int = 100, host_aid: str | None = None
-) -> dict[str, Any]:
-    """List installed applications inventoried by Falcon Discover. Read-only.
-    Returns name, vendor, version, software_type, installation paths, last-used
-    timestamp, and the is_suspicious flag, joined to the host that runs it.
-
-    This is Falcon's periodically-synced inventory, not a live host query — it
-    can lag or under-report what is *currently* installed. For an authoritative
-    "installed right now" answer on a live Windows host, use the RTR
-    InstalledProgram script (falcon_run_falcon_script) instead.
-
-    Args:
-        host_aid: Optional device AID (32-char hex) to scope to a single host —
-            the "apps installed on host X" query. Pass the AID from
-            falcon_search_hosts; do NOT hand-write a host filter (the field is
-            ``host.aid``, not ``host_info.aid`` or bare ``aid``).
-        filter: Optional FQL filter. Wildcard/contains: ``name:'*chrome*'``
-            (asterisk in the value — NOT ``name:~``). Other examples:
-            ``is_suspicious:true``, ``vendor.name:'Oracle'``,
-            ``software_type:'browser_extension'``. Combined (AND) with host_aid.
-        limit: Max applications to return (1-100). Default 100.
-    """
-    from discover import discover_applications as _impl
-    return _impl(filter, limit, host_aid)
 
 
 # ---------------------------------------------------------------------------

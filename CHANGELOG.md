@@ -24,6 +24,15 @@
   ship with the bundle.
 
 ### Changed
+- **Discover runs on the MCP server natively.** `/discover` and the posture
+  history read assets, applications and accounts from `eyas-mcp`; the two
+  add-on Discover tools are retired. Managed and unmanaged counts are now
+  tenant-wide totals rather than counts within a 100-asset sample, so the
+  posture history shows a one-time jump in those two lines.
+- **Native results with an error are no longer read as data.** A search error
+  wrapped with its query guide could show up as one empty row, and a word like
+  "unauthorized" in an application name could hide a page as if the scope were
+  missing.
 - **Fusion workflow reads run on the MCP server natively.** The `/workflows`
   report and the failed-run hand-off use `eyas-mcp`'s definition, execution
   and execution-result tools; running a workflow still goes through the
