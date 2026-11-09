@@ -22,6 +22,10 @@ const PACKAGES = [
   { name: "iron-session", version: "8.0.4" },
   { name: "@anthropic-ai/sdk", version: "0.69.0" },
   { name: "@crowdstrike/aidr", version: "1.2.1" },
+  // Newer than some package mirrors serve: mammoth 1.11+ carries the
+  // CVE-2025-11849 path-traversal fix.
+  { name: "mammoth", version: "1.13.0" },
+  { name: "@modelcontextprotocol/sdk", version: "1.32.2" },
 ];
 
 const REPO_ROOT = path.resolve(import.meta.dirname, "..");

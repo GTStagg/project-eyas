@@ -2,6 +2,26 @@
 
 ## Unreleased
 
+### Security
+- **Login and registration hardening.** Failed logins are throttled (after five
+  failures each attempt waits 30 s, doubling to 15 min). First-run
+  registration is only served to localhost (extra host names via
+  `EYAS_ALLOWED_HOSTS`) and can't be won by a racing second request.
+  State-changing API requests from other sites are refused.
+- **Child processes no longer receive the app's own secrets.** The MCP server
+  and the Falcon operations add-on get only Falcon settings; the session /
+  credential-encryption key, Anthropic credentials and other tokens stay in
+  the web process.
+- **Every add-on tool must be classified read-only or approval-gated**;
+  an unclassified one is gated by default.
+- **The dev and production servers bind to 127.0.0.1**, the Anthropic base URL
+  must be https (http only for localhost), and bundles never ship the
+  builder's `.env`.
+- **Dependency updates:** Next.js 15.5.28, `mammoth` 1.13.0 (directory
+  traversal), MCP SDK 1.32.2, `proxy-addr` 2.0.8, Python `mcp` 1.30.0; the
+  sidecar's Python dependencies are hash-locked. Third-party license notices
+  ship with the bundle.
+
 ### Changed
 - **Threat Graph runs on the MCP server natively** (first capability migrated
   from the Falcon operations add-on into `eyas-mcp`). Artifact pivots and host
