@@ -95,6 +95,11 @@ test("malformed MIDDLE object is skipped, valid ones kept", () => {
 
 // ── detectFalconError ────────────────────────────────────────────────────
 
+test("detectFalconError leaves a CQL check failure intact for the agent", () => {
+  const lint = { ok: false, error: "The CQL query has mistakes", cql_lint: [{ code: "x" }], cql: "a | limit(5)", fix: "a | head(5)" };
+  assert.equal(detectFalconError([lint]), null);
+});
+
 test("detectFalconError returns null for real data", () => {
   assert.equal(detectFalconError([{ id: 1 }]), null);
   assert.equal(detectFalconError([{ id: 1 }, { id: 2 }]), null);

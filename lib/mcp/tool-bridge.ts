@@ -143,21 +143,26 @@ export const NATIVE_WRITE_SUPPRESS: ReadonlySet<string> = new Set<string>([
 //     the vocabulary the IR playbook's Phase 2 branches on — plus per-node
 //     verdict / signed annotations the detection drawer renders. Migrates once
 //     eyas-mcp ships the same classifier.
-//   - falcon_get_host_group_membership → KEEP
-//     extras_host_group_membership_for_device. The native reads the device
-//     record's `groups` field (0.6 s); the twin walks every group with a
-//     membership probe (≈21 s, 8-worker fan-out) and fails loudly on any
-//     per-group error. Live they agreed on 6/6 hosts (XDR us-2, steady
-//     state), but IR Phase 0 captures membership the agent then restores
-//     verbatim in Phase 4, and the device field can lag right after a static
-//     change — the case the twin exists for (falcon_host_groups_field_unreliable).
-//     The agent calls this in IR, so exposing the native would let it pick
-//     the field the playbook forbids. Revisit if eyas-mcp adds a walk-based
-//     authoritative mode.
 export const NATIVE_READ_KEEP: ReadonlySet<string> = new Set<string>([
   "falcon_get_process_tree",
-  "falcon_get_host_group_membership",
 ]);
+
+// Arguments the bridge enforces on a native tool, whatever the agent passed.
+// falcon_get_host_group_membership defaults to verify="none" (the host record's
+// `groups` field, which can lag a static change), but IR Phase 0 captures this
+// list and Phase 4 restores it verbatim, so every call checks static groups one
+// by one and fails loudly on any error (eyas-mcp ≥ 7fd4031). "all" is kept when
+// asked for; "none" / "record" / a missing value become "static".
+// See falcon_host_groups_field_unreliable.
+export function enforceToolArgs(
+  name: string,
+  input: Record<string, unknown>,
+): Record<string, unknown> {
+  if (name === "falcon_get_host_group_membership" && input.verify !== "all") {
+    return { ...input, verify: "static" };
+  }
+  return input;
+}
 
 // New eyas-mcp tools that each replace a sidecar tool the agent still reaches
 // through a curated path. Hidden until that family moves over, so the agent
@@ -322,7 +327,7 @@ export async function buildToolBridge(
     const target = toolToClient.get(name) ?? client;
     const longTimeout = LONG_RUNNING_TOOL_TIMEOUT_MS[name];
     const resp = await target.callTool(
-      { name, arguments: input },
+      { name, arguments: enforceToolArgs(name, input) },
       undefined,
       longTimeout ? { timeout: longTimeout } : undefined,
     );

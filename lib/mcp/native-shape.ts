@@ -3,7 +3,7 @@ import { parseConcatenatedJson, detectFalconError, isScopeDenied } from "@/lib/m
 // Pure shaping for nativeSidecarPayload (lib/mcp/native-payload.ts): turn a
 // native MCP-server search result's text into the payload the deterministic
 // consumers read:
-//   { ok: true, items, count, total? } | { ok: true, scope_pending: true } | { ok: false, error }
+//   { ok: true, items, count, total?, totals_by_entity_type? } | { ok: true, scope_pending: true } | { ok: false, error }
 //
 // Two traps this handles:
 // - Some native tools wrap an error as {results: [err], filter_used, fql_guide,
@@ -45,11 +45,21 @@ export function shapeNativePayload(text: string): Obj {
 
   const items = rows.filter(isObj);
   let total: number | undefined;
+  let typeTotals: Obj | undefined;
   try {
-    const t = (JSON.parse(text) as { pagination?: { total?: unknown } })?.pagination?.total;
+    const env = JSON.parse(text) as { pagination?: { total?: unknown }; totals_by_entity_type?: unknown };
+    const t = env?.pagination?.total;
     if (typeof t === "number") total = t;
+    // falcon_search_assets with include_type_totals: per-entity-type counts.
+    if (isObj(env?.totals_by_entity_type)) typeTotals = env.totals_by_entity_type;
   } catch {
     // not a single envelope — consumers fall back to items.length
   }
-  return { ok: true, items, count: items.length, total };
+  return {
+    ok: true,
+    items,
+    count: items.length,
+    total,
+    ...(typeTotals ? { totals_by_entity_type: typeTotals } : {}),
+  };
 }

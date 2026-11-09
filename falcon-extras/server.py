@@ -1088,33 +1088,6 @@ def extras_host_group_members(group_id: str, limit: int = 50) -> dict[str, Any]:
 
 
 @mcp.tool()
-def extras_host_group_membership_for_device(device_id: str) -> dict[str, Any]:
-    """Resolve the full Host Group membership for a single device. Read-only.
-
-    The `groups` array returned by falcon_search_hosts and Falcon's device
-    entity endpoints is unreliable: dynamic-group memberships (assignment_rule
-    FQL) and sometimes static-group memberships are omitted depending on API
-    projection and timing. This tool walks every host group in the tenant and
-    returns those that actually contain the given AID.
-
-    Use this in IR workflows where you must capture original membership before
-    moving a host (so you can restore it accurately later). The walk is one
-    membership probe per group, but probes run concurrently, so wall time stays
-    bounded (~10s for a typical <100-group tenant) even though the call count is
-    still 1 + N.
-
-    Args:
-        device_id: Falcon AID to resolve membership for.
-
-    Returns:
-        ok, device_id, items (list of {id, name, group_type, assignment_rule
-        if dynamic}), count.
-    """
-    from host_groups import host_group_membership_for_device as _impl
-    return _impl(device_id)
-
-
-@mcp.tool()
 def extras_host_group_add_members(
     group_id: str, device_ids: list[str]
 ) -> dict[str, Any]:
@@ -1277,9 +1250,9 @@ def extras_identity_ir_workflow_playbook(
 # Phase 0 is hunting for).
 
 # Compiled once at import. The CQL regex is the same alternation,
-# wrapped to be full-match-anchored against the image basename — CQL
-# `=/regex/i` is full-match per CLAUDE.md's NGSIEM gotcha block, so
-# `.*` framing is required to allow the rest of the basename / path.
+# anchored against the image basename. CQL `=/regex/i` matches anywhere in
+# the value unless anchored, so the explicit framing is what pins it to the
+# basename.
 
 
 @mcp.tool()
@@ -1977,93 +1950,6 @@ def extras_create_data_protection_policy(
         enable_content_inspection, enable_context_inspection,
         enable_network_inspection, inspection_depth, min_confidence_level,
     )
-
-
-@mcp.tool()
-def extras_ngsiem_search(
-    cql: str,
-    start_iso: str | None = None,
-    end_iso: str | None = None,
-    hours_back: int = 24,
-    repository: str = "search-all",
-) -> dict[str, Any]:
-    """Run an ad-hoc CQL search against NGSIEM. Read-only.
-
-    Wraps a single LogScale search-all query through the same runner that
-    powers the IR ancestry walks, the Shadow-AI scan, and the RAT-install
-    scan. The runner runs a pre-flight CQL lint (``ngsiem.syntax.lint``)
-    that short-circuits the most common syntax traps (``limit()`` vs
-    ``head()``, single-quoted strings, missing ``#`` tag prefix,
-    ``sort()`` default-truncation) before the query reaches the API.
-
-    Time window: pass either ``start_iso`` + ``end_iso`` (ISO 8601) or
-    ``hours_back`` (the runner converts to ms epoch). If both, the ISO
-    pair wins.
-
-    Args:
-        cql: The CQL query string. Lints before submit.
-        start_iso: Window start (ISO 8601). Optional.
-        end_iso: Window end (ISO 8601). Optional. Defaults to now if
-            ``start_iso`` is supplied without one.
-        hours_back: Used when no explicit ISO window is given. 1-168.
-        repository: LogScale repository. Default ``search-all``.
-
-    Returns:
-        ok, events (capped at 100 rows in the result; full ``row_count``
-        also surfaced), row_count, truncated, repository, cql.
-    """
-    from datetime import datetime, timezone, timedelta
-    import time as _time
-    from ngsiem.search import run_ngsiem_search
-
-    try:
-        if not isinstance(cql, str) or not cql.strip():
-            return {"ok": False, "error": "cql is required"}
-        if start_iso:
-            try:
-                s_dt = datetime.fromisoformat(start_iso.replace("Z", "+00:00"))
-            except ValueError:
-                return {"ok": False, "error": f"bad start_iso: {start_iso}"}
-            if end_iso:
-                try:
-                    e_dt = datetime.fromisoformat(end_iso.replace("Z", "+00:00"))
-                except ValueError:
-                    return {"ok": False, "error": f"bad end_iso: {end_iso}"}
-            else:
-                e_dt = datetime.now(timezone.utc)
-            start_ms = int(s_dt.timestamp() * 1000)
-            end_ms = int(e_dt.timestamp() * 1000)
-        else:
-            if not isinstance(hours_back, int) or hours_back < 1 or hours_back > 168:
-                return {"ok": False, "error": "hours_back must be 1-168"}
-            end_ms = int(_time.time() * 1000)
-            start_ms = end_ms - hours_back * 3600 * 1000
-        repo = (repository or "search-all").strip() or "search-all"
-
-        events, err = run_ngsiem_search(cql, start_ms, end_ms, budget_s=50.0, repository=repo)
-        if err is not None:
-            return err
-        if events is None:
-            return {
-                "ok": True,
-                "events": [],
-                "row_count": 0,
-                "truncated": True,
-                "repository": repo,
-                "cql": cql,
-                "note": "NGSIEM search did not complete within 50s.",
-            }
-        ROW_CAP = 100
-        return {
-            "ok": True,
-            "events": events[:ROW_CAP],
-            "row_count": len(events),
-            "truncated": len(events) > ROW_CAP,
-            "repository": repo,
-            "cql": cql,
-        }
-    except Exception as exc:  # noqa: BLE001
-        return swallow_exc(exc)
 
 
 @mcp.tool()

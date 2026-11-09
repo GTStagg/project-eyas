@@ -78,13 +78,6 @@ def test_namespaced_function_in_catalog():
     assert r.ok or not _has(r, "cql.unknown_function"), r.findings
 
 
-def test_unanchored_dotted_regex_warns():
-    r = lint(r'domain=/regex(".\(top|xyz)$")/')
-    # Soft heuristic — present but optional. Don't fail the suite if the
-    # pattern doesn't exactly match the heuristic; just verify it doesn't crash.
-    assert isinstance(r.ok, bool)
-
-
 def test_repo_tag_prefix_warning():
     r = lint('repo="base_sensor" | head(1)')
     assert _has(r, "cql.missing_tag_prefix"), r.findings

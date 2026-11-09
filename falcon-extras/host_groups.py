@@ -6,7 +6,6 @@ these are the worker functions they delegate to.
 
 from __future__ import annotations
 
-from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 from falcon_helpers import (
     _check_response,
@@ -18,11 +17,6 @@ from falcon_helpers import (
 )
 from falcon_helpers import swallow_exc
 
-# Concurrency width for the per-group membership fan-out in
-# host_group_membership_for_device. Tuned to collapse the 1-probe-per-group
-# walk well under the MCP transport's 60s ceiling on realistic (<100-group)
-# tenants without pushing Falcon's combined-endpoint rate limit toward 429s.
-_MEMBERSHIP_PROBE_WORKERS = 8
 
 
 def _project_host_group(g: dict[str, Any]) -> dict[str, Any]:
@@ -198,133 +192,6 @@ def host_group_members(group_id: str, limit: int = 50) -> dict[str, Any]:
             for h in raw
         ]
         return {"ok": True, "group_id": group_id, "items": items, "count": len(items)}
-    except Exception as exc:
-        return swallow_exc(exc)
-
-
-def host_group_membership_for_device(device_id: str) -> dict[str, Any]:
-    """Resolve the full Host Group membership for a single device. Read-only.
-
-    The `groups` array returned by falcon_search_hosts and Falcon's device
-    entity endpoints is unreliable: dynamic-group memberships (assignment_rule
-    FQL) and sometimes static-group memberships are omitted depending on API
-    projection and timing. This tool walks every host group in the tenant and
-    returns those that actually contain the given AID.
-
-    Use this in IR workflows where you must capture original membership before
-    moving a host (so you can restore it accurately later). The walk is one
-    membership probe per group, but probes run concurrently across a thread
-    pool, so wall time stays bounded (~10s for a typical <100-group tenant)
-    even though the call count is still 1 + N.
-
-    Args:
-        device_id: Falcon AID to resolve membership for.
-
-    Returns:
-        ok, device_id, items (list of {id, name, group_type, assignment_rule
-        if dynamic}), count.
-    """
-    if not device_id or not isinstance(device_id, str):
-        return {"ok": False, "error": "device_id required"}
-    # device_id is interpolated into the per-group membership FQL filter below
-    # (device_id:'<id>'). Reject-don't-escape before it reaches that literal —
-    # this list is read as authoritative by IR Phase 4 release logic, so a
-    # crafted id must never widen or skew the membership probe.
-    bad = reject_unsafe_device_id(device_id)
-    if bad is not None:
-        return bad
-    try:
-        # One shared, pre-authenticated client for every probe. The list call
-        # below mints the token; the per-group probes are independent GETs that
-        # only READ that token (no refresh fires inside this short window), so a
-        # single client is safe to fan out across threads — and avoids the N
-        # extra token mints a client-per-worker would incur. The 30s per-request
-        # timeout bounds a single hung connection.
-        client = _get_host_group_client(timeout=30)
-        # Pull the full group list. Cap at 500 — tenants with more groups
-        # need pagination, which we accept as a known limitation.
-        r = client.query_combined_host_groups(parameters={"limit": 500})
-        if _is_permission_error(r):
-            return _scope_denied_payload(r, "Host Groups")
-        err = _upstream_error(r)
-        if err:
-            return {"ok": False, "error": err}
-        body = r.get("body", {}) if isinstance(r, dict) else {}
-        groups = [g for g in (body.get("resources") or []) if g.get("id")]
-
-        # Per-group "is this AID a member?" probe. Returns (group_meta, None) on
-        # a hit, (None, None) on a clean miss, or (None, failure) on a permission
-        # / upstream / transport error. A failure is surfaced loudly rather than
-        # collapsed into "not a member": this list is read as authoritative by IR
-        # Phase 4 release logic, and a silently-dropped group (false negative)
-        # leaves a host un-restored — strictly worse than a loud failure.
-        def _probe(
-            g: dict[str, Any],
-        ) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
-            gid = g["id"]
-            try:
-                mr = client.query_combined_group_members(
-                    parameters={
-                        "id": gid,
-                        "filter": f"device_id:'{device_id}'",
-                        "limit": 1,
-                    }
-                )
-            except Exception as exc:
-                return None, {"kind": "upstream", "error": str(exc)}
-            if _is_permission_error(mr):
-                return None, {"kind": "permission", "resp": mr}
-            merr = _upstream_error(mr)
-            if merr:
-                return None, {"kind": "upstream", "error": merr}
-            mbody = mr.get("body", {}) if isinstance(mr, dict) else {}
-            if mbody.get("resources") or []:
-                return (
-                    {
-                        "id": gid,
-                        "name": g.get("name"),
-                        "group_type": g.get("group_type"),
-                        "assignment_rule": g.get("assignment_rule")
-                        if g.get("group_type") == "dynamic"
-                        else None,
-                    },
-                    None,
-                )
-            return None, None
-
-        member_of: list[dict[str, Any]] = []
-        permission_fail: dict[str, Any] | None = None
-        upstream_fail: str | None = None
-        # 8 workers collapses the walk from N*latency to ~ceil(N/8)*latency
-        # while staying under Falcon's combined-endpoint rate ceiling (a higher
-        # fan-out risks 429s, which _upstream_error would surface as a loud
-        # failure anyway). Results are aggregated after the pool drains; we
-        # don't short-circuit on the first error because a mid-walk permission
-        # error is a near-impossibility (the list call shares the same scope)
-        # and the fan-out makes "probe all N" cheap regardless.
-        with ThreadPoolExecutor(max_workers=_MEMBERSHIP_PROBE_WORKERS) as ex:
-            for meta, failure in ex.map(_probe, groups):
-                if failure is not None:
-                    if failure["kind"] == "permission" and permission_fail is None:
-                        permission_fail = failure["resp"]
-                    elif failure["kind"] == "upstream" and upstream_fail is None:
-                        upstream_fail = failure["error"]
-                    continue
-                if meta is not None:
-                    member_of.append(meta)
-
-        if permission_fail is not None:
-            return _scope_denied_payload(permission_fail, "Host Groups")
-        if upstream_fail is not None:
-            return {"ok": False, "error": upstream_fail}
-
-        return {
-            "ok": True,
-            "device_id": device_id,
-            "items": member_of,
-            "count": len(member_of),
-            "groups_scanned": len(groups),
-        }
     except Exception as exc:
         return swallow_exc(exc)
 

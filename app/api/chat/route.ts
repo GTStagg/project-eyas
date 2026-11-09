@@ -240,7 +240,7 @@ function buildSystemPrompt(resources: FalconResource[]): string {
     "NGSIEM CQL syntax (when calling `falcon_search_ngsiem`):",
     "- String literals use **double quotes** only: `ComputerName=\"WIN10-FIN-07\"`. Single quotes are a CQL parse error.",
     "- Tag fields are prefixed with `#` (e.g. `#event_simpleName=DnsRequest`); regular fields are not.",
-    "- Regex matches use `field=/pattern/i` and are **full-match anchored** — use `.*\\.example\\.com$` or `(^|.*\\.)example\\.com$` to match a domain or any subdomain, not `\\.example\\.com$`.",
+    "- Regex matches use `field=/pattern/i` and match **anywhere in the value** unless anchored — `/powershell/i` matches a full `...\\powershell.exe` path. Anchor with `^` / `$` for an exact or suffix match, e.g. `/(^|\\.)example\\.com$/i` for a domain and its subdomains.",
     "- Top-N truncation uses `head(N)`, not `limit(N)` — `limit()` is not a CQL function.",
     "",
     "Live host investigation (Real Time Response):",
