@@ -13,13 +13,34 @@ from datetime import datetime, timezone
 from typing import Any
 from falcon_helpers import _check_response, _falcon_kwargs
 from falcon_helpers import swallow_exc
-from patching import library as patch_lib, rtr as patch_rtr
+from patching import library as patch_lib
 from cleanup import library as cleanup_lib
 
 # Hard guard: any single batch larger than this requires the caller to set
 # `confirm_large_batch=True`. Patch / cleanup are per-host work — accidentally
 # fanning out a wide rollout in one approval is the bug we want to prevent.
 LARGE_BATCH_THRESHOLD = 25
+
+
+def _dispatch_script(plan: Any, device_ids: list[str]) -> dict[str, Any]:
+    """Hand a rendered script back to Eyas to run through eyas-mcp.
+
+    The sidecar no longer talks to RTR for patch / cleanup runs. It validates
+    and renders (the Eyas content layer), and the Next.js tool bridge
+    (lib/mcp/rtr-dispatch.ts) uploads the bytes as a one-off custom script,
+    runs it on the hosts and deletes it, all with eyas-mcp's native RTR tools,
+    then replaces this envelope with the per-host results. The envelope never
+    reaches the agent, and the agent still never supplies script bytes.
+    """
+    return {
+        "ok": True,
+        "dispatch": {
+            "kind": "rtr_script",
+            "script_body": plan.rendered,
+            "platform": plan.os,
+            "device_ids": list(device_ids),
+        },
+    }
 
 # The generic installer is the only patch script that takes a vendor URL +
 # optional integrity pin as runtime params (every other script bakes a fixed
@@ -214,21 +235,8 @@ def rtr_run_patch(
             **_integrity_signal(plan),
         }
 
-    try:
-        result = patch_rtr.run_batch(
-            device_ids=device_ids,
-            script_body=plan.rendered,
-            platform=plan.os,
-        )
-    except Exception as exc:
-        return {
-            "ok": False,
-            "stage": "rtr_dispatch",
-            "error": f"{type(exc).__name__}: {exc}",
-        }
-
     return {
-        **result,
+        **_dispatch_script(plan, device_ids),
         "dry_run": False,
         "script_id": plan.script_id,
         "title": plan.title,
@@ -249,10 +257,12 @@ def rtr_check_patch_status(
             the run_patch response's `results[].cloud_request_id` for any
             entry where `complete` was false.
     """
-    try:
-        return patch_rtr.check_status(cloud_request_ids)
-    except Exception as exc:
-        return swallow_exc(exc)
+    # Checked by Eyas through eyas-mcp's falcon_check_rtr_admin_command_status
+    # (lib/mcp/rtr-dispatch.ts); the sidecar only validates the input.
+    ids = [i for i in (cloud_request_ids or []) if isinstance(i, str) and i.strip()]
+    if not ids:
+        return {"ok": False, "error": "cloud_request_ids is empty"}
+    return {"ok": True, "dispatch": {"kind": "rtr_status", "cloud_request_ids": ids}}
 
 
 def rtr_list_cleanup_scripts(os_filter: str | None = None) -> dict[str, Any]:
@@ -377,21 +387,8 @@ def rtr_run_cleanup(
             **({"evidence": evidence} if evidence else {}),
         }
 
-    try:
-        result = patch_rtr.run_batch(
-            device_ids=device_ids,
-            script_body=plan.rendered,
-            platform=plan.os,
-        )
-    except Exception as exc:
-        return {
-            "ok": False,
-            "stage": "rtr_dispatch",
-            "error": f"{type(exc).__name__}: {exc}",
-        }
-
     return {
-        **result,
+        **_dispatch_script(plan, device_ids),
         "dry_run": False,
         "script_id": plan.script_id,
         "title": plan.title,

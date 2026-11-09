@@ -21,6 +21,7 @@
     "test:correlation": "node ./scripts/test-correlation.mjs",
     "test:recon-preview": "node ./scripts/test-recon-preview.mjs",
     "test:discover-native": "node ./scripts/test-discover-native.mjs",
+    "test:rtr-dispatch": "node ./scripts/test-rtr-dispatch.mjs",
     "test:data-protection": "node ./scripts/test-data-protection.mjs",
     "test:primer": "node ./scripts/test-primer.mjs",
     "test:parse": "node ./scripts/test-parse.mjs",
