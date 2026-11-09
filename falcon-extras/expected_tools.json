@@ -50,7 +50,6 @@
     "extras_rtr_resolve_patch_plan",
     { "name": "extras_rtr_run_cleanup", "required_params": ["script_id", "device_ids"] },
     "extras_rtr_run_patch",
-    "extras_rtr_wait_until_ready",
     { "name": "extras_save_patch_profile", "required_params": ["name", "product", "url", "kind"] },
     "extras_shadow_ai_adopt_prevention",
     "extras_shadow_ai_check_prevention_binding",

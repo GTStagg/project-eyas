@@ -24,6 +24,13 @@
   ship with the bundle.
 
 ### Changed
+- **MCP server pinned to eyas-mcp 2703a99.**
+- **Incident response waits for the quarantine policy through the MCP
+  server.** Before cleanup, Phase 1.5 uses `eyas-mcp`'s readiness wait with
+  its script probe: a host counts as ready only once a harmless probe script
+  actually runs on it, and the probe is deleted afterwards. If the wait times
+  out, the reason for each host is reported. The add-on readiness tool is
+  retired.
 - **Prevention posture comes from the MCP server.** `/prevention`, the home
   dashboard, Shadow-AI setup and the posture history read `eyas-mcp`'s
   prevention posture, and the chat agent uses it directly. Eyas still flags a
