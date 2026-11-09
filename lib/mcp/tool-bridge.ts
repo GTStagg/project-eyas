@@ -159,7 +159,24 @@ export const NATIVE_READ_KEEP: ReadonlySet<string> = new Set<string>([
   "falcon_get_host_group_membership",
 ]);
 
+// New eyas-mcp tools that each replace a sidecar tool the agent still reaches
+// through a curated path. Hidden until that family moves over, so the agent
+// can't skip the curated path (or, for the script tools, upload script bytes
+// the patch library didn't render). Delete an entry when its family migrates.
 export const PENDING_NATIVE_MIGRATION: ReadonlySet<string> = new Set<string>([
+  // Patching / cleanup runs → extras_rtr_run_patch, _run_cleanup, _check_patch_status.
+  "falcon_create_rtr_script",
+  "falcon_run_rtr_script_on_hosts",
+  "falcon_check_rtr_admin_command_status",
+  "falcon_delete_rtr_scripts",
+  "falcon_search_rtr_scripts",
+  // IR Phase 1.5 → extras_rtr_wait_until_ready (has a long transport timeout).
+  "falcon_wait_for_rtr_sessions",
+  // → extras_close_all_open_detections_on_host (IR Phase 4 closure stays
+  // ledger-driven through extras_ir_close_remediated).
+  "falcon_close_host_detections",
+  // → extras_prevention_policy_posture (flag names differ).
+  "falcon_get_prevention_posture",
 ]);
 
 // Native tools that advertise readOnlyHint:false but are INTENTIONALLY ungated
