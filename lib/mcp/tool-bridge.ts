@@ -4,6 +4,7 @@ import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { projectToolResult } from "./projections";
 import { detectFalconError, parseToolResultObjects } from "./parse";
 import { EXTRAS_READ_ONLY, REQUIRES_APPROVAL } from "./write-tools";
+import { DISPATCH_TOOLS, dispatchOf, runDispatch, type CallNative } from "./rtr-dispatch";
 
 export type FalconResource = {
   uri: string;
@@ -164,12 +165,14 @@ export function enforceToolArgs(
   return input;
 }
 
-// New eyas-mcp tools that each replace a sidecar tool the agent still reaches
-// through a curated path. Hidden until that family moves over, so the agent
-// can't skip the curated path (or, for the script tools, upload script bytes
-// the patch library didn't render). Delete an entry when its family migrates.
+// eyas-mcp tools the agent must not call directly. The RTR script tools are
+// what Eyas's patch / cleanup runs execute on (lib/mcp/rtr-dispatch.ts), but
+// the agent reaches them only through extras_rtr_run_patch / _run_cleanup /
+// _check_patch_status, so it can never upload script bytes the library didn't
+// render. The rest are hidden until their family moves over; delete an entry
+// when it does.
 export const PENDING_NATIVE_MIGRATION: ReadonlySet<string> = new Set<string>([
-  // Patching / cleanup runs → extras_rtr_run_patch, _run_cleanup, _check_patch_status.
+  // Bridge-only: Eyas's patch / cleanup runs dispatch through these.
   "falcon_create_rtr_script",
   "falcon_run_rtr_script_on_hosts",
   "falcon_check_rtr_admin_command_status",
@@ -310,6 +313,32 @@ export async function buildToolBridge(
     });
   }
 
+  // Native calls made on the agent's behalf by a dispatching Eyas tool.
+  const callNative: CallNative = async (toolName, args, opts) => {
+    try {
+      const r = await client.callTool(
+        { name: toolName, arguments: args },
+        undefined,
+        opts?.timeoutMs ? { timeout: opts.timeoutMs } : undefined,
+      );
+      const objs = parseToolResultObjects<Record<string, unknown>>(
+        r.content as Array<{ type: string; text?: string }>,
+      );
+      const err = detectFalconError(objs);
+      if (err) return { obj: null, error: err };
+      if (r.isError) {
+        const text = (r.content as Array<{ type: string; text?: string }>)
+          .map((c) => (c.type === "text" ? c.text ?? "" : ""))
+          .join(" ")
+          .trim();
+        return { obj: null, error: text || `${toolName} failed` };
+      }
+      return { obj: objs[0] ?? null, error: null };
+    } catch (e) {
+      return { obj: null, error: e instanceof Error ? e.message : String(e) };
+    }
+  };
+
   const invoke: ToolBridge["invoke"] = async (name, input) => {
     if (name === READ_RESOURCE_TOOL_NAME) {
       const uri = String(input.uri ?? "");
@@ -358,6 +387,11 @@ export async function buildToolBridge(
       if (upstreamError) {
         return { content: upstreamError, isError: true };
       }
+    } else if (DISPATCH_TOOLS.has(name) && parsed.length === 1 && dispatchOf(parsed[0])) {
+      // Eyas content (rendered script / validated ids) → run on eyas-mcp.
+      const done = await runDispatch(parsed[0], callNative);
+      const text = JSON.stringify(done, null, 2);
+      return { content: projectToolResult(name, text) || text, isError: false };
     }
     const projected = projectToolResult(name, rawText, parsed);
     return { content: projected || "(empty result)", isError: Boolean(resp.isError) };

@@ -24,6 +24,12 @@
   ship with the bundle.
 
 ### Changed
+- **Patch and cleanup runs go through the MCP server.** Eyas still checks and
+  builds every script from its own library (the agent picks a vetted script and
+  parameters, never script text), then uploads it as a one-off private script,
+  runs it and deletes it with `eyas-mcp`'s RTR tools. Status checks for
+  long-running scripts use `eyas-mcp` too. Results look the same as before,
+  except that the exit code is no longer reported.
 - **MCP server pinned to eyas-mcp 7fd4031.**
 - **Discover counts every asset type.** Asset totals come from a single
   all-types search, so assets that are neither managed nor unmanaged (for
