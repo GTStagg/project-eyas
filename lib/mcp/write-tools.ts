@@ -255,8 +255,6 @@ export const EXTRAS_READ_ONLY: ReadonlySet<string> = new Set<string>([
   "extras_diagnose_ir_readiness",
   "extras_diagnose_quarantine_setup",
   "extras_diagnose_shadow_ai_banned_setup",
-  "extras_discover_applications",
-  "extras_discover_assets",
   "extras_fleet_shadow_ai_egress",
   "extras_host_group_list",
   "extras_host_group_members",

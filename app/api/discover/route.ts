@@ -1,15 +1,11 @@
 import { NextResponse } from "next/server";
 import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { withFalconExtrasClient } from "@/lib/mcp/falcon-extras-client";
 import { withFalconMcpClient } from "@/lib/mcp/falcon-client";
-import { nativeDiscoverEntity } from "@/lib/discover/native";
+import { fetchDiscoverSnapshot } from "@/lib/discover/native";
 import { serverError } from "@/lib/api/respond";
 import { runAgentLoop } from "@/lib/chat/agent-loop";
 import { streamAgent } from "@/lib/chat/stream-agent";
 import {
-  normalizeAssets,
-  normalizeApplications,
-  normalizeAccounts,
   summarizeDiscover,
   renderDiscoverContext,
   type DiscoverSnapshot,
@@ -20,55 +16,20 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 // /discover — Falcon Discover asset / application / account inventory.
-// Deterministic layer (GET): fetch a sample of each entity via the sidecar's
-// extras_discover_* tools and compute a posture summary (coverage gaps,
-// privileged accounts, suspicious software) server-side. Agentic layer (POST):
-// same enrichment fed as context; the agent writes the posture decision
-// document. Discover is read-only — no writes, no primer hand-off needed.
-//
-// Assets + applications come from the EXTRAS (FalconPy) client (one record
-// shape across managed / unmanaged); accounts come from the MCP server's
-// native falcon_search_accounts (a strict superset of the former sidecar
-// tool's fields) via lib/discover/native.ts.
+// Deterministic layer (GET): fetch a sample of each entity from eyas-mcp's
+// native Discover tools (lib/discover/native.ts) and compute a posture summary
+// (coverage gaps, privileged accounts, suspicious software) server-side.
+// Agentic layer (POST): same enrichment fed as context; the agent writes the
+// posture decision document. Discover is read-only — no writes, no primer
+// hand-off needed.
 
-const SAMPLE = 100; // Discover query max per entity
+const SAMPLE = 100; // per entity (and per asset type)
 
-function parseToolJson(result: unknown): Record<string, unknown> | null {
-  const content = (result as { content?: unknown })?.content;
-  const text = (Array.isArray(content) ? content : ([] as Array<{ type: string; text?: string }>))
-    .map((c) => (c.type === "text" && c.text ? c.text : ""))
-    .join("\n");
-  try {
-    const j = JSON.parse(text) as unknown;
-    return j && typeof j === "object" ? (j as Record<string, unknown>) : null;
-  } catch {
-    return null;
-  }
-}
-
-async function callDiscover(
-  extras: Client,
-  name: string,
-  args: Record<string, unknown>,
-): Promise<Record<string, unknown> | null> {
-  const r = await extras.callTool({ name, arguments: { limit: SAMPLE, ...args } });
-  return parseToolJson(r);
-}
-
-async function fetchDiscover(extras: Client, mcp: Client): Promise<{
+async function fetchDiscover(mcp: Client): Promise<{
   snapshot: DiscoverSnapshot;
   summary: DiscoverSummary;
 }> {
-  const [assetsRaw, appsRaw, accountsRaw] = await Promise.all([
-    callDiscover(extras, "extras_discover_assets", { scope: "all" }),
-    callDiscover(extras, "extras_discover_applications", {}),
-    nativeDiscoverEntity(mcp, "falcon_search_accounts", { limit: SAMPLE }),
-  ]);
-  const snapshot: DiscoverSnapshot = {
-    assets: normalizeAssets(assetsRaw),
-    applications: normalizeApplications(appsRaw),
-    accounts: normalizeAccounts(accountsRaw),
-  };
+  const snapshot = await fetchDiscoverSnapshot(mcp, SAMPLE);
   return { snapshot, summary: summarizeDiscover(snapshot) };
 }
 
@@ -76,8 +37,8 @@ async function fetchDiscover(extras: Client, mcp: Client): Promise<{
 // instant cards, entity tables, and scope banner.
 export async function GET() {
   try {
-    const payload = await withFalconMcpClient((mcp) => withFalconExtrasClient(async (extras) => {
-      const { snapshot, summary } = await fetchDiscover(extras, mcp);
+    const payload = await withFalconMcpClient(async (mcp) => {
+      const { snapshot, summary } = await fetchDiscover(mcp);
       if (summary.scopePending) {
         return {
           ok: true,
@@ -86,7 +47,7 @@ export async function GET() {
         };
       }
       return { ok: true, summary, snapshot };
-    }));
+    });
     return NextResponse.json(payload);
   } catch (err) {
     return serverError(err);
@@ -112,7 +73,7 @@ function buildPrompt(): string {
 // injected as an uncached context block, then the agent synthesizes.
 export async function POST() {
   return streamAgent(async ({ mcp, extras, emit, signal }) => {
-    const { summary } = await fetchDiscover(extras, mcp);
+    const { summary } = await fetchDiscover(mcp);
     if (summary.scopePending) {
       emit("scope_pending", {
         note: "The Falcon API client does not carry the asset-inventory (Falcon Discover) scope.",

@@ -10,7 +10,7 @@ test("Discover surface renders inventory cards + tables and nav link", async ({ 
   });
   page.on("pageerror", (err) => consoleErrors.push(`pageerror: ${err.message}`));
 
-  // GET /api/discover fans out three sidecar calls; allow a generous cold wait.
+  // GET /api/discover fans out four MCP-server calls; allow a generous cold wait.
   await page.goto("/discover", { waitUntil: "domcontentloaded", timeout: 90_000 });
 
   // Hero present.

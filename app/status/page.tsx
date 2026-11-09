@@ -48,7 +48,7 @@ export default async function Status() {
     threatGraph: mcpCaps?.threatGraph,
     workflows: mcpCaps?.workflows,
     idp: mcpCaps?.idp,
-    discover: extrasCaps?.discover,
+    discover: mcpCaps?.discover,
   };
   const envName = getActiveEnvironment().name;
 
@@ -542,7 +542,6 @@ const TOOL_DOMAIN_RULES: { domain: string; match: (n: string) => boolean }[] = [
   { domain: "Patching & remediation", match: (n) => n.startsWith("extras_rtr_") },
   { domain: "Tuning & exclusions", match: (n) => n.includes("ioa_exclusion") || n.includes("ml_exclusion") },
   { domain: "NGSIEM", match: (n) => n.startsWith("extras_ngsiem_") },
-  { domain: "Asset discovery", match: (n) => n.startsWith("extras_discover_") },
   { domain: "Data protection", match: (n) => n.includes("data_protection") },
   { domain: "Fusion SOAR workflows", match: (n) => n.startsWith("extras_workflows_") },
   {
@@ -566,7 +565,6 @@ const TOOL_DOMAIN_ORDER = [
   "Policy & lifecycle",
   "Data protection",
   "NGSIEM",
-  "Asset discovery",
   "Fusion SOAR workflows",
   "Other",
 ];

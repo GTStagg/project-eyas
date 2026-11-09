@@ -2,10 +2,12 @@
 // `now` is injected so staleness math unit-tests cleanly (same precedent as
 // lib/quarantine/review.ts).
 //
-// Input is the already-projected output of the sidecar's extras_discover_*
-// tools (falcon-extras/discover.py::_compact), so the field names below are the
-// curated whitelist, not raw FalconPy. Every extractor is still tolerant of
-// missing keys — anything unreadable degrades, never throws.
+// Input is the native MCP-server Discover tools' rows, shaped by
+// lib/mcp/native-shape.ts: falcon_search_managed_assets +
+// falcon_search_unmanaged_assets (full Discover host records),
+// falcon_search_applications (fields="compact"; host nested under `host`) and
+// falcon_search_accounts. Every extractor is tolerant of missing keys —
+// anything unreadable degrades, never throws.
 //
 // The point of /discover is a POSTURE decision document, not a flat catalog:
 // the aggregates below surface coverage gaps (unmanaged endpoints), privileged-
@@ -76,6 +78,8 @@ export interface DiscoverEntity<T> {
   items: T[];
   scopePending?: boolean;
   error?: string;
+  /** Assets only: tenant-wide managed / unmanaged totals, when both calls answered. */
+  breakdown?: { managed: number; unmanaged: number };
 }
 
 export interface DiscoverSnapshot {
@@ -114,11 +118,11 @@ export interface DiscoverSummary {
 
 // ---- normalization --------------------------------------------------------
 
-function normAsset(r: Record<string, unknown>): DiscoverAsset {
+function normAsset(r: Record<string, unknown>, entityType?: string): DiscoverAsset {
   return {
     id: str(r.id),
     hostname: str(r.hostname),
-    entityType: str(r.entity_type),
+    entityType: str(r.entity_type) ?? entityType,
     platform: str(r.platform_name),
     osVersion: str(r.os_version),
     productType: str(r.product_type_desc),
@@ -142,7 +146,10 @@ function normApp(r: Record<string, unknown>): DiscoverApplication {
     softwareType: str(r.software_type),
     suspicious: r.is_suspicious === true,
     lastUsed: str(r.last_used_timestamp),
-    hostHostname: str(r.host_hostname),
+    // Native rows nest the host (`host.hostname`); the old flat key still reads.
+    hostHostname:
+      str(r.host_hostname) ??
+      (r.host && typeof r.host === "object" ? str((r.host as Record<string, unknown>).hostname) : undefined),
     paths,
   };
 }
@@ -162,7 +169,7 @@ function normAccount(r: Record<string, unknown>): DiscoverAccount {
   };
 }
 
-/** Parse one extras_discover_* tool payload into a normalized entity bucket. */
+/** Parse one shaped native payload (lib/mcp/native-shape.ts) into a normalized entity bucket. */
 export function normalizeEntity<T>(
   payload: Record<string, unknown> | null,
   norm: (r: Record<string, unknown>) => T,
@@ -185,7 +192,30 @@ export function normalizeEntity<T>(
 }
 
 export function normalizeAssets(p: Record<string, unknown> | null) {
-  return normalizeEntity(p, normAsset);
+  return normalizeEntity(p, (r) => normAsset(r));
+}
+
+/**
+ * Managed and unmanaged assets come from two native tools. Merge them into one
+ * bucket: rows from both samples, the summed tenant total, and the per-type
+ * totals in `breakdown` (only when both calls answered, so a partial answer
+ * never reads as a real zero).
+ */
+export function normalizeAssetPair(
+  managed: Record<string, unknown> | null,
+  unmanaged: Record<string, unknown> | null,
+): DiscoverEntity<DiscoverAsset> {
+  const m = normalizeEntity(managed, (r) => normAsset(r, "managed"));
+  const u = normalizeEntity(unmanaged, (r) => normAsset(r, "unmanaged"));
+  if (m.scopePending && u.scopePending) return { total: 0, items: [], scopePending: true };
+  const errors = [m.error, u.error].filter((e): e is string => !!e);
+  const bothOk = !m.error && !u.error && !m.scopePending && !u.scopePending;
+  return {
+    total: m.total + u.total,
+    items: [...m.items, ...u.items],
+    ...(errors.length ? { error: errors.join("; ") } : {}),
+    ...(bothOk ? { breakdown: { managed: m.total, unmanaged: u.total } } : {}),
+  };
 }
 export function normalizeApplications(p: Record<string, unknown> | null) {
   return normalizeEntity(p, normApp);
@@ -245,8 +275,9 @@ export function summarizeDiscover(
     assets: {
       total: snap.assets.total,
       sampled: a.length,
-      managed,
-      unmanaged: unmanagedList.length,
+      // Tenant-wide totals when both asset calls answered; sample counts otherwise.
+      managed: snap.assets.breakdown?.managed ?? managed,
+      unmanaged: snap.assets.breakdown?.unmanaged ?? unmanagedList.length,
       byPlatform: countBy(a, (x) => x.platform).map(({ k, count }) => ({ platform: k, count })),
       stale,
       unmanagedList,

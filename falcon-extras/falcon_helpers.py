@@ -18,7 +18,6 @@ from typing import Any
 from falconpy import (
     Alerts,
     DataProtectionConfiguration,
-    Discover,
     HostGroup,
     Hosts,
     IOAExclusions,
@@ -143,8 +142,6 @@ def _get_alerts_client() -> Alerts:
 
 
 
-def _get_discover_client() -> Discover:
-    return Discover(**_falcon_kwargs())
 
 
 def _get_ml_exclusions_client() -> MLExclusions:

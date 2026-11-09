@@ -169,7 +169,7 @@ export default function DiscoverPage() {
           {!loading && summary && !scopePending && (
             <>
               <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                <Stat label="Assets" value={summary.assets.total} sub={`${summary.assets.managed} managed (sampled)`} />
+                <Stat label="Assets" value={summary.assets.total} sub={`${summary.assets.managed} managed`} />
                 <Stat label="Unmanaged" value={summary.assets.unmanaged} tone="amber" sub="no Falcon sensor" />
                 <Stat label="Admin accounts" value={summary.accounts.privileged} tone="amber" sub={`of ${summary.accounts.total} total`} />
                 <Stat label="Suspicious apps" value={summary.applications.suspicious.length} tone="rose" sub={`of ${summary.applications.total} apps`} />

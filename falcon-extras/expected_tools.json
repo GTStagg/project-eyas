@@ -18,8 +18,6 @@
     "extras_delete_prevention_policy",
     "extras_detach_prevention_policy_from_host_group",
     "extras_diagnose_ir_readiness",
-    "extras_discover_applications",
-    "extras_discover_assets",
     "extras_diagnose_quarantine_setup",
     "extras_diagnose_shadow_ai_banned_setup",
     "extras_fleet_shadow_ai_egress",

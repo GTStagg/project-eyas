@@ -6,20 +6,14 @@ import { parseConcatenatedJson, detectFalconError, isScopeDenied } from "@/lib/m
 import { db } from "@/lib/db/client";
 import { postureSnapshots } from "@/lib/db/schema";
 import { getActiveEnvironmentId } from "@/lib/config/environments";
-import {
-  normalizeAssets,
-  normalizeApplications,
-  normalizeAccounts,
-  summarizeDiscover,
-  type DiscoverSnapshot,
-} from "@/lib/discover/inventory";
+import { summarizeDiscover } from "@/lib/discover/inventory";
 import {
   normalizePolicies,
   normalizeContentPatterns,
   summarizeDataProtection,
 } from "@/lib/dataprotection/posture";
 import { fetchDataSecurityEntities } from "@/lib/dataprotection/fetch";
-import { nativeDiscoverEntity } from "@/lib/discover/native";
+import { fetchDiscoverSnapshot } from "@/lib/discover/native";
 import { nativeSidecarPayload } from "@/lib/mcp/native-payload";
 import { clusterCampaigns } from "@/lib/queue/campaigns";
 import type { RankInput } from "@/lib/queue/rank";
@@ -202,33 +196,15 @@ async function captureVulns(mcp: Client): Promise<Pick<PostureMetrics, "vulns">>
 
 // ---- coverage (Falcon Discover) -------------------------------------------
 
-async function captureCoverage(
-  mcp: Client,
-  extras: Client,
-): Promise<Pick<PostureMetrics, "coverage">> {
-  const call = async (nm: string, args: Record<string, unknown>) => {
-    const r = await extras.callTool({
-      name: nm,
-      arguments: { limit: 100, ...args },
-    });
-    return parseExtras(r);
-  };
-  const [assetsRaw, appsRaw, accountsRaw] = await Promise.all([
-    call("extras_discover_assets", { scope: "all" }),
-    call("extras_discover_applications", {}),
-    nativeDiscoverEntity(mcp, "falcon_search_accounts", { limit: 100 }),
-  ]);
-  const snapshot: DiscoverSnapshot = {
-    assets: normalizeAssets(assetsRaw),
-    applications: normalizeApplications(appsRaw),
-    accounts: normalizeAccounts(accountsRaw),
-  };
+async function captureCoverage(mcp: Client): Promise<Pick<PostureMetrics, "coverage">> {
+  const snapshot = await fetchDiscoverSnapshot(mcp, 100);
   const summary = summarizeDiscover(snapshot);
 
   // Per-entity availability — an entity missing its scope (or erroring) nulls
-  // only its own metrics rather than reporting a misleading zero. Counts are
-  // over the sampled subset (Discover caps at 100/entity), so trend direction
-  // is meaningful even though absolute coverage is a sample.
+  // only its own metrics rather than reporting a misleading zero. managed /
+  // unmanaged are tenant-wide totals when both asset calls answered (sample
+  // counts otherwise); stale hosts, accounts and apps are over the sampled
+  // subset (100 per entity), so their trend direction is what's meaningful.
   const assetsOk = !snapshot.assets.scopePending && !snapshot.assets.error;
   const accountsOk = !snapshot.accounts.scopePending && !snapshot.accounts.error;
   const appsOk = !snapshot.applications.scopePending && !snapshot.applications.error;
@@ -472,7 +448,7 @@ export async function captureSnapshot(): Promise<CaptureResult> {
         const settled = await Promise.allSettled([
           captureDetections(mcp, extras),
           captureVulns(mcp),
-          captureCoverage(mcp, extras),
+          captureCoverage(mcp),
           captureIdentity(mcp, extras),
           capturePrevention(extras),
           captureDataProtection(mcp),

@@ -100,8 +100,6 @@ export type FalconExtrasAbout = {
 // Probe failures (network, malformed response) default to TRUE — a
 // transient blip should never make a real surface vanish from the nav.
 export type FalconExtrasCapabilities = {
-  /** Falcon Discover asset/application/account inventory — gates /discover. */
-  discover: boolean;
   mlExclusions: boolean;
   ioaExclusions: boolean;
   /** IR scope-capture tool callable + returning a structured response on a
@@ -127,6 +125,8 @@ export type FalconMcpCapabilities = {
   recon: boolean;
   // Fusion SOAR workflows (eyas-mcp native; was a sidecar probe). Gates /workflows.
   workflows: boolean;
+  // Falcon Discover inventory (eyas-mcp native; was a sidecar probe). Gates /discover.
+  discover: boolean;
   // Falcon Cases (falcon-mcp 0.10.0). Requires Cases:read scope, which is
   // NOT in this tenant's granted set — so this is normally false and the
   // /cases surface ships staged (nav hidden, page shows a scope-pending
@@ -316,8 +316,9 @@ async function probeFalconMcp(): Promise<ProbeResult> {
       const idpProbe = denialProbe("falcon_search_risky_identities", { limit: 1 });
       const reconProbe = denialProbe("falcon_search_recon_rules", { limit: 1 });
       const workflowsProbe = denialProbe("falcon_search_workflow_definitions", { limit: 1 });
+      const discoverProbe = denialProbe("falcon_search_managed_assets", { limit: 1 });
 
-      const [tools, info, intel, cases, quarantine, correlationRules, dataProtection, guardian, threatGraph, malQuery, idp, recon, workflows] =
+      const [tools, info, intel, cases, quarantine, correlationRules, dataProtection, guardian, threatGraph, malQuery, idp, recon, workflows, discover] =
         await Promise.all([
           client.listTools(),
           Promise.resolve(client.getServerVersion()),
@@ -332,6 +333,7 @@ async function probeFalconMcp(): Promise<ProbeResult> {
           idpProbe,
           reconProbe,
           workflowsProbe,
+          discoverProbe,
         ]);
       return {
         count: tools.tools.length,
@@ -347,6 +349,7 @@ async function probeFalconMcp(): Promise<ProbeResult> {
         idp,
         recon,
         workflows,
+        discover,
       };
     });
     return {
@@ -365,6 +368,7 @@ async function probeFalconMcp(): Promise<ProbeResult> {
         idp: result.idp,
         recon: result.recon,
         workflows: result.workflows,
+        discover: result.discover,
       },
     };
   } catch (err) {
@@ -412,7 +416,6 @@ async function probeFalconExtras(): Promise<FalconExtrasInfo> {
           })
           .catch(() => true);
 
-      const discoverProbe = probeCap("extras_discover_assets", { limit: 1 });
       // Exclusion probes use the read variants with limit=1 — cheap, returns
       // scope_pending when the *-exclusions:read scope is missing. We treat
       // read scope as a proxy for write scope: in practice CrowdStrike grants
@@ -435,7 +438,6 @@ async function probeFalconExtras(): Promise<FalconExtrasInfo> {
       const [
         toolList,
         info,
-        discover,
         mlExclusions,
         ioaExclusions,
         irCampaignScope,
@@ -443,7 +445,6 @@ async function probeFalconExtras(): Promise<FalconExtrasInfo> {
       ] = await Promise.all([
         client.listTools(),
         Promise.resolve(client.getServerVersion()),
-        discoverProbe,
         mlExclusionsProbe,
         ioaExclusionsProbe,
         irCampaignScopeProbe,
@@ -466,7 +467,6 @@ async function probeFalconExtras(): Promise<FalconExtrasInfo> {
         serverVersion: info?.version,
         about,
         capabilities: {
-          discover,
           mlExclusions,
           ioaExclusions,
           irCampaignScope,

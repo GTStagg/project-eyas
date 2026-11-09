@@ -730,10 +730,27 @@ const PROJECTIONS: Record<string, Projection> = {
   }),
 
   // --- falcon-mcp 0.17.0 Discover managed-assets read (#537) ---
-  // Managed assets are Discover host records — the same schema the sidecar
-  // extras_discover_assets whitelists (falcon-extras/discover.py, confirmed
-  // against live Discover), and a sibling of falcon_search_unmanaged_assets
-  // above. Discover scope is granted on our tenants, so this is live-verifiable.
+  // Managed assets are Discover host records (shape confirmed against live
+  // Discover), a sibling of falcon_search_unmanaged_assets above. /discover
+  // reads the raw rows through lib/discover/native.ts; this projection only
+  // bounds the agent path.
+  // Discover applications (eyas-mcp ≥ 2d87088 lists them with no filter). A full
+  // row is ~3 KB and even fields="compact" is ~600 B, so a 100-row page blew
+  // past the generic cap in a live test. Keep identity, type, the suspicious
+  // flag, last use and the host name; drop install paths and host detail.
+  // Field names confirmed live (compact and full rows; host nested under `host`).
+  falcon_search_applications: (r) => ({
+    id: undef(r.id),
+    name: undef(r.name),
+    vendor: undef(r.vendor),
+    version: undef(r.version),
+    software_type: undef(r.software_type),
+    is_suspicious: undef(r.is_suspicious),
+    last_used_timestamp: undef(r.last_used_timestamp),
+    host_id: undef(get(r, "host.id")),
+    hostname: undef(get(r, "host.hostname")),
+  }),
+
   falcon_search_managed_assets: (a) => ({
     id: undef(a.id),
     aid: undef(a.aid),

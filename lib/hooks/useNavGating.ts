@@ -23,7 +23,6 @@ export function useNavGating(): { visibleGroups: NavGroup[]; hiddenHrefs: Set<st
       .then((j) => {
         if (cancelled) return;
         const hidden = new Set<string>();
-        const ec = j?.falconExtras?.capabilities ?? {};
         const mc = j?.falconMcp?.capabilities ?? {};
         if (mc.idp === false) hidden.add("/identity");
         // /pivot stays visible even without Threat Graph scope — cross-source
@@ -31,7 +30,7 @@ export function useNavGating(): { visibleGroups: NavGroup[]; hiddenHrefs: Set<st
         if (mc.malQuery === false) hidden.add("/malquery");
         if (mc.recon === false) hidden.add("/recon");
         if (mc.workflows === false) hidden.add("/workflows");
-        if (ec.discover === false) hidden.add("/discover");
+        if (mc.discover === false) hidden.add("/discover");
         if (mc.intel === false) hidden.add("/intel");
         if (mc.cases === false) hidden.add("/cases");
         if (mc.quarantine === false) hidden.add("/quarantine");
