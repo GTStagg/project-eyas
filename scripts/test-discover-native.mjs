@@ -33,7 +33,7 @@ Module._resolveFilename = function patched(request, ...rest) {
 };
 
 const { shapeNativePayload } = await import(pathToFileURL(path.join(root, "lib/mcp/native-shape.ts")).href);
-const { normalizeAssetPair, normalizeApplications, summarizeDiscover } = await import(
+const { normalizeAssetSearch, normalizeApplications, summarizeDiscover } = await import(
   pathToFileURL(path.join(root, "lib/discover/inventory.ts")).href
 );
 
@@ -83,31 +83,58 @@ test("denial wording inside real data is NOT a scope denial", () => {
   assert.equal(p.count, 1);
 });
 
-test("asset pair merges rows, sums totals and keeps per-type totals", () => {
-  const m = shapeNativePayload(envelope([{ id: "m1", hostname: "a", entity_type: "managed" }], 900));
-  const u = shapeNativePayload(envelope([{ id: "u1", hostname: "b" }], 300));
-  const e = normalizeAssetPair(m, u);
-  assert.equal(e.total, 1200);
-  assert.deepEqual(e.breakdown, { managed: 900, unmanaged: 300 });
-  assert.equal(e.items.length, 2);
-  assert.equal(e.items[1].entityType, "unmanaged"); // filled from the tool when the row lacks it
-  const s = summarizeDiscover({ assets: e, applications: { total: 0, items: [] }, accounts: { total: 0, items: [] } });
+const withTotals = (results, totals) =>
+  JSON.stringify({
+    results,
+    pagination: { total: totals.total, offset: 0, limit: results.length, next: null },
+    totals_by_entity_type: totals,
+  });
+const emptyRest = { applications: { total: 0, items: [] }, accounts: { total: 0, items: [] } };
+
+test("asset search keeps per-type totals and merges the unmanaged sample by id", () => {
+  const all = shapeNativePayload(
+    withTotals(
+      [
+        { id: "m1", hostname: "a", entity_type: "managed" },
+        { id: "u1", hostname: "b", entity_type: "unmanaged" },
+      ],
+      { managed: 900, unmanaged: 300, unsupported: 380, other: 20, total: 1600 },
+    ),
+  );
+  const u = shapeNativePayload(envelope([{ id: "u1", hostname: "b" }, { id: "u2", hostname: "c" }], 300));
+  const e = normalizeAssetSearch(all, u);
+  assert.equal(e.total, 1600);
+  assert.deepEqual(e.breakdown, { managed: 900, unmanaged: 300, unsupported: 380, other: 20 });
+  assert.deepEqual(e.items.map((x) => x.id), ["m1", "u1", "u2"]);
+  assert.equal(e.items[2].entityType, "unmanaged"); // filled from the call when the row lacks it
+  const s = summarizeDiscover({ assets: e, ...emptyRest });
   assert.equal(s.assets.managed, 900);
   assert.equal(s.assets.unmanaged, 300);
+  assert.equal(s.assets.otherTypes, 400);
 });
 
-test("one asset call failing keeps the other's rows, drops the breakdown", () => {
-  const m = shapeNativePayload(envelope([{ id: "m1" }], 900));
-  const e = normalizeAssetPair(m, { ok: false, error: "boom" });
+test("a null per-type count drops the breakdown instead of reading as zero", () => {
+  const all = shapeNativePayload(
+    withTotals([{ id: "m1", entity_type: "managed" }], { managed: 900, unmanaged: 300, unsupported: 380, other: null, total: null }),
+  );
+  const e = normalizeAssetSearch(all, { ok: true, items: [], count: 0 });
+  assert.equal(e.breakdown, undefined);
+  const s = summarizeDiscover({ assets: e, ...emptyRest });
+  assert.equal(s.assets.managed, 1); // sample count, not a fake tenant total
+  assert.equal(s.assets.otherTypes, null);
+});
+
+test("the all-types call failing keeps the unmanaged sample and reports the error", () => {
+  const u = shapeNativePayload(envelope([{ id: "u1" }], 300));
+  const e = normalizeAssetSearch({ ok: false, error: "boom" }, u);
   assert.equal(e.error, "boom");
   assert.equal(e.breakdown, undefined);
+  assert.equal(e.total, 300);
   assert.equal(e.items.length, 1);
-  const s = summarizeDiscover({ assets: e, applications: { total: 0, items: [] }, accounts: { total: 0, items: [] } });
-  assert.equal(s.assets.managed, 1); // sample count, not a fake tenant total
 });
 
 test("both asset calls scope-denied → scopePending", () => {
-  const e = normalizeAssetPair({ ok: true, scope_pending: true }, { ok: true, scope_pending: true });
+  const e = normalizeAssetSearch({ ok: true, scope_pending: true }, { ok: true, scope_pending: true });
   assert.equal(e.scopePending, true);
 });
 

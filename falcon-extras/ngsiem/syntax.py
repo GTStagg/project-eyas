@@ -326,40 +326,6 @@ def _rule_sort_without_limit(cql: str, scan: str, out: list[Finding]) -> None:
         i = end + 1
 
 
-def _rule_unanchored_dotted_regex(cql: str, scan: str, out: list[Finding]) -> None:
-    """Regex must be full-match anchored. Patterns like ``\\.(top|xyz)$`` look
-    correct but only match if the *entire field value* starts with a dot —
-    they miss ``evil.top``. Same trap with leading ``(^|\\.)``. Heuristic:
-    flag double-quoted regex literals that start with one of these forms."""
-    # Re-parse double-quoted literals (they were stripped from `scan`, so we
-    # operate on the original source).
-    for m in _DOUBLE_STR_RX.finditer(cql):
-        body = m.group(0)[1:-1]
-        # Only flag in regex-y contexts: very crude — preceded by `regex(` or
-        # `=~ ` or `/` somewhere nearby. Cheap heuristic: look back 32 chars
-        # for `regex` or `=~`.
-        ctx = cql[max(0, m.start() - 40) : m.start()]
-        if not re.search(r"regex\s*\(|=~|\/regex\b", ctx):
-            continue
-        bad = re.match(r"^(?:\\\.|\(\^\|\\\.\))", body)
-        if not bad:
-            continue
-        out.append(
-            Finding(
-                code="cql.regex_unanchored_full_match",
-                severity="warning",
-                message=(
-                    "CQL regex matches must be full-match anchored — leading "
-                    "`\\.` or `(^|\\.)` only matches field values that start "
-                    "with the dotted segment. Prepend `.*` to match anywhere "
-                    "(e.g. `.*\\.(top|xyz)$`)."
-                ),
-                position=m.start() + 1,
-                fix=None,
-            )
-        )
-
-
 def _rule_tag_field_prefix(cql: str, scan: str, out: list[Finding]) -> None:
     """Tag fields require a leading ``#`` (CLAUDE.md). We can't know which
     fields are tags from the catalog alone, but we can flag the very common
@@ -401,7 +367,6 @@ def lint(cql: str, catalog: Catalog | None = None) -> LintResult:
     _rule_unknown_function(cql, scan, cat, findings)
     _rule_single_quoted_string(cql, scan, findings)
     _rule_sort_without_limit(cql, scan, findings)
-    _rule_unanchored_dotted_regex(cql, scan, findings)
     _rule_tag_field_prefix(cql, scan, findings)
     has_error = any(f.severity == "error" for f in findings)
     return LintResult(ok=not has_error, findings=findings)

@@ -78,8 +78,8 @@ export interface DiscoverEntity<T> {
   items: T[];
   scopePending?: boolean;
   error?: string;
-  /** Assets only: tenant-wide managed / unmanaged totals, when both calls answered. */
-  breakdown?: { managed: number; unmanaged: number };
+  /** Assets only: tenant-wide per-entity-type totals, when the API reported them. */
+  breakdown?: { managed: number; unmanaged: number; unsupported: number; other: number };
 }
 
 export interface DiscoverSnapshot {
@@ -94,6 +94,8 @@ export interface DiscoverSummary {
     sampled: number;
     managed: number;
     unmanaged: number;
+    /** Unsupported + other entity types (tenant-wide), or null when unknown. */
+    otherTypes: number | null;
     byPlatform: Array<{ platform: string; count: number }>;
     stale: DiscoverAsset[]; // last seen > STALE_ASSET_DAYS ago
     unmanagedList: DiscoverAsset[]; // coverage gap
@@ -196,25 +198,38 @@ export function normalizeAssets(p: Record<string, unknown> | null) {
 }
 
 /**
- * Managed and unmanaged assets come from two native tools. Merge them into one
- * bucket: rows from both samples, the summed tenant total, and the per-type
- * totals in `breakdown` (only when both calls answered, so a partial answer
- * never reads as a real zero).
+ * Assets come from two falcon_search_assets calls: `all` lists every entity
+ * type with include_type_totals (tenant-wide total + per-type counts), and
+ * `unmanaged` pins entity_type so the coverage-gap list always has a full
+ * sample even when unmanaged assets are a minority of the newest rows. Rows are
+ * merged by id. `breakdown` is set only when every per-type count came back as
+ * a number, so a partial answer never reads as a real zero.
  */
-export function normalizeAssetPair(
-  managed: Record<string, unknown> | null,
+export function normalizeAssetSearch(
+  all: Record<string, unknown> | null,
   unmanaged: Record<string, unknown> | null,
 ): DiscoverEntity<DiscoverAsset> {
-  const m = normalizeEntity(managed, (r) => normAsset(r, "managed"));
+  const a = normalizeEntity(all, (r) => normAsset(r));
   const u = normalizeEntity(unmanaged, (r) => normAsset(r, "unmanaged"));
-  if (m.scopePending && u.scopePending) return { total: 0, items: [], scopePending: true };
-  const errors = [m.error, u.error].filter((e): e is string => !!e);
-  const bothOk = !m.error && !u.error && !m.scopePending && !u.scopePending;
+  if (a.scopePending && u.scopePending) return { total: 0, items: [], scopePending: true };
+  const errors = [a.error, u.error].filter((e): e is string => !!e);
+
+  const seen = new Set(a.items.map((x) => x.id).filter(Boolean));
+  const items = [...a.items, ...u.items.filter((x) => !x.id || !seen.has(x.id))];
+
+  const t = (all?.totals_by_entity_type ?? null) as Record<string, unknown> | null;
+  const counts = t ? [num(t.managed), num(t.unmanaged), num(t.unsupported), num(t.other)] : [];
+  const breakdown =
+    counts.length && counts.every((n): n is number => n !== undefined)
+      ? { managed: counts[0]!, unmanaged: counts[1]!, unsupported: counts[2]!, other: counts[3]! }
+      : undefined;
+  const total = num(t?.total) ?? (a.error || a.scopePending ? u.total : a.total);
+
   return {
-    total: m.total + u.total,
-    items: [...m.items, ...u.items],
+    total,
+    items,
     ...(errors.length ? { error: errors.join("; ") } : {}),
-    ...(bothOk ? { breakdown: { managed: m.total, unmanaged: u.total } } : {}),
+    ...(breakdown ? { breakdown } : {}),
   };
 }
 export function normalizeApplications(p: Record<string, unknown> | null) {
@@ -275,9 +290,12 @@ export function summarizeDiscover(
     assets: {
       total: snap.assets.total,
       sampled: a.length,
-      // Tenant-wide totals when both asset calls answered; sample counts otherwise.
+      // Tenant-wide per-type totals when the API reported them; sample counts otherwise.
       managed: snap.assets.breakdown?.managed ?? managed,
       unmanaged: snap.assets.breakdown?.unmanaged ?? unmanagedList.length,
+      otherTypes: snap.assets.breakdown
+        ? snap.assets.breakdown.unsupported + snap.assets.breakdown.other
+        : null,
       byPlatform: countBy(a, (x) => x.platform).map(({ k, count }) => ({ platform: k, count })),
       stale,
       unmanagedList,
@@ -310,7 +328,7 @@ export function renderDiscoverContext(s: DiscoverSummary): string {
     "# Deterministic Falcon Discover inventory summary (computed server-side)",
     "Counts marked 'total' are tenant-wide (API pagination meta); 'sampled' is the hydrated subset analyzed below.",
     "",
-    `## Assets — ${s.assets.total} total (${s.assets.sampled} sampled): managed ${s.assets.managed}, unmanaged ${s.assets.unmanaged}.`,
+    `## Assets — ${s.assets.total} total (${s.assets.sampled} sampled): managed ${s.assets.managed}, unmanaged ${s.assets.unmanaged}${s.assets.otherTypes ? `, other types (no sensor support) ${s.assets.otherTypes}` : ""}.`,
     `Platforms (sample): ${s.assets.byPlatform.map((p) => `${p.platform} ${p.count}`).join(", ") || "n/a"}.`,
   ];
   if (s.assets.unmanagedList.length) {

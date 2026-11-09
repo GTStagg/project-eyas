@@ -30,7 +30,8 @@ const NATURAL_PHASE: Record<string, Phase> = {
   extras_diagnose_ir_readiness: 0,
   extras_host_process_tree: 0,
   extras_host_rat_install_scan: 0,
-  extras_host_group_membership_for_device: 0,
+  falcon_get_host_group_membership: 0,
+  extras_host_group_membership_for_device: 0, // retired sidecar name — older runs
   // Phase 1 — Quarantine
   extras_host_group_add_members: 1,
   falcon_contain_hosts: 1,

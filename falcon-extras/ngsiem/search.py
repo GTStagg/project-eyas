@@ -1,7 +1,7 @@
 """NGSIEM search runner — start / poll / fetch a single CQL query.
 
 Used by the IR ancestry walkers, process-tree reconstruction, the RAT
-install scan, the Shadow-AI hunter, and `extras_ngsiem_search` itself.
+install scan and the Shadow-AI hunter. (/ngsiem uses eyas-mcp's falcon_search_ngsiem.)
 Lifted out of ``server.py`` so per-feature modules can share the runner
 without each one re-importing FalconPy + the CQL linter.
 
@@ -92,7 +92,7 @@ def run_ngsiem_search(
     # the agent got an opaque timeout, and the live NGSIEM job was never stopped.
     # A monotonic deadline makes budget_s a true wall-clock cap (worst-case
     # overshoot is one POLL_S + one round-trip), keeping the 50s callers
-    # (extras_ngsiem_search, the IR Phase 0 RAT scan, the Shadow-AI egress hunt)
+    # (the IR Phase 0 RAT scan, the Shadow-AI egress hunt)
     # safely under 60s. See mcp_timeout_vs_falcon_wait.
     deadline = time.monotonic() + budget_s
     while time.monotonic() < deadline:

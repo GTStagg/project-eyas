@@ -88,7 +88,7 @@ def host_rat_install_scan(device_id: str, hours_back: int = 48) -> dict[str, Any
         if not isinstance(hours_back, int) or hours_back < 1 or hours_back > 168:
             return {"ok": False, "error": "hours_back must be an integer in 1-168"}
 
-        # CQL: full-match-anchored regex per CLAUDE.md NGSIEM syntax block;
+        # CQL: regexes match anywhere unless anchored, so atoms anchor explicitly;
         # double-quote the AID literal; head(N) not limit(N). 500 rows max.
         rat_alt = "|".join(atom for atom, _, _ in _RAT_IMAGE_CATALOG)
         cql = (

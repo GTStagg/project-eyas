@@ -24,6 +24,20 @@
   ship with the bundle.
 
 ### Changed
+- **MCP server pinned to eyas-mcp 7fd4031.**
+- **Discover counts every asset type.** Asset totals come from a single
+  all-types search, so assets that are neither managed nor unmanaged (for
+  example unsupported devices) count again; the assessment sees them as
+  "other types".
+- **NGSIEM search runs on the MCP server.** `/ngsiem` uses `eyas-mcp`'s search
+  with its query check, a 100-row cap and a 50-second budget that returns
+  partial rows instead of timing out. The add-on search tool is retired; Eyas's
+  own internal searches keep their checker. The incorrect "regexes must match
+  the whole value" rule is gone: CQL regexes match anywhere unless anchored.
+- **Incident response captures host groups through the MCP server.** Phase 0
+  reads group membership with eyas-mcp's per-group static check (always
+  enforced), which still fails the whole call on any error rather than
+  dropping a group. The add-on membership tool is retired.
 - **Discover runs on the MCP server natively.** `/discover` and the posture
   history read assets, applications and accounts from `eyas-mcp`; the two
   add-on Discover tools are retired. Managed and unmanaged counts are now

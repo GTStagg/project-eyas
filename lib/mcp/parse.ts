@@ -24,6 +24,10 @@ export function detectFalconError(parsed: unknown[]): string | null {
   const first = parsed[0] as Record<string, unknown> | null | undefined;
   if (!first || typeof first !== "object") return null;
   if (typeof first.error !== "string") return null;
+  // A local CQL check failure (falcon_search_ngsiem with check_cql) is not an
+  // upstream error: its `cql_lint` issues and corrected `fix` query must reach
+  // the agent intact so it can retry, not collapse to the bare message.
+  if ("cql_lint" in first) return null;
   const details = first.details as
     | { status_code?: number; body?: { errors?: Array<{ message?: string }> } }
     | undefined;
