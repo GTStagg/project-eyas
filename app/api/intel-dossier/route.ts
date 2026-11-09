@@ -2,8 +2,9 @@ import { NextResponse } from "next/server";
 import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { runAgentLoop } from "@/lib/chat/agent-loop";
 import { streamAgent, type Emit } from "@/lib/chat/stream-agent";
-import { parseConcatenatedJson, detectFalconError } from "@/lib/mcp/parse";
+import { parseConcatenatedJson, detectFalconError, isScopeDenied } from "@/lib/mcp/parse";
 import { projectIntelReport, projectIntelActor } from "@/lib/mcp/projections";
+import { reconPreviewArgs, summarizeReconPreview } from "@/lib/recon/preview";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -18,8 +19,8 @@ export const dynamic = "force-dynamic";
 // assembled bundle. Enrichment never depends on the model choosing a tool — the
 // deterministic-enrichment + agentic-synthesis pattern (see CLAUDE.md).
 
-// Free-text subject: actor name, campaign, or keyword. Mirrors the sidecar's
-// Recon free-text allowlist so we reject obvious garbage before spending calls.
+// Free-text subject: actor name, campaign, or keyword. Same allowlist as the
+// Recon keyword filter, so garbage is rejected before spending calls.
 const SUBJECT_RX = /^[A-Za-z0-9 ._%+@:/\-]{1,200}$/;
 const MAX_REPORTS = 3; // fetch full bodies for the top few; bounds prompt size
 const MAX_ACTORS = 2;
@@ -41,17 +42,10 @@ async function callList<T>(client: Client, name: string, args: Record<string, un
   }
 }
 
-// Sidecar tools return a single {ok, items, …} object, not a list of rows.
-async function callObj(client: Client, name: string, args: Record<string, unknown>): Promise<Record<string, unknown> | null> {
-  const arr = await callList<Record<string, unknown>>(client, name, args);
-  return arr[0] ?? null;
-}
-
 type RawId = { id?: unknown; name?: unknown };
 
 async function buildDossierBundle(
   mcp: Client,
-  extras: Client,
   emit: Emit,
   subject: string,
 ): Promise<string> {
@@ -106,9 +100,29 @@ async function buildDossierBundle(
 
   // 3. Recon corpus aggregate (underground footprint). Keyword topic.
   t = Date.now();
-  const corpus = await callObj(extras, "extras_recon_preview_corpus_search", { query: subject, kind: "keyword" });
-  const corpusOk = corpus?.ok === true;
-  trace("extras_recon_preview_corpus_search", { query: subject, kind: "keyword" }, { ok: corpus?.ok, total_hits: corpus?.total_hits, scope_pending: corpus?.scope_pending }, corpus?.ok === false, Date.now() - t);
+  const previewArgs = reconPreviewArgs(subject, "keyword");
+  let corpus: ReturnType<typeof summarizeReconPreview> | null = null;
+  let corpusScopePending = false;
+  let corpusError: string | null = null;
+  if (previewArgs) {
+    try {
+      const resp = (await mcp.callTool({ name: "falcon_preview_recon_rule", arguments: previewArgs })) as ToolContent;
+      const text = resp.content.map((c) => (c.type === "text" && c.text ? c.text : "")).join("\n");
+      const rows = parseConcatenatedJson<unknown>(text);
+      corpusScopePending = isScopeDenied(text);
+      corpusError = detectFalconError(rows);
+      if (!corpusScopePending && !corpusError) corpus = summarizeReconPreview(rows);
+    } catch (e) {
+      corpusError = e instanceof Error ? e.message : String(e);
+    }
+  }
+  trace(
+    "falcon_preview_recon_rule",
+    previewArgs ?? { topic: "SA_CUSTOM" },
+    corpus ? { total_hits: corpus.total_hits } : { scope_pending: corpusScopePending, error: corpusError ?? undefined },
+    !corpus,
+    Date.now() - t,
+  );
 
   return JSON.stringify(
     {
@@ -116,9 +130,7 @@ async function buildDossierBundle(
       report_search_hits: reportHits.length,
       reports, // projected reports: body (from `description`) + short_description + targeting
       actors, // full actor profiles (description, aliases, capabilities, …)
-      corpus: corpusOk
-        ? { total_hits: corpus?.total_hits, channels: corpus?.channels, top_sites: corpus?.top_sites }
-        : { unavailable: true, scope_pending: corpus?.scope_pending === true },
+      corpus: corpus ?? { unavailable: true, scope_pending: corpusScopePending },
     },
     null,
     2,
@@ -185,7 +197,7 @@ export async function POST(request: Request) {
 
   return streamAgent(async ({ mcp, extras, emit, signal }) => {
     emit("status", { phase: "enriching", message: "Gathering finished intelligence + Recon corpus…" });
-    const bundle = await buildDossierBundle(mcp, extras, emit, subject);
+    const bundle = await buildDossierBundle(mcp, emit, subject);
     emit("status", { phase: "synthesizing", message: "Writing dossier…" });
 
     await runAgentLoop({

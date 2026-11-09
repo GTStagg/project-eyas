@@ -646,14 +646,10 @@ const PROJECTIONS: Record<string, Projection> = {
     modified_timestamp: undef(p.modified_timestamp),
   }),
 
-  // --- falcon-mcp 0.13.0 native Falcon Intelligence Recon reads ---
-  // New in 0.13.0. The 0.12.0 line shipped no recon module, so the gap was
-  // filled by the extras_recon_* sidecar tools — which STAY in place: the
-  // /recon page (app/api/recon/route.ts) calls them by name, the capability
-  // gate probes extras_recon_list_rules (lib/health.ts), and
-  // extras_recon_preview_corpus_search has NO native twin (corpus aggregate
-  // search). These natives auto-expose through buildToolBridge (reads aren't
-  // suppressed). Records can be numerous (limit up to 500) and bulky, so
+  // --- Falcon Intelligence Recon reads (native; the sidecar twins are retired) ---
+  // /recon (app/api/recon/route.ts) and the intel dossier call these, and the
+  // capability gate probes falcon_search_recon_rules (lib/health.ts).
+  // Records can be numerous (limit up to 500) and bulky, so
   // token-bound them rather than leaning on the 12KB generic cap.
   //
   // Field names below were confirmed against a LIVE us-2 tenant dump (2026-06-29)

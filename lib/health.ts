@@ -100,7 +100,6 @@ export type FalconExtrasAbout = {
 // Probe failures (network, malformed response) default to TRUE — a
 // transient blip should never make a real surface vanish from the nav.
 export type FalconExtrasCapabilities = {
-  recon: boolean;
   workflows: boolean;
   /** Falcon Discover asset/application/account inventory — gates /discover. */
   discover: boolean;
@@ -125,6 +124,8 @@ export type FalconMcpCapabilities = {
   malQuery: boolean;
   // Identity Protection (risky identities — eyas-mcp native; was a sidecar probe).
   idp: boolean;
+  // Falcon Intelligence Recon (eyas-mcp native; was a sidecar probe). Gates /recon.
+  recon: boolean;
   // Falcon Cases (falcon-mcp 0.10.0). Requires Cases:read scope, which is
   // NOT in this tenant's granted set — so this is normally false and the
   // /cases surface ships staged (nav hidden, page shows a scope-pending
@@ -312,8 +313,9 @@ async function probeFalconMcp(): Promise<ProbeResult> {
       });
 
       const idpProbe = denialProbe("falcon_search_risky_identities", { limit: 1 });
+      const reconProbe = denialProbe("falcon_search_recon_rules", { limit: 1 });
 
-      const [tools, info, intel, cases, quarantine, correlationRules, dataProtection, guardian, threatGraph, malQuery, idp] =
+      const [tools, info, intel, cases, quarantine, correlationRules, dataProtection, guardian, threatGraph, malQuery, idp, recon] =
         await Promise.all([
           client.listTools(),
           Promise.resolve(client.getServerVersion()),
@@ -326,6 +328,7 @@ async function probeFalconMcp(): Promise<ProbeResult> {
           threatGraphProbe,
           malQueryProbe,
           idpProbe,
+          reconProbe,
         ]);
       return {
         count: tools.tools.length,
@@ -339,6 +342,7 @@ async function probeFalconMcp(): Promise<ProbeResult> {
         threatGraph,
         malQuery,
         idp,
+        recon,
       };
     });
     return {
@@ -355,6 +359,7 @@ async function probeFalconMcp(): Promise<ProbeResult> {
         threatGraph: result.threatGraph,
         malQuery: result.malQuery,
         idp: result.idp,
+        recon: result.recon,
       },
     };
   } catch (err) {
@@ -402,7 +407,6 @@ async function probeFalconExtras(): Promise<FalconExtrasInfo> {
           })
           .catch(() => true);
 
-      const reconProbe = probeCap("extras_recon_list_rules", { limit: 1 });
       const workflowsProbe = probeCap("extras_workflows_list_definitions", {
         limit: 1,
       });
@@ -429,7 +433,6 @@ async function probeFalconExtras(): Promise<FalconExtrasInfo> {
       const [
         toolList,
         info,
-        recon,
         workflows,
         discover,
         mlExclusions,
@@ -439,7 +442,6 @@ async function probeFalconExtras(): Promise<FalconExtrasInfo> {
       ] = await Promise.all([
         client.listTools(),
         Promise.resolve(client.getServerVersion()),
-        reconProbe,
         workflowsProbe,
         discoverProbe,
         mlExclusionsProbe,
@@ -464,7 +466,6 @@ async function probeFalconExtras(): Promise<FalconExtrasInfo> {
         serverVersion: info?.version,
         about,
         capabilities: {
-          recon,
           workflows,
           discover,
           mlExclusions,
