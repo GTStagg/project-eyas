@@ -24,6 +24,7 @@
     "test:native-dispatch": "node ./scripts/test-native-dispatch.mjs",
     "test:release-watcher": "node ./scripts/test-release-watcher.mjs",
     "test:model-defaults": "node ./scripts/test-model-defaults.mjs",
+    "test:projections": "node ./scripts/test-projections.mjs",
     "test:llm-messages": "node ./scripts/test-llm-messages.mjs",
     "test:prevention-posture": "node ./scripts/test-prevention-posture.mjs",
     "test:data-protection": "node ./scripts/test-data-protection.mjs",

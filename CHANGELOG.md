@@ -25,6 +25,10 @@
   ship with the bundle.
 
 ### Changed
+- **The assistant can count search results again.** For Falcon searches, the
+  total number of matching records now reaches the assistant ahead of the
+  rows, so "how many host groups / hosts / …" questions get an exact answer
+  even when the listing itself is too long to show in full.
 - **Current Claude models.** The default model is now `claude-sonnet-5-5`, with
   `claude-opus-5-5` suggested for the highest quality. Every request now asks
   for a medium thinking effort (where the model supports it) and leaves room
