@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.10.0 — Most of the add-on moves onto eyas-mcp; Claude 5.5 defaults
 
 ### Security
 - **Login and registration hardening.** Failed logins are throttled (after five
