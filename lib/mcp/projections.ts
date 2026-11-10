@@ -1054,6 +1054,50 @@ function projectPreventionPosture(rawText: string): string {
   return capLength([...header, ...lines].join("\n"), POSTURE_CAP_BYTES);
 }
 
+// Native search tools return `{results, pagination: {total, offset, limit,
+// next}}`, and their descriptions tell the agent to answer "how many" from
+// `pagination.total`. The projection path below unwraps the envelope to its
+// rows, and the generic path's cap cuts the JSON tail where `pagination`
+// sits, so without this the agent never sees the count and tries to tally
+// rows itself (and a capped page undercounts). This header carries the
+// totals through, placed FIRST so the length cap can't cut it.
+export function searchTotalsHeader(rawText: string): string | null {
+  // Cheap pre-checks so large non-envelope payloads aren't parsed twice.
+  if (!rawText.includes('"pagination"')) return null;
+  const trimmed = rawText.trimStart();
+  if (!trimmed.startsWith("{")) return null;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(rawText);
+  } catch {
+    return null;
+  }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null;
+  const env = parsed as { results?: unknown; pagination?: unknown };
+  if (!Array.isArray(env.results) || !env.pagination || typeof env.pagination !== "object") return null;
+  const pg = env.pagination as { total?: unknown; offset?: unknown; limit?: unknown; next?: unknown };
+  const returned = env.results.length;
+  const total = typeof pg.total === "number" ? pg.total : null;
+  const parts: string[] = [];
+  parts.push(
+    total === null
+      ? `${returned} returned on this page; the API reported no total`
+      : `${total} matching record(s) in total (pagination.total), ${returned} on this page`,
+  );
+  const offset = typeof pg.offset === "number" ? pg.offset : null;
+  const hasMore =
+    pg.next != null && pg.next !== "" ? true : total !== null && offset !== null ? offset + returned < total : false;
+  if (hasMore) {
+    parts.push(
+      pg.next != null && pg.next !== ""
+        ? `more pages available (next: ${JSON.stringify(pg.next)})`
+        : `more pages available (offset ${(offset ?? 0) + returned})`,
+    );
+  }
+  parts.push("for a count alone, use pagination.total — limit=1 is enough");
+  return `[Search totals: ${parts.join("; ")}.]`;
+}
+
 export function projectToolResult(
   toolName: string,
   rawText: string,
@@ -1072,11 +1116,13 @@ export function projectToolResult(
   if (toolName === "falcon_search_ngsiem") {
     return projectNgsiemSearch(rawText);
   }
+  const totals = searchTotalsHeader(rawText);
+  const withTotals = (text: string) => (totals ? `${totals}\n${text}` : text);
   const projection = PROJECTIONS[toolName];
-  if (!projection) return capLength(rawText, GENERIC_CAP_BYTES);
+  if (!projection) return withTotals(capLength(rawText, GENERIC_CAP_BYTES));
 
   const objects = preParsed ?? parseConcatenatedJson<Record<string, unknown>>(rawText);
-  if (objects.length === 0) return capLength(rawText, GENERIC_CAP_BYTES);
+  if (objects.length === 0) return withTotals(capLength(rawText, GENERIC_CAP_BYTES));
 
   const filter = FILTERS[toolName];
   const filtered = filter ? objects.filter(filter) : objects;
@@ -1096,5 +1142,5 @@ export function projectToolResult(
   // gets its own (much harsher) message; this one explicitly states no items
   // were dropped.
   const note = `\n\n[Note: ${filtered.length} item(s) returned in full — none dropped from this set. Each item shows ${fieldCount} curated fields out of the upstream record's full schema.${dropNote} Only call falcon_get_*_details if you need a field that isn't in this projection.]`;
-  return capLength(body + note, GENERIC_CAP_BYTES);
+  return withTotals(capLength(body + note, GENERIC_CAP_BYTES));
 }
