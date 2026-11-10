@@ -137,6 +137,10 @@ NATIVE_ADOPTED=(
   # lift verified); exposed + gated, IR lift backstop applies.
   "falcon_contain_hosts"
   "falcon_lift_host_containment"
+  # eyas-mcp RTR readiness probe (IR Phase 1.5) — replaced the sidecar wait
+  # tool; the bridge forces probe="runscript", and each attempt uploads a
+  # script + runs it in an admin session, so it gates like the other RTR paths.
+  "falcon_wait_for_rtr_sessions"
 )
 
 BRIDGE_FILE="lib/mcp/tool-bridge.ts"

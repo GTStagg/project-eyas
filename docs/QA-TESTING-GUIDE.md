@@ -46,6 +46,7 @@ Run dev with `npm run dev` (port 3000). Standalone notes live in a dedicated sec
 
 **Broken signals**
 
+
 - Can register a second account silently (multi-user is not supported).
 - `/api/health` answers 200 without cookies.
 - Reloads bounce to `/login` immediately after success → cookie not being set or `AUTH_SESSION_SECRET` mismatch between request and response.
