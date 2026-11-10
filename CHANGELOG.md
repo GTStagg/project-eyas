@@ -24,6 +24,10 @@
   ship with the bundle.
 
 ### Changed
+- **Incident response's release summary survives busy hosts.** The counts the
+  agent needs after closing remediated detections now come first in the
+  result, so a host with many detections no longer cuts them off. The
+  readiness wait's approval card now explains what it does.
 - **Incident response no longer stalls on detections it never touched.**
   After closing what its remediation matched, the agent counts the original
   detections from before the engagement that are still open, which block

@@ -165,6 +165,10 @@ def close_remediated(
                 ],
             }
 
+    # Key order matters: the agent sees this result through a ~12 KB cap, and
+    # `closed` (per-id evidence) + `unmatched` grow with the host's detection
+    # count. Every count and decision field goes FIRST so a large host can't
+    # truncate them away — a live run lost `unmatched_prior_count` that way.
     result: dict[str, Any] = {
         "ok": (matched_count == 0) or (updated > 0),
         "device_id": device_id,
@@ -173,17 +177,17 @@ def close_remediated(
         "matched_count": matched_count,
         "unmatched_count": unmatched_count,
         "updated": updated,
-        "closed": closed_records,
-        "unmatched": unmatched_records,
+        **prior,
         "ledger_entries_used": len(used_indices),
         "ledger_entries_unused": unused,
         "invalid_ledger_indices": invalid_indices,
-        **prior,
         "note": (
             f"Closed {updated} of {matched_count} matched detection(s) as "
             f"{verdict}. {unmatched_count} unmatched left open for operator "
             f"review (no Phase 2 action touched their evidence)."
         ),
+        "closed": closed_records,
+        "unmatched": unmatched_records,
     }
     if batch_errors:
         result["batch_errors"] = batch_errors

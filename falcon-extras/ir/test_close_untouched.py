@@ -131,6 +131,24 @@ def test_bad_inputs_are_refused_before_any_call():
     assert close_untouched_originals(AID, CUTOFF_ISO, "maybe")["ok"] is False
 
 
+def test_ledger_close_puts_counts_before_the_long_lists():
+    # The agent reads this through a ~12 KB cap; on a busy host the closed /
+    # unmatched lists would push the decision counts past it.
+    from ir.close_remediated import close_remediated
+
+    fake = _FakeAlerts(
+        [_rec(f"old-{i}", "2026-04-30T08:00:00Z") for i in range(30)]
+        + [_rec("during", "2026-05-01T12:05:00Z")]
+    )
+    _client_holder["client"] = fake
+    out = close_remediated(AID, [], "true_positive", before_iso=CUTOFF_ISO)
+    keys = list(out)
+    assert out["unmatched_prior_count"] == 30, out.get("unmatched_prior_count")
+    for k in ("unmatched_count", "unmatched_prior_count", "unmatched_prior_sample"):
+        assert keys.index(k) < keys.index("unmatched"), keys
+    assert keys[-2:] == ["closed", "unmatched"], keys
+
+
 def main() -> int:
     tests = [v for k, v in globals().items() if k.startswith("test_") and callable(v)]
     failed = 0

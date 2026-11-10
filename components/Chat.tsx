@@ -1555,6 +1555,16 @@ function ApprovalSummary({ tool }: { tool: ToolUse }) {
     if (ids.length > 0) rows.push({ label: "Sample", value: ids.slice(0, 3).join(", "), mono: true });
     whatHappens = "Restores the host's network connectivity. The sensor channel was always available; this re-opens the rest.";
     ifDenied = "The host stays contained — operator follow-up required to release it manually from the Falcon Console.";
+  } else if (tool.name === "falcon_wait_for_rtr_sessions") {
+    title = "Wait until cleanup can run on the host";
+    const ids = Array.isArray(input.device_ids) ? (input.device_ids as string[]) : [];
+    rows = [
+      { label: "Hosts", value: String(ids.length) },
+      { label: "Up to", value: `${get("timeout_seconds") ?? "180"} seconds` },
+    ];
+    if (ids.length > 0) rows.push({ label: "Sample", value: ids.slice(0, 3).join(", "), mono: true });
+    whatHappens = "Repeatedly runs a harmless test script on the host (it only prints a marker) until one succeeds, so cleanup starts only once the new quarantine policy has reached the sensor. The test script is deleted afterwards.";
+    ifDenied = "Cleanup isn't started. Running it before the policy reaches the sensor can fail silently, so the workflow treats this as not ready.";
   } else if (tool.name === "extras_rtr_run_cleanup") {
     const scriptId = get("script_id") ?? "(unspecified)";
     const dryRun = String(input.dry_run ?? "true").toLowerCase() === "true";
