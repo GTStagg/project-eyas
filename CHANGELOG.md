@@ -27,6 +27,10 @@
 - **MCP server pinned to eyas-mcp 0.21.0 (c034131).** It now identifies itself
   as eyas-mcp in its logs and to clients; no tool names or result shapes
   changed.
+- **The update check follows eyas-mcp.** The scheduled release watcher now
+  reports when eyas-mcp has commits newer than the version Eyas is pinned to,
+  lists them, and says which pin to move. It no longer watches CrowdStrike's
+  falcon-mcp releases.
 - **MCP server pinned to eyas-mcp bfc9f50.** Closing every open detection on a
   host now also closes the NGSIEM correlation alerts that name only that host,
   so the agent no longer closes them one by one. Alerts that also name other
