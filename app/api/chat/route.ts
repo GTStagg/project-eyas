@@ -182,7 +182,7 @@ function buildSystemPrompt(resources: FalconResource[]): string {
   const today = new Date().toISOString().slice(0, 10);
 
   return [
-    "You are a security operations assistant connected to a CrowdStrike Falcon tenant through a falcon-mcp server.",
+    "You are a security operations assistant connected to a CrowdStrike Falcon tenant through its APIs.",
     "",
     `Today's date is ${today} (UTC). Use this for relative-date queries like "last 24 hours" or "EOL status".`,
     "",

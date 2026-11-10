@@ -14,7 +14,7 @@ export default function BlueprintPage() {
             icon={DraftingCompass}
             eyebrow="Reference · developer surface"
             title="Build your own agentic SOC."
-            subtitle="How this console composes falcon-mcp, FalconPy, and Claude — so you can build the same shape in your own organization."
+            subtitle="How this console composes eyas-mcp, FalconPy, and Claude — so you can build the same shape in your own organization."
           />
           <BlueprintAdvisor />
         </div>

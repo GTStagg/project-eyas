@@ -10,7 +10,7 @@ export default function Error({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error("[falcon-mcp] page error:", error);
+    console.error("[eyas] page error:", error);
   }, [error]);
 
   return (
