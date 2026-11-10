@@ -156,6 +156,7 @@ def close_all_open_detections_on_host(
     device_id: str,
     verdict: str,
     comment: str | None = None,
+    include_multi_host: bool = False,
 ) -> dict[str, Any]:
     """Bulk-close every open detection on a single host. WRITE — gated.
 
@@ -227,6 +228,7 @@ def close_all_open_detections_on_host(
             "device_id": device_id.lower(),
             "resolution": verdict,
             "comment": comment,
+            "include_multi_host": include_multi_host is True,
         },
     }
 

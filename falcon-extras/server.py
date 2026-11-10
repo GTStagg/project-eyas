@@ -133,13 +133,21 @@ def extras_close_all_open_detections_on_host(
     device_id: str,
     verdict: str,
     comment: str | None = None,
+    include_multi_host: bool = False,
 ) -> dict[str, Any]:
     """Bulk-close every open detection on a single host. WRITE — gated.
 
-    Walks the v3 Alerts API server-side for every detection on the host in
-    status `new` / `in_progress` / `reopened`, chunks the close calls at
-    500/batch, and returns aggregate counts. Single approval gate covers
-    the entire bulk close.
+    Finds every open detection on the host server-side (status `new` /
+    `in_progress` / `reopened`, any product — including NGSIEM correlation
+    alerts that name the host), closes them in batches, and returns aggregate
+    counts. Single approval gate covers the entire bulk close.
+
+    A correlation alert that also names OTHER hosts is not closed by default;
+    it's listed in `skipped_multi_host` (count + composite_ids). Tell the
+    operator about those and let them choose: close specific ones by id with
+    extras_update_detection_status, or rerun this with
+    `include_multi_host=true` to close them all (they then leave every named
+    host's queue).
 
     **Why this exists separate from the IR workflow:** the IR workflow
     captures detection scope in Phase 0 and closes in Phase 4, but the
@@ -163,14 +171,17 @@ def extras_close_all_open_detections_on_host(
             "bulk-closed via Project Eyas" if omitted; supply a specific
             reason ("post-IR cleanup", "workflow-self FP sweep") for
             better forensic trail.
+        include_multi_host: Default False. True also closes correlation
+            alerts that name other hosts besides this one — only when the
+            operator has said so after seeing `skipped_multi_host`.
 
     Returns:
-        ok, device_id, scope_count, updated, requested, batches,
-        batch_errors? (only if any batch failed),
-        composite_ids: list of every id closed (for audit-trail purposes).
+        ok, device_id, scope_count, updated, requested,
+        composite_ids (every id closed), matched_by (how each was found),
+        skipped_multi_host? ({count, composite_ids}), warning?.
     """
     from host_actions import close_all_open_detections_on_host as _impl
-    return _impl(device_id, verdict, comment)
+    return _impl(device_id, verdict, comment, include_multi_host)
 
 
 # ---------------------------------------------------------------------------

@@ -1652,6 +1652,9 @@ function ApprovalSummary({ tool }: { tool: ToolUse }) {
       { label: "Host", value: get("device_id") ?? "(unspecified)", mono: true },
       { label: "Verdict", value: get("verdict") ?? "(unspecified)" },
     ];
+    if (input.include_multi_host === true) {
+      rows.push({ label: "Multi-host alerts", value: "also closed — they leave the other hosts' queues too" });
+    }
     whatHappens = "Closes every open detection on this host with the supplied verdict — no ledger matching, no per-id audit trail. Out-of-band rescue lane for queue drain.";
     ifDenied = "Detections stay open for individual review.";
   } else if (tool.name === "extras_update_detection_status") {

@@ -24,6 +24,10 @@
   ship with the bundle.
 
 ### Changed
+- **MCP server pinned to eyas-mcp bfc9f50.** Closing every open detection on a
+  host now also closes the NGSIEM correlation alerts that name only that host,
+  so the agent no longer closes them one by one. Alerts that also name other
+  hosts are left open and reported; the agent asks before closing those.
 - **Incident response's release summary survives busy hosts.** The counts the
   agent needs after closing remediated detections now come first in the
   result, so a host with many detections no longer cuts them off. The
