@@ -15,7 +15,7 @@ import {
   getDeploymentPolicy,
   validateAnthropicAgainstPolicy,
 } from "@/lib/config/deployment-policy";
-import { resetAnthropicClient } from "@/lib/llm/anthropic";
+import { anthropicClientOptions, resetAnthropicClient } from "@/lib/llm/anthropic";
 import { invalidateHealthCache } from "@/lib/health";
 import { FALCON_BASE_URL_RE, probeFalconCredentials } from "@/lib/falcon/oauth-probe";
 import { anthropicBaseUrlError } from "@/lib/llm/base-url";
@@ -233,7 +233,7 @@ export async function testConnectionAction(_prev: TestState, formData: FormData)
     } else if (!opts.apiKey && !opts.authToken) {
       result.anthropic = { ok: false, message: "Provide either an Anthropic API key or gateway auth token." };
     } else {
-      const client = new Anthropic(opts);
+      const client = new Anthropic(anthropicClientOptions({ apiKey, authToken, baseURL }));
       try {
         await client.models.retrieve(model);
         result.anthropic = { ok: true, message: `Authenticated; model "${model}" available.` };

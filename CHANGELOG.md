@@ -19,7 +19,8 @@
   builder's `.env`.
 - **Dependency updates:** React 19.3, lucide-react 0.577, drizzle-orm 0.45.4,
   better-sqlite3 12.11, FalconPy 1.6.6, Next.js 15.5.28, `mammoth` 1.13.0 (directory
-  traversal), MCP SDK 1.32.2, `proxy-addr` 2.0.8, Python `mcp` 1.30.0; the
+  traversal), MCP SDK 1.32.2, Anthropic SDK 1.3.0 (Claude API version
+  2026-10-21; now Apache-2.0 licensed), `proxy-addr` 2.0.8, Python `mcp` 1.30.0; the
   sidecar's Python dependencies are hash-locked. Third-party license notices
   ship with the bundle.
 
@@ -28,7 +29,11 @@
   `claude-opus-5-5` suggested for the highest quality. Every request now asks
   for a medium thinking effort (where the model supports it) and leaves room
   for thinking in its output limit, so answers aren't cut off. A request the
-  model declines now ends with a plain notice instead of an error. The cost
+  model declines now ends with a plain notice instead of an error. On
+  `claude-sonnet-5-5` and `claude-opus-5-5`, a request a safety check declines
+  is now retried automatically on a fallback model in the same call, so
+  routine security work is interrupted less often. Gateways that don't
+  support this keep working without it. The cost
   page prices the current models correctly, and Opus 4.5 and later are no
   longer priced at the old Opus 4 rate.
 - **Docs and the project guide match where things stand today:** eyas-mcp as

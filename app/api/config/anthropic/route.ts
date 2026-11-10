@@ -12,7 +12,7 @@ import {
   getDeploymentPolicy,
   validateAnthropicAgainstPolicy,
 } from "@/lib/config/deployment-policy";
-import { resetAnthropicClient } from "@/lib/llm/anthropic";
+import { anthropicClientOptions, resetAnthropicClient } from "@/lib/llm/anthropic";
 import { anthropicBaseUrlError } from "@/lib/llm/base-url";
 import { invalidateHealthCache } from "@/lib/health";
 
@@ -86,11 +86,7 @@ async function probeAnthropic(args: {
   model: string;
 }): Promise<{ ok: boolean; message: string }> {
   try {
-    const opts: ConstructorParameters<typeof Anthropic>[0] = {};
-    if (args.apiKey) opts.apiKey = args.apiKey;
-    if (args.authToken) opts.authToken = args.authToken;
-    if (args.baseURL) opts.baseURL = args.baseURL;
-    const client = new Anthropic(opts);
+    const client = new Anthropic(anthropicClientOptions(args));
     await client.models.retrieve(args.model);
     return { ok: true, message: `Connected and ${args.model} is available.` };
   } catch (err) {

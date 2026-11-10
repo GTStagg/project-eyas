@@ -156,7 +156,7 @@ export const irRunTurns = sqliteTable(
 );
 
 // Write-through cache for the in-memory chat conversation map. messages_json
-// is the Anthropic.MessageParam[] for the session; ir_mode_json mirrors the
+// is the Anthropic.Beta.BetaMessageParam[] for the session; ir_mode_json mirrors the
 // IrMode struct on lib/chat/state.ts. Stored as a single blob to match the
 // in-memory shape — turns are infrequent and transcripts are small.
 export const chatSessions = sqliteTable(

@@ -25,7 +25,7 @@ import path from "node:path";
 const PACKAGES = [
   { name: "geist", version: "1.7.0" },
   { name: "iron-session", version: "8.0.4" },
-  { name: "@anthropic-ai/sdk", version: "0.69.0" },
+  { name: "@anthropic-ai/sdk", version: "1.3.0" },
   { name: "@crowdstrike/aidr", version: "1.2.1" },
   // Newer than some package mirrors serve: mammoth 1.11+ carries the
   // CVE-2025-11849 path-traversal fix.
