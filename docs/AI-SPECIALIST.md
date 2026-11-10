@@ -205,7 +205,7 @@ For the reviewer who wants to dig in after the demo:
 
 - **eyas-mcp** (the MCP server): 0.21.0, pinned by git commit in `versions.json`; `/status` and the bundle's `BUILD-INFO.txt` show the running pin.
 - **FalconPy**: 1.6.6 (sidecar, hash-locked); upgrades require re-checking the NGSIEM uber-class quirk noted in CLAUDE.md.
-- **Anthropic SDK**: `@anthropic-ai/sdk` 0.69 (pinned). Default model `claude-sonnet-5-5`, with `claude-opus-5-5` as the higher-quality option, configurable in `/config`. Every request sets `output_config.effort` (`medium`) where the model supports it and gets at least 16K `max_tokens`, because thinking counts against it on the 5.5 models (`lib/llm/request.ts`).
+- **Anthropic SDK**: `@anthropic-ai/sdk` 1.3.0 (pinned; API version `2026-10-21`). Default model `claude-sonnet-5-5`, with `claude-opus-5-5` as the higher-quality option, configurable in `/config`. Every request sets `output_config.effort` (`medium`) where the model supports it and gets at least 16K `max_tokens`, because thinking counts against it on the 5.5 models (`lib/llm/request.ts`). On the two 5.5 models, a request a safety classifier declines is re-run server-side on a fallback model (`fallbacks: "default"`); a gateway that doesn't accept that parameter gets requests without it (`lib/llm/messages.ts`).
 - **Next.js**: 15.x (App Router, Server Actions, streaming responses).
 
 ---

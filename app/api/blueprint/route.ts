@@ -2,7 +2,7 @@ import "server-only";
 import { NextResponse } from "next/server";
 import type Anthropic from "@anthropic-ai/sdk";
 import { getAnthropicClient, getAnthropicModel } from "@/lib/llm/anthropic";
-import { withModelDefaults } from "@/lib/llm/request";
+import { streamMessage } from "@/lib/llm/messages";
 import { sseEncode } from "@/lib/chat/agent-loop";
 import { logUsage } from "@/lib/cost/log";
 import { REFERENCE_ARCHITECTURE_BRIEF } from "@/lib/advisor/blueprint-knowledge";
@@ -100,8 +100,9 @@ export async function POST(request: Request) {
       try {
         const anthropic = getAnthropicClient();
         const model = getAnthropicModel();
-        const llm = anthropic.messages.stream(
-          withModelDefaults({
+        const final = await streamMessage(
+          anthropic,
+          {
             model,
             max_tokens: 3072,
             system: [
@@ -112,20 +113,16 @@ export async function POST(request: Request) {
               },
             ],
             messages: [{ role: "user", content: question }],
-          }),
-          { signal: abort.signal },
+          },
+          {
+            signal: abort.signal,
+            onEvent: (event) => {
+              if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
+                emit("text", event.delta.text);
+              }
+            },
+          },
         );
-
-        for await (const event of llm) {
-          if (
-            event.type === "content_block_delta" &&
-            event.delta.type === "text_delta"
-          ) {
-            emit("text", event.delta.text);
-          }
-        }
-
-        const final: Anthropic.Message = await llm.finalMessage();
         if (final.usage) {
           usage = {
             input_tokens: final.usage.input_tokens ?? 0,

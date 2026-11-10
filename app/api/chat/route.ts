@@ -768,7 +768,7 @@ export async function POST(request: Request) {
     const existingIrMode = getIrMode(sessionId);
     const enteringIrMode = !!irPrimer && !existingIrMode;
 
-    const prefix: Anthropic.MessageParam[] = [];
+    const prefix: Anthropic.Beta.BetaMessageParam[] = [];
     let syntheticPrefetchCalls: ToolCallRecord[] = [];
     if (enteringIrMode && extras && irPrimer) {
       // Idempotency check: if a prior IR run on this host is recent, surface
@@ -878,7 +878,7 @@ export async function POST(request: Request) {
       });
     }
 
-    const initialMessages: Anthropic.MessageParam[] = enteringIrMode
+    const initialMessages: Anthropic.Beta.BetaMessageParam[] = enteringIrMode
       ? [...loadConversation(sessionId), ...prefix]
       : [...loadConversation(sessionId), { role: "user", content: input }];
 

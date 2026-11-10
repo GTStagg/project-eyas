@@ -2,7 +2,8 @@ import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
 import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { getAnthropicClient, getAnthropicModel } from "@/lib/llm/anthropic";
-import { withModelDefaults } from "@/lib/llm/request";
+import { streamMessage } from "@/lib/llm/messages";
+import { assistantTurnContent, servedByFallback, toolUsesToRun } from "@/lib/llm/request";
 import { buildToolBridge } from "@/lib/mcp/tool-bridge";
 import { awaitApproval } from "@/lib/chat/approvals";
 import { requiresApproval as defaultRequiresApproval } from "@/lib/mcp/write-tools";
@@ -18,7 +19,7 @@ export type RunAgentOptions = {
    *  same Claude tool list; bridge dispatches by name. */
   extrasMcp?: Client | null;
   systemPrompt: string;
-  initialMessages: Anthropic.MessageParam[];
+  initialMessages: Anthropic.Beta.BetaMessageParam[];
   emit: Emit;
   sessionId?: string;
   maxIterations?: number;
@@ -80,7 +81,7 @@ export type RunAgentOptions = {
 };
 
 export type RunAgentResult = {
-  finalMessages: Anthropic.MessageParam[];
+  finalMessages: Anthropic.Beta.BetaMessageParam[];
   endedNormally: boolean;
 };
 
@@ -182,7 +183,7 @@ export async function runAgentLoop(opts: RunAgentOptions): Promise<RunAgentResul
   });
 
   const anthropic = getAnthropicClient();
-  const conversation: Anthropic.MessageParam[] = [...initialMessages];
+  const conversation: Anthropic.Beta.BetaMessageParam[] = [...initialMessages];
 
   // Cumulative usage across every iteration (Anthropic call) in this turn.
   // We log a single cost record per turn — the dashboard cares about
@@ -221,7 +222,7 @@ export async function runAgentLoop(opts: RunAgentOptions): Promise<RunAgentResul
     // interim "Let me also grab…" narration doesn't bleed into the final
     // report — only the last iteration's prose survives.
     emit("iteration_start", { iteration: iter + 1 });
-    let finalMessage: Anthropic.Message;
+    let finalMessage: Anthropic.Beta.BetaMessage;
     try {
       // Cache strategy:
       //   - System prompt: chat uses 1h TTL (interactive sessions routinely
@@ -246,8 +247,9 @@ export async function runAgentLoop(opts: RunAgentOptions): Promise<RunAgentResul
                 : t,
             )
           : visibleTools;
-      const messageStream = anthropic.messages.stream(
-        withModelDefaults({
+      finalMessage = await streamMessage(
+        anthropic,
+        {
           model: getAnthropicModel(),
           max_tokens: maxTokensPerTurn,
           system: [
@@ -265,20 +267,23 @@ export async function runAgentLoop(opts: RunAgentOptions): Promise<RunAgentResul
           ],
           tools,
           messages: conversation,
-        }),
-        { signal },
+        },
+        {
+          signal,
+          onEvent: (event) => {
+            if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
+              emit("text", event.delta.text);
+            }
+          },
+        },
       );
-
-      for await (const event of messageStream) {
-        if (
-          event.type === "content_block_delta" &&
-          event.delta.type === "text_delta"
-        ) {
-          emit("text", event.delta.text);
-        }
+      if (servedByFallback(finalMessage)) {
+        // A safety classifier declined the request and the API re-ran it on
+        // a fallback model in the same call (or this conversation is already
+        // routed there). Text streamed before the switch is kept and the
+        // fallback model continues from it, so the UI needs no reset.
+        console.info(`[agent-loop] iteration ${iter + 1} served by fallback model ${finalMessage.model}`);
       }
-
-      finalMessage = await messageStream.finalMessage();
       const u = finalMessage.usage;
       if (u) {
         totals.input_tokens += u.input_tokens ?? 0;
@@ -317,9 +322,11 @@ export async function runAgentLoop(opts: RunAgentOptions): Promise<RunAgentResul
       return { finalMessages: conversation, endedNormally: false };
     }
 
-    const toolUses = finalMessage.content.filter(
-      (b): b is Anthropic.ToolUseBlock => b.type === "tool_use",
-    );
+    // Only calls after a fallback boundary run (the declining model's are
+    // dropped from the echoed turn too). `assistantTurn` is what goes back
+    // into the conversation: unchanged unless a fallback happened.
+    const toolUses = toolUsesToRun(finalMessage.content);
+    const assistantTurn = assistantTurnContent(finalMessage.content);
 
     const toolStartedAt = new Map<string, number>();
     for (const tu of toolUses) {
@@ -328,7 +335,7 @@ export async function runAgentLoop(opts: RunAgentOptions): Promise<RunAgentResul
     }
 
     if (finalMessage.stop_reason === "end_turn") {
-      conversation.push({ role: "assistant", content: finalMessage.content });
+      conversation.push({ role: "assistant", content: assistantTurn });
       emit("done", {
         stop_reason: finalMessage.stop_reason,
         usage: totals,
@@ -355,7 +362,7 @@ export async function runAgentLoop(opts: RunAgentOptions): Promise<RunAgentResul
       // keep the partial assistant turn in the transcript, tell the user it
       // was cut off, and emit `done` instead of an error toast.
       if (finalMessage.stop_reason === "max_tokens") {
-        conversation.push({ role: "assistant", content: finalMessage.content });
+        conversation.push({ role: "assistant", content: assistantTurn });
         emit("text", "\n\n_[Response truncated — hit the output token limit. Ask a narrower question or request the rest to continue.]_");
         emit("done", {
           stop_reason: finalMessage.stop_reason,
@@ -375,11 +382,16 @@ export async function runAgentLoop(opts: RunAgentOptions): Promise<RunAgentResul
         return { finalMessages: conversation, endedNormally: true };
       }
       // Safety classifiers on the 5.5 generation can decline a request
-      // (HTTP 200, stop_reason "refusal", stop_details.category). Tell the
-      // operator plainly instead of reporting an unexpected stop.
+      // (HTTP 200, stop_reason "refusal", stop_details.category). With
+      // server-side fallbacks on, reaching this means the fallback chain
+      // declined too, or the category has no fallback. Tell the operator
+      // plainly instead of reporting an unexpected stop. The declined turn is
+      // NOT kept: a pre-output decline has empty content (an empty assistant
+      // turn would 400 the next request) and a mid-stream one is partial
+      // output to discard. The conversation keeps ending on the user turn,
+      // and the operator's next message joins it.
       if (finalMessage.stop_reason === "refusal") {
-        conversation.push({ role: "assistant", content: finalMessage.content });
-        const details = (finalMessage as { stop_details?: { category?: string | null } }).stop_details;
+        const details = finalMessage.stop_details;
         emit("text", `
 
 _[Claude declined to continue this request${details?.category ? ` (${details.category})` : ""}. Rephrase it, narrow it, or start a new conversation.]_`);
@@ -406,7 +418,7 @@ _[Claude declined to continue this request${details?.category ? ` (${details.cat
       return { finalMessages: conversation, endedNormally: false };
     }
 
-    conversation.push({ role: "assistant", content: finalMessage.content });
+    conversation.push({ role: "assistant", content: assistantTurn });
 
     const toolResults: Anthropic.ToolResultBlockParam[] = [];
     for (const tu of toolUses) {

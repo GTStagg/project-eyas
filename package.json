@@ -24,6 +24,7 @@
     "test:native-dispatch": "node ./scripts/test-native-dispatch.mjs",
     "test:release-watcher": "node ./scripts/test-release-watcher.mjs",
     "test:model-defaults": "node ./scripts/test-model-defaults.mjs",
+    "test:llm-messages": "node ./scripts/test-llm-messages.mjs",
     "test:prevention-posture": "node ./scripts/test-prevention-posture.mjs",
     "test:data-protection": "node ./scripts/test-data-protection.mjs",
     "test:primer": "node ./scripts/test-primer.mjs",
@@ -39,7 +40,7 @@
     "db:studio": "drizzle-kit studio --config=drizzle.config.ts"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "file:vendor/npm-offline/anthropic-ai-sdk-0.69.0.tgz",
+    "@anthropic-ai/sdk": "file:vendor/npm-offline/anthropic-ai-sdk-1.3.0.tgz",
     "@crowdstrike/aidr": "file:vendor/npm-offline/crowdstrike-aidr-1.2.1.tgz",
     "@modelcontextprotocol/sdk": "file:vendor/npm-offline/modelcontextprotocol-sdk-1.32.2.tgz",
     "better-sqlite3": "^12.11.1",

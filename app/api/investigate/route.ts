@@ -7,7 +7,7 @@ import { beginInFlight, endInFlight } from "@/lib/chat/in-flight";
 import { withFalconMcpClient } from "@/lib/mcp/falcon-client";
 import { withFalconExtrasClient } from "@/lib/mcp/falcon-extras-client";
 import { getAnthropicClient, getAnthropicModel } from "@/lib/llm/anthropic";
-import { withModelDefaults } from "@/lib/llm/request";
+import { streamMessage } from "@/lib/llm/messages";
 import { logUsage } from "@/lib/cost/log";
 
 export const runtime = "nodejs";
@@ -265,7 +265,7 @@ export async function POST(request: Request) {
       cache_read_input_tokens: 0,
     };
     try {
-      const synthInput: Anthropic.MessageParam[] = [
+      const synthInput: Anthropic.Beta.BetaMessageParam[] = [
         {
           role: "user",
           content: [
@@ -279,26 +279,25 @@ export async function POST(request: Request) {
           ].join("\n"),
         },
       ];
-      const stream = anthropic.messages.stream(
-        withModelDefaults({
+      const final = await streamMessage(
+        anthropic,
+        {
           model: getAnthropicModel(),
           max_tokens: 1024,
           system: [
             { type: "text", text: SYNTHESIS_PROMPT, cache_control: { type: "ephemeral", ttl: "1h" } },
           ],
           messages: synthInput,
-        }),
-        { signal },
+        },
+        {
+          signal,
+          onEvent: (event) => {
+            if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
+              emit("text", event.delta.text);
+            }
+          },
+        },
       );
-      for await (const event of stream) {
-        if (
-          event.type === "content_block_delta" &&
-          event.delta.type === "text_delta"
-        ) {
-          emit("text", event.delta.text);
-        }
-      }
-      const final = await stream.finalMessage();
       const u = final.usage;
       if (u) {
         totalTokens = {

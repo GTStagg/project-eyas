@@ -27,7 +27,7 @@ export type IrMode = {
 };
 
 type Entry = {
-  messages: Anthropic.MessageParam[];
+  messages: Anthropic.Beta.BetaMessageParam[];
   lastTouched: number;
   irMode?: IrMode;
   title?: string;
@@ -37,7 +37,7 @@ type Entry = {
 export const TTL_MS = 72 * 60 * 60 * 1000; // 72-hour rolling idle
 const TITLE_MAX_LEN = 60;
 
-function deriveTitleFromMessages(messages: Anthropic.MessageParam[]): string | null {
+function deriveTitleFromMessages(messages: Anthropic.Beta.BetaMessageParam[]): string | null {
   for (const m of messages) {
     if (m.role !== "user") continue;
     let text: string;
@@ -131,7 +131,7 @@ function hydrate(id: string, now: number = Date.now()): Entry | null {
       return null;
     }
     const entry: Entry = {
-      messages: JSON.parse(row.messagesJson) as Anthropic.MessageParam[],
+      messages: JSON.parse(row.messagesJson) as Anthropic.Beta.BetaMessageParam[],
       lastTouched: row.lastTouched,
       irMode: row.irModeJson ? (JSON.parse(row.irModeJson) as IrMode) : undefined,
       title: row.title ?? undefined,
@@ -162,12 +162,12 @@ function sweepExpired(now: number = Date.now()): number {
   return removed;
 }
 
-export function loadConversation(id: string): Anthropic.MessageParam[] {
+export function loadConversation(id: string): Anthropic.Beta.BetaMessageParam[] {
   const entry = hydrate(id);
   return entry ? entry.messages : [];
 }
 
-export function saveConversation(id: string, messages: Anthropic.MessageParam[]): void {
+export function saveConversation(id: string, messages: Anthropic.Beta.BetaMessageParam[]): void {
   const prev = conversations.get(id);
   const now = Date.now();
   const entry: Entry = {
@@ -290,9 +290,9 @@ export function listSessions(): SessionSummary[] {
   }
   const out: SessionSummary[] = [];
   for (const row of rows) {
-    let messages: Anthropic.MessageParam[];
+    let messages: Anthropic.Beta.BetaMessageParam[];
     try {
-      messages = JSON.parse(row.messagesJson) as Anthropic.MessageParam[];
+      messages = JSON.parse(row.messagesJson) as Anthropic.Beta.BetaMessageParam[];
     } catch {
       continue;
     }
@@ -327,7 +327,7 @@ export type FullSession = {
   createdAt: number;
   lastTouched: number;
   expiresAt: number;
-  messages: Anthropic.MessageParam[];
+  messages: Anthropic.Beta.BetaMessageParam[];
   irMode: IrMode | null;
 };
 

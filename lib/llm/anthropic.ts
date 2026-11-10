@@ -2,6 +2,7 @@ import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
 import { getRuntimeConfig, invalidateConfigCache } from "@/lib/config/runtime";
 import { getDeploymentPolicy } from "@/lib/config/deployment-policy";
+import { resetServerFallbackMemo } from "@/lib/llm/messages";
 
 let cached: { client: Anthropic; key: string } | null = null;
 
@@ -38,12 +39,32 @@ export function getAnthropicClient(): Anthropic {
   }
   const key = clientKey(cfg);
   if (cached && cached.key === key) return cached.client;
-  const opts: ConstructorParameters<typeof Anthropic>[0] = {};
-  if (cfg.apiKey) opts.apiKey = cfg.apiKey;
-  if (cfg.authToken) opts.authToken = cfg.authToken;
-  if (cfg.baseURL) opts.baseURL = cfg.baseURL;
-  cached = { client: new Anthropic(opts), key };
+  cached = { client: new Anthropic(anthropicClientOptions(cfg)), key };
   return cached.client;
+}
+
+/**
+ * SDK ≥ 1.0 holds one credential per client (passing both throws) and sends
+ * an API key as `Authorization: Bearer`. Eyas keeps the headers it has always
+ * sent, so gateways configured in /config see no change: an API key goes out
+ * as `X-Api-Key` (the Claude API accepts either header), an auth token as
+ * `Authorization: Bearer`, and a config with both sends both.
+ */
+export function anthropicClientOptions(cfg: {
+  apiKey?: string;
+  authToken?: string;
+  baseURL?: string;
+}): ConstructorParameters<typeof Anthropic>[0] {
+  const opts: ConstructorParameters<typeof Anthropic>[0] = {};
+  if (cfg.baseURL) opts.baseURL = cfg.baseURL;
+  if (cfg.authToken) {
+    opts.authToken = cfg.authToken;
+    if (cfg.apiKey) opts.defaultHeaders = { "X-Api-Key": cfg.apiKey };
+  } else if (cfg.apiKey) {
+    opts.apiKey = cfg.apiKey;
+    opts.defaultHeaders = { "X-Api-Key": cfg.apiKey, Authorization: null };
+  }
+  return opts;
 }
 
 export function getAnthropicModel(): string {
@@ -52,5 +73,6 @@ export function getAnthropicModel(): string {
 
 export function resetAnthropicClient(): void {
   cached = null;
+  resetServerFallbackMemo();
   invalidateConfigCache();
 }

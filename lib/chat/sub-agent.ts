@@ -2,7 +2,8 @@ import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
 import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { getAnthropicClient, getAnthropicModel } from "@/lib/llm/anthropic";
-import { withModelDefaults } from "@/lib/llm/request";
+import { createMessage } from "@/lib/llm/messages";
+import { assistantTurnContent, toolUsesToRun } from "@/lib/llm/request";
 import { buildToolBridge } from "@/lib/mcp/tool-bridge";
 import { maybeFenceToolResult } from "@/lib/chat/agent-loop";
 import { requiresApproval as defaultRequiresApproval } from "@/lib/mcp/write-tools";
@@ -146,7 +147,7 @@ export async function runSubAgent(opts: SubAgentOptions): Promise<SubAgentResult
       : filteredTools;
 
   const anthropic = getAnthropicClient();
-  const conversation: Anthropic.MessageParam[] = [
+  const conversation: Anthropic.Beta.BetaMessageParam[] = [
     { role: "user", content: userPrompt },
   ];
 
@@ -165,10 +166,11 @@ export async function runSubAgent(opts: SubAgentOptions): Promise<SubAgentResult
     iterationsRun = iter + 1;
     if (isCancelled()) break;
 
-    let finalMessage: Anthropic.Message;
+    let finalMessage: Anthropic.Beta.BetaMessage;
     try {
-      finalMessage = await anthropic.messages.create(
-        withModelDefaults({
+      finalMessage = await createMessage(
+        anthropic,
+        {
           model: getAnthropicModel(),
           max_tokens: maxTokensPerTurn,
           system: [
@@ -180,7 +182,7 @@ export async function runSubAgent(opts: SubAgentOptions): Promise<SubAgentResult
           ],
           tools,
           messages: conversation,
-        }),
+        },
         { signal },
       );
     } catch (err) {
@@ -199,12 +201,12 @@ export async function runSubAgent(opts: SubAgentOptions): Promise<SubAgentResult
     // Capture the assistant's text content from this turn. The last turn's
     // text (when stop_reason === "end_turn") is the subagent's final output.
     const textBlocks = finalMessage.content
-      .filter((b): b is Anthropic.TextBlock => b.type === "text")
+      .filter((b): b is Anthropic.Beta.BetaTextBlock => b.type === "text")
       .map((b) => b.text)
       .join("");
 
     if (finalMessage.stop_reason === "end_turn") {
-      conversation.push({ role: "assistant", content: finalMessage.content });
+      conversation.push({ role: "assistant", content: assistantTurnContent(finalMessage.content) });
       finalText = textBlocks;
       endedNormally = true;
       break outer;
@@ -217,13 +219,11 @@ export async function runSubAgent(opts: SubAgentOptions): Promise<SubAgentResult
       break outer;
     }
 
-    conversation.push({ role: "assistant", content: finalMessage.content });
+    conversation.push({ role: "assistant", content: assistantTurnContent(finalMessage.content) });
 
-    const toolUses = finalMessage.content.filter(
-      (b): b is Anthropic.ToolUseBlock => b.type === "tool_use",
-    );
+    const toolUses = toolUsesToRun(finalMessage.content);
 
-    const toolResults: Anthropic.ToolResultBlockParam[] = [];
+    const toolResults: Anthropic.Beta.BetaToolResultBlockParam[] = [];
     for (const tu of toolUses) {
       const input = (tu.input ?? {}) as Record<string, unknown>;
       const tStart = Date.now();

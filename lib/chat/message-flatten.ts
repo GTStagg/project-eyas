@@ -1,7 +1,7 @@
 import "server-only";
 import type Anthropic from "@anthropic-ai/sdk";
 
-// Flatten an `Anthropic.MessageParam[]` (the on-disk shape of a session's
+// Flatten an `Anthropic.Beta.BetaMessageParam[]` (the on-disk shape of a session's
 // conversation history) into the Turn[] shape that components/Chat.tsx
 // renders. The agent-loop normally builds the UI shape live via SSE events;
 // when the user resumes a stored conversation we don't replay the stream —
@@ -92,7 +92,7 @@ function toolResultsOf(
   return out;
 }
 
-function isToolResultOnly(msg: Anthropic.MessageParam): boolean {
+function isToolResultOnly(msg: Anthropic.Beta.BetaMessageParam): boolean {
   if (msg.role !== "user") return false;
   if (typeof msg.content === "string") return false;
   if (!Array.isArray(msg.content) || msg.content.length === 0) return false;
@@ -101,7 +101,7 @@ function isToolResultOnly(msg: Anthropic.MessageParam): boolean {
   );
 }
 
-export function flattenMessagesToTurns(messages: Anthropic.MessageParam[]): ResumedTurn[] {
+export function flattenMessagesToTurns(messages: Anthropic.Beta.BetaMessageParam[]): ResumedTurn[] {
   const turns: ResumedTurn[] = [];
   let lastAssistant: ResumedAssistantTurn | null = null;
 
