@@ -2,7 +2,7 @@
 
 **Unofficial**
 
-Eyas is an agentic web console for CrowdStrike Falcon, built on `eyas-mcp` (a maintained continuation of CrowdStrike's `falcon-mcp` server, which upstream moved to maintenance mode), the [FalconPy](https://falconpy.io) Python SDK, and the Anthropic Claude API. The name *eyas* is the falconry term for a young falcon being trained — Eyas is raised on the same craft as Falcon but is distinctly its own thing. Not a CrowdStrike product. Intended audiences: SOC analysts, IR analysts, and Falcon administrators evaluating an agent layer for their own tenant; CrowdStrike Sales Engineers using the codebase as a working reference for `falcon-mcp` + FalconPy + Claude integration.
+Eyas is an agentic web console for CrowdStrike Falcon, built on `eyas-mcp` (an independent Falcon MCP server derived from CrowdStrike's MIT-licensed `falcon-mcp`), the [FalconPy](https://falconpy.io) Python SDK, and the Anthropic Claude API. The name *eyas* is the falconry term for a young falcon being trained — Eyas is raised on the same craft as Falcon but is distinctly its own thing. Not a CrowdStrike product. Intended audiences: SOC analysts, IR analysts, and Falcon administrators evaluating an agent layer for their own tenant; CrowdStrike Sales Engineers using the codebase as a working reference for MCP server + FalconPy + Claude integration.
 
 ---
 
@@ -10,9 +10,9 @@ Eyas is an agentic web console for CrowdStrike Falcon, built on `eyas-mcp` (a ma
 
 The Falcon console is a comprehensive but click-driven UI. Common security workflows — "summarize all critical detections from the last 24 hours and group them by host", "find any host that hasn't checked in for a week and show its last detection", "is this hash already covered by Falcon Intel before I add a custom IOC?", "patch every host showing CVE-2024-XXXX", "walk me through containment, cleanup, and release on this host" — span multiple modules and require an operator to context-switch between Detections, Hosts, Spotlight, RTR, IOC management, Identity, and Intel. Each cross-module pivot is manual.
 
-Anthropic's Model Context Protocol (MCP) and an MCP server for Falcon (`eyas-mcp`, continued from CrowdStrike's `falcon-mcp`) expose Falcon's API surface as a typed tool catalog that an LLM can drive directly. **Eyas** is a self-hosted Next.js application that wraps that catalog with a chat surface, deterministic dashboards, and curated agentic decision surfaces — turning natural-language prompts into auditable, gated tool calls against the operator's own tenant.
+Anthropic's Model Context Protocol (MCP) and an MCP server for Falcon (`eyas-mcp`) expose Falcon's API surface as a typed tool catalog that an LLM can drive directly. **Eyas** is a self-hosted Next.js application that wraps that catalog with a chat surface, deterministic dashboards, and curated agentic decision surfaces — turning natural-language prompts into auditable, gated tool calls against the operator's own tenant.
 
-This is an **unofficial reference implementation**, not a production replacement for the Falcon console. Quality is measured by useful, novel cross-module workflows surfaced — not by feature parity. The codebase doubles as a worked example for teams building their own agent layer on top of `falcon-mcp` + FalconPy.
+This is an **unofficial reference implementation**, not a production replacement for the Falcon console. Quality is measured by useful, novel cross-module workflows surfaced — not by feature parity. The codebase doubles as a worked example for teams building their own agent layer on top of an MCP server + FalconPy.
 
 ---
 
@@ -26,9 +26,9 @@ Single-operator security work, primarily:
 - **Threat-actor exposure.** `/intel` walks 90 days of detections and runs deterministic three-path attribution server-side: (1) Falcon-native `adversary_ids` resolved against the Intel actor catalog — ground truth, same signal the Console uses; (2) extracted hashes / domains / IPs joined against Falcon Intel indicators (corroboration); (3) detection-text alias matching against a curated CrowdStrike actor map — heuristic. Provenance rendered per evidence row so the operator can tell ground truth from heuristic. Agent only synthesizes; no per-detection LLM fan-out. Surfaces only actors with tenant evidence — no flat global catalog.
 - **Adversary-intel exposure.** `/recon` checks domain or email against the Falcon Adversary Intelligence Recon corpus — criminal marketplaces, dark-web forums, paste sites, Telegram, social media — via the Recon `preview_rule` data-lake search path.
 - **Hash lineage.** `/malquery` fans out MalQuery metadata + Falcon Intel + tenant detections across up to 25 hashes per run.
-- **Vulnerability posture and patching.** `/vulnerabilities` is a posture surface — three-card hero strip (Drop everything / ExPRT Critical / Actively exploited = CISA KEV count), per-row KEV + exploit-status chips, ExPRT-led grouping. The patching loop closes: the curated RTR script catalog (`falcon-extras/patching/`) covers Chrome, Firefox, Office Click-to-Run, 7-Zip, JRE removal, Windows Update via the WUA COM API, distro-agnostic Linux apt/dnf/yum, and macOS PKG installs. Plan → execute (dry-run, then live) → verify.
-- **Agentic incident response.** Five-phase chat-resident workflow (Discovery → Quarantine → Remediation → Verification → Release/Hold) gated by per-tool approval. Phase 0 enrichment surfaces process-tree ancestry + delivery-vector verdict (`phishing_doc`, `c2_agent`, `lateral_winrm`, etc.), cmdline artifacts, registry persistence, and a thorough RAT-install scan. Cleanup catalog covers 14 primitives (kill-process, delete-file, quarantine-file, IFEO removal, AnyDesk uninstall, etc.) — all rendered server-side from a manifest schema; the agent supplies validated params, never script bytes.
-- **Operational autonomy.** Manifest-driven recurring jobs (patch digest, daily briefing, upstream `falcon-mcp` release watcher) deliver agentic markdown reports to a webhook on a configurable cadence.
+- **Vulnerability posture and patching.** `/vulnerabilities` is a posture surface — three-card hero strip (Drop everything / ExPRT Critical / Actively exploited = CISA KEV count), per-row KEV + exploit-status chips, ExPRT-led grouping. The patching loop closes: the curated RTR script catalog (`falcon-extras/patching/`) covers Chrome, Firefox, Office Click-to-Run, 7-Zip, JRE removal, Windows Update via the WUA COM API, distro-agnostic Linux apt/dnf/yum, and macOS PKG installs. Plan → execute (dry-run, then live) → verify. Eyas renders each script from its library; `eyas-mcp` uploads, runs and deletes it.
+- **Agentic incident response.** Five-phase chat-resident workflow (Discovery → Quarantine → Remediation → Verification → Release/Hold) gated by per-tool approval. Phase 0 enrichment surfaces process-tree ancestry + delivery-vector verdict (`phishing_doc`, `c2_agent`, `lateral_winrm`, etc.), cmdline artifacts, registry persistence, and a thorough RAT-install scan. Cleanup catalog covers 14 primitives (kill-process, delete-file, quarantine-file, IFEO removal, AnyDesk uninstall, etc.) — all rendered server-side from a manifest schema; the agent supplies validated params, never script bytes. Before cleanup the workflow waits until a probe script actually runs on the quarantined host; at release it closes only what remediation matched and asks the operator before closing original detections it never touched.
+- **Operational autonomy.** Manifest-driven recurring jobs (patch digest, daily briefing, an eyas-mcp update check) deliver agentic markdown reports to a webhook on a configurable cadence.
 - **Write actions** (IOC, firewall rule groups, custom IOA, scheduled report launch, host containment, host group membership, Fusion workflow execute, RTR patching + cleanup, detection verdict transitions) — gated behind an explicit per-call approval card with a 5-minute timeout.
 
 ---
@@ -150,8 +150,7 @@ The honest quality lever remains: which novel "I couldn't easily do this in the 
 ## References
 
 - `eyas-mcp` — https://github.com/GTStagg/eyas-mcp
-- CrowdStrike `falcon-mcp` (upstream, maintenance mode) — https://github.com/crowdstrike/falcon-mcp
-- `falcon-mcp` documentation — https://crowdstrike.github.io/falcon-mcp/
+- CrowdStrike `falcon-mcp`, which eyas-mcp derives from (attribution in `NOTICE.md`) — https://github.com/crowdstrike/falcon-mcp
 - Model Context Protocol — https://modelcontextprotocol.io
 - FalconPy — https://falconpy.io
 - Anthropic Messages API — https://docs.anthropic.com/en/api/messages

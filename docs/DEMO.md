@@ -15,13 +15,13 @@ Adjust depth per audience. Section headers are the beats; quoted lines are what 
 - A third tab open at `/vulnerabilities?mode=newest&limit=500` — the patching beat starts there.
 - `CHAT_MAX_ITERATIONS=50` in `.env.local` — patching flows can chew 6–10 polling iterations on long jobs (Windows Update install).
 - One real recent detection in your tenant (the chat path lands harder with live data).
-- Optional: `ANTHROPIC_MODEL=claude-haiku-4-5-20251001` in `.env.local` if you're worried about ITPM during the demo. Sonnet looks better; Haiku is more reliable.
+- Optional: set the model to `claude-haiku-5-5` in `/config` if you're worried about rate limits during the demo. Sonnet (`claude-sonnet-5-5`, the default) looks better; Haiku is faster and cheaper.
 
 ---
 
 ## Beat 1 — Frame the project (60 seconds)
 
-> "This is **Eyas** — a self-hosted Next.js app that drives CrowdStrike Falcon through Claude, wrapping `eyas-mcp` — a maintained continuation of CrowdStrike's `falcon-mcp` server — and a FalconPy sidecar. *Eyas* is the falconry term for a young falcon in training — fitting, because it's raised on the same craft as Falcon but is distinctly its own thing. Unofficial — not a CrowdStrike product, not a replacement for the Falcon console. The question it answers: *what does an analyst's day look like when the agent does the cross-module joins, the deterministic enrichment, and the plan-execute-verify loops, and you just talk to Falcon?*"
+> "This is **Eyas** — a self-hosted Next.js app that drives CrowdStrike Falcon through Claude, wrapping `eyas-mcp` — an independent Falcon MCP server, derived from CrowdStrike's open-source `falcon-mcp` — and a FalconPy sidecar. *Eyas* is the falconry term for a young falcon in training — fitting, because it's raised on the same craft as Falcon but is distinctly its own thing. Unofficial — not a CrowdStrike product, not a replacement for the Falcon console. The question it answers: *what does an analyst's day look like when the agent does the cross-module joins, the deterministic enrichment, and the plan-execute-verify loops, and you just talk to Falcon?*"
 
 *Land:* the agent is the method; Falcon is still the subject. Every tool call is gated, traced, and auditable.
 
@@ -153,7 +153,7 @@ Back to the chat tab. Paste:
 
 Let the agent answer. It should mention `falcon_contain_hosts` and `falcon_lift_host_containment`.
 
-> "Quick story. Upstream `falcon-mcp` never exposed host containment — its Hosts module was read-only. So I wrote a small Python sidecar called `falcon-extras` on [FalconPy](https://falconpy.io), CrowdStrike's official Python SDK, to fill the gap: a second MCP server, spawned over stdio by this Next.js process, merged into the same tool list with no protocol-level differences. Containment has since moved into `eyas-mcp` itself, and the sidecar keeps the workflows that are uniquely ours — patching, IR, provisioning."
+> "Quick story. The MCP server this started from never exposed host containment — its Hosts module was read-only. So I wrote a small Python sidecar called `falcon-extras` on [FalconPy](https://falconpy.io), CrowdStrike's official Python SDK, to fill the gap: a second MCP server, spawned over stdio by this Next.js process, merged into the same tool list with no protocol-level differences. Containment — and most of the other gap-fillers — have since moved into `eyas-mcp` itself. The sidecar keeps what's uniquely ours: the patch and cleanup script library, the IR and Shadow-AI playbooks, provisioning. Even there, the actual Falcon calls now run through `eyas-mcp`."
 
 > "*This is the headline architectural property.* Any new MCP server I want to plug in — internal one we write, third-party, doesn't matter — slots into the same agent loop and gets the same approval gating for free."
 

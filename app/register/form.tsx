@@ -224,7 +224,7 @@ export function RegisterForm({
           name="anthropic_model"
           type="text"
           placeholder={status.anthropic.model.value}
-          hint='Default "claude-sonnet-4-6". Use "claude-opus-4-7" for higher quality, "claude-haiku-4-5-20251001" for cheap/fast.'
+          hint='Default "claude-sonnet-5-5". Use "claude-opus-5-5" for higher quality, "claude-haiku-5-5" for cheap/fast.'
           value={anthropicModel}
           onChange={setAnthropicModel}
         />

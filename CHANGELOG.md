@@ -24,6 +24,16 @@
   ship with the bundle.
 
 ### Changed
+- **Current Claude models.** The default model is now `claude-sonnet-5-5`, with
+  `claude-opus-5-5` suggested for the highest quality. Every request now asks
+  for a medium thinking effort (where the model supports it) and leaves room
+  for thinking in its output limit, so answers aren't cut off. A request the
+  model declines now ends with a plain notice instead of an error. The cost
+  page prices the current models correctly, and Opus 4.5 and later are no
+  longer priced at the old Opus 4 rate.
+- **Docs and the project guide match where things stand today:** eyas-mcp as
+  the only MCP server, what the sidecar still holds (56 tools) and how Eyas
+  runs Falcon calls through eyas-mcp.
 - **MCP server pinned to eyas-mcp 0.21.0 (c034131).** It now identifies itself
   as eyas-mcp in its logs and to clients; no tool names or result shapes
   changed.

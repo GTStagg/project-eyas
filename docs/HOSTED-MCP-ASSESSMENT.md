@@ -55,10 +55,11 @@ The defining choice in Eyas is the in-process MCP client with a manual tool-use 
 
 Select the flavor with a build-time flag alongside `BUILD_FLAGS` in `lib/config/build-flags.ts` (`make-dist.sh` already bakes flags per bundle). Optionally also allow a per-environment runtime choice later.
 
-**eyas-mcp track (fork) — near-term to-dos:**
+**eyas-mcp track (self-hosted) — near-term to-dos:**
 - ✅ Done (v0.9.1): `versions.json` now pins `mcp-server-*` (package `eyas-mcp`, `https://github.com/GTStagg/eyas-mcp.git` @ a commit); dev spawn, `make-dist.sh`, `start.sh` and `/status` all read the package name from there — so a future hosted build swaps the provider without touching routes.
 - The gaps Eyas works around become eyas-mcp's backlog. Candidates that would let Eyas delete workarounds: clamp Data Security search `limit` to 200 (or chunk the hydrate); monitor-first defaults on `create_data_security_entity`; port `offload_to_thread` concurrency to remain shared-client safe; structured content on search results.
-- Track upstream security/dependency releases until EOL and cherry-pick.
+- ✅ Done (2026-11, through eyas-mcp 0.21.0): most of the sidecar's generic gap-fillers moved into eyas-mcp — Discover (all asset types), Recon, Workflows listings, bounded NGSIEM search with a CQL check, verified host-group membership, prevention posture, RTR custom-script upload / run / status / delete, a runscript readiness probe, and bulk detection close (including single-host NGSIEM alerts). Eyas keeps its content (script library, playbooks, classifier, provisioning) and runs it on those natives.
+- Security and dependency fixes from upstream are eyas-mcp's job (it reviews upstream diffs); Eyas only moves its pin.
 
 **Hosted track — suggested order:**
 1. Execute-path probe (read-only tools only): confirm the `execute_tool` result envelope + error convention against `lib/mcp/parse.ts`.

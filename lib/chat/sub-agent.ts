@@ -2,6 +2,7 @@ import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
 import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { getAnthropicClient, getAnthropicModel } from "@/lib/llm/anthropic";
+import { withModelDefaults } from "@/lib/llm/request";
 import { buildToolBridge } from "@/lib/mcp/tool-bridge";
 import { maybeFenceToolResult } from "@/lib/chat/agent-loop";
 import { requiresApproval as defaultRequiresApproval } from "@/lib/mcp/write-tools";
@@ -167,7 +168,7 @@ export async function runSubAgent(opts: SubAgentOptions): Promise<SubAgentResult
     let finalMessage: Anthropic.Message;
     try {
       finalMessage = await anthropic.messages.create(
-        {
+        withModelDefaults({
           model: getAnthropicModel(),
           max_tokens: maxTokensPerTurn,
           system: [
@@ -179,7 +180,7 @@ export async function runSubAgent(opts: SubAgentOptions): Promise<SubAgentResult
           ],
           tools,
           messages: conversation,
-        },
+        }),
         { signal },
       );
     } catch (err) {
@@ -210,8 +211,9 @@ export async function runSubAgent(opts: SubAgentOptions): Promise<SubAgentResult
     }
 
     if (finalMessage.stop_reason !== "tool_use") {
-      // Unexpected stop — return what we have.
-      finalText = textBlocks;
+      // Unexpected stop (max_tokens, or a safety "refusal") — return what we have.
+      finalText =
+        textBlocks || (finalMessage.stop_reason === "refusal" ? "(This slice was declined by the model.)" : "");
       break outer;
     }
 

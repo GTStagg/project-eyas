@@ -2,7 +2,7 @@
 
 This document covers the Docker-based self-hosted deployment of **Eyas** on a Linux server. For the macOS standalone (no-Docker) path, see [`STANDALONE.md`](./STANDALONE.md). For local development, see [`../QUICKSTART.md`](../QUICKSTART.md).
 
-The multi-stage Dockerfile bundles the `falcon-extras` Python sidecar by default — agentic patching, agentic IR cleanup and its playbooks, Recon, Workflows execute, identity response, NGSIEM search linting, Prevention Policy posture, and Shadow-AI hunting all light up in the compose stack with no extra steps. Compose mounts `./data:/app/data` by default so registration, runtime settings, cost log, audit log, and IR run records persist across container recreation; `falcon-mcp` is pinned to the version in `versions.json` rather than `:latest` for reproducibility.
+The multi-stage Dockerfile bundles the `falcon-extras` Python sidecar by default — agentic patching, agentic IR cleanup and its playbooks, Workflows execute, identity response, tenant provisioning, and Shadow-AI hunting all light up in the compose stack with no extra steps. Compose mounts `./data:/app/data` by default so registration, runtime settings, cost log, audit log, and IR run records persist across container recreation; the MCP server (`eyas-mcp`) is built from source at the commit pinned in `versions.json` — there is no published image — so every build is reproducible.
 
 ---
 

@@ -308,7 +308,7 @@ Most values land in `data/eyas.db` via the wizard. `.env` is only consulted for 
 | `ANTHROPIC_API_KEY` | one of these | Direct Anthropic API key (sent as `x-api-key`) |
 | `ANTHROPIC_AUTH_TOKEN` | one of these | Bearer token for a corporate AI gateway. Mutually exclusive with `ANTHROPIC_API_KEY`. |
 | `ANTHROPIC_BASE_URL` | with `ANTHROPIC_AUTH_TOKEN` | Gateway URL. Optional with a direct API key. |
-| `ANTHROPIC_MODEL` | no | Override default Claude model (`claude-sonnet-4-6`). |
+| `ANTHROPIC_MODEL` | no | Override default Claude model (`claude-sonnet-5-5`; `claude-opus-5-5` for the highest quality). |
 | `FALCON_CLIENT_ID` | first-run bootstrap | Wizard writes to `data/eyas.db` after first run. |
 | `FALCON_CLIENT_SECRET` | first-run bootstrap | Same. |
 | `FALCON_BASE_URL` | first-run bootstrap | Same. |
@@ -360,7 +360,7 @@ Check `FALCON_CLIENT_ID` / `FALCON_CLIENT_SECRET` / `FALCON_BASE_URL` are correc
 **Anthropic calls are blocked by the corporate gateway**
 In the wizard, switch to *Gateway* — supply `ANTHROPIC_AUTH_TOKEN` (the gateway's bearer token) plus the gateway's base URL. The Anthropic SDK then sends `Authorization: Bearer <token>` against that URL.
 
-**Chat says `Model "claude-sonnet-4-6" not found`**
+**Chat says `Model "claude-sonnet-5-5" not found`**
 You're on a gateway that only allowlists certain model ids. List what the gateway exposes and pin to one of those:
 ```sh
 curl -s -H "Authorization: Bearer $ANTHROPIC_AUTH_TOKEN" \

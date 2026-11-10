@@ -2,6 +2,7 @@ import "server-only";
 import { NextResponse } from "next/server";
 import type Anthropic from "@anthropic-ai/sdk";
 import { getAnthropicClient, getAnthropicModel } from "@/lib/llm/anthropic";
+import { withModelDefaults } from "@/lib/llm/request";
 import { sseEncode } from "@/lib/chat/agent-loop";
 import { logUsage } from "@/lib/cost/log";
 import { REFERENCE_ARCHITECTURE_BRIEF } from "@/lib/advisor/blueprint-knowledge";
@@ -100,7 +101,7 @@ export async function POST(request: Request) {
         const anthropic = getAnthropicClient();
         const model = getAnthropicModel();
         const llm = anthropic.messages.stream(
-          {
+          withModelDefaults({
             model,
             max_tokens: 3072,
             system: [
@@ -111,7 +112,7 @@ export async function POST(request: Request) {
               },
             ],
             messages: [{ role: "user", content: question }],
-          },
+          }),
           { signal: abort.signal },
         );
 
