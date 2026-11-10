@@ -7,6 +7,7 @@ import { beginInFlight, endInFlight } from "@/lib/chat/in-flight";
 import { withFalconMcpClient } from "@/lib/mcp/falcon-client";
 import { withFalconExtrasClient } from "@/lib/mcp/falcon-extras-client";
 import { getAnthropicClient, getAnthropicModel } from "@/lib/llm/anthropic";
+import { withModelDefaults } from "@/lib/llm/request";
 import { logUsage } from "@/lib/cost/log";
 
 export const runtime = "nodejs";
@@ -279,14 +280,14 @@ export async function POST(request: Request) {
         },
       ];
       const stream = anthropic.messages.stream(
-        {
+        withModelDefaults({
           model: getAnthropicModel(),
           max_tokens: 1024,
           system: [
             { type: "text", text: SYNTHESIS_PROMPT, cache_control: { type: "ephemeral", ttl: "1h" } },
           ],
           messages: synthInput,
-        },
+        }),
         { signal },
       );
       for await (const event of stream) {

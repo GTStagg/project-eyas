@@ -294,8 +294,8 @@ export default function AnthropicConfigCard({ gatewayOnly }: { gatewayOnly: bool
               className={inputClass}
             />
             <p className={hintClass}>
-              The Claude model name (e.g. claude-sonnet-4-6 for the
-              everyday default, claude-opus-4-7 for the highest-quality
+              The Claude model name (e.g. claude-sonnet-5-5 for the
+              everyday default, claude-opus-5-5 for the highest-quality
               option).
             </p>
           </div>

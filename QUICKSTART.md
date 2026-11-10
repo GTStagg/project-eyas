@@ -87,7 +87,7 @@ The first Falcon call builds `eyas-mcp` from the pinned commit (about 30 seconds
 2. In chat, paste:
    > List the names of every tool you have available. One per line. Do not call any tool.
 
-   The trace shows a `ready` event with a `tool_count` in the mid-200s (the MCP server's tools plus the sidecar's ~70, minus some the console hides), then the list.
+   The trace shows a `ready` event with a `tool_count` in the mid-200s (the MCP server's tools plus the sidecar's 56, minus some the console hides), then the list.
 3. Try a real query:
    > Show me the last 5 critical detections.
 
@@ -97,7 +97,7 @@ The first Falcon call builds `eyas-mcp` from the pinned commit (about 30 seconds
 
 ## 6. The `falcon-extras` sidecar
 
-Always on. It adds capabilities the MCP server doesn't cover — host containment, host-group membership, Fusion workflow execute, agentic patching, the agentic IR cleanup catalog, process-tree reconstruction, RAT-install scan, Recon corpus search, Identity Protection, Prevention Policy posture, and NGSIEM search with CQL linting — and wraps some writes with safer defaults. The venv from step 2 is all it needs in dev; the standalone bundle builds it on first launch from bundled wheels.
+Always on. It holds Eyas's own content on top of the MCP server — the agentic patching and IR cleanup script library, the IR and Shadow-AI playbooks, process-tree delivery-vector classification, RAT-install scan, identity IR, tenant provisioning, host-group writes and Fusion workflow execute — and wraps some writes with safer defaults. Where a Falcon call itself belongs to `eyas-mcp` (running a rendered script, closing a host's detections), the sidecar validates and Eyas runs the call on `eyas-mcp`. The venv from step 2 is all it needs in dev; the standalone bundle builds it on first launch from bundled wheels.
 
 Write actions (containment, host-group changes, workflow execute, …) need the matching write scopes and always stop for your approval in the UI.
 

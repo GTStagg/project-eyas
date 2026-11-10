@@ -23,6 +23,7 @@
     "test:discover-native": "node ./scripts/test-discover-native.mjs",
     "test:native-dispatch": "node ./scripts/test-native-dispatch.mjs",
     "test:release-watcher": "node ./scripts/test-release-watcher.mjs",
+    "test:model-defaults": "node ./scripts/test-model-defaults.mjs",
     "test:prevention-posture": "node ./scripts/test-prevention-posture.mjs",
     "test:data-protection": "node ./scripts/test-data-protection.mjs",
     "test:primer": "node ./scripts/test-primer.mjs",

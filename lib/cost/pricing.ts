@@ -1,5 +1,5 @@
-// Per-million-token prices in USD for Claude API models, current as of
-// late 2025 / early 2026. Update if Anthropic changes pricing.
+// Per-million-token prices in USD for Claude API models (Anthropic first-party
+// rates, checked 2026-11-10). Update when Anthropic changes pricing.
 //
 // Schema:
 //   input  = standard input tokens
@@ -13,7 +13,8 @@
 //                unavoidable; 2x is materially closer than the old 1.25x, which
 //                systematically undercounted cache cost in /cost,
 //                /cost-summary, and the IR cost projection.
-//   cacheRead  = prompt-cache hits (charged at 0.1x input)
+//   cacheRead  = prompt-cache hits (0.1x input on most models; the 5.5
+//                generation and Fable 5.2 list their own, lower read rates).
 
 export type ModelPricing = {
   input: number;
@@ -22,34 +23,50 @@ export type ModelPricing = {
   cacheRead: number;
 };
 
-const SONNET: ModelPricing = {
-  input: 3.0,
-  output: 15.0,
-  cacheWrite: 6.0,
-  cacheRead: 0.3,
-};
-const OPUS: ModelPricing = {
-  input: 15.0,
-  output: 75.0,
-  cacheWrite: 30.0,
-  cacheRead: 1.5,
-};
-const HAIKU: ModelPricing = {
-  input: 1.0,
-  output: 5.0,
-  cacheWrite: 2.0,
-  cacheRead: 0.1,
-};
+const price = (input: number, output: number, cacheRead = input * 0.1): ModelPricing => ({
+  input,
+  output,
+  cacheWrite: input * 2,
+  cacheRead,
+});
 
-// Match by prefix on the model id. The longest matching prefix wins, so
-// keep the more specific entries first if/when they diverge.
+// Current generation.
+const OPUS_5_5 = price(4, 20, 0.2);
+const SONNET_5_5 = price(2, 10, 0.1);
+// Claude Haiku 5.5 is $0.10 / $0.50 for prompts up to 100K tokens ($0.50 /
+// $2.50 beyond); logged usage doesn't carry per-request prompt size, so the
+// short-prompt card is used.
+const HAIKU_5_5 = price(0.1, 0.5, 0.01);
+const FABLE_5_2 = price(8, 40, 0.2);
+// Earlier models still served.
+const FABLE_5 = price(10, 50);
+const OPUS_5 = price(5, 25);
+const OPUS_4_5_PLUS = price(5, 25); // Opus 4.5 – 4.8
+const OPUS_4 = price(15, 75); // Opus 4 / 4.1
+const SONNET_5 = price(2, 10);
+const SONNET_4 = price(3, 15); // Sonnet 4 – 4.6
+const HAIKU_4 = price(1, 5);
+
+// Match by prefix on the model id. The longest matching prefix wins, so a
+// specific version (`claude-opus-4-8`) beats its family line (`claude-opus-4`).
 const PRICING_BY_PREFIX: Array<{ prefix: string; pricing: ModelPricing }> = [
-  { prefix: "claude-opus-4", pricing: OPUS },
-  { prefix: "claude-sonnet-4", pricing: SONNET },
-  { prefix: "claude-haiku-4", pricing: HAIKU },
-  { prefix: "claude-3-5-sonnet", pricing: SONNET },
-  { prefix: "claude-3-5-haiku", pricing: HAIKU },
-  { prefix: "claude-3-opus", pricing: OPUS },
+  { prefix: "claude-opus-5-5", pricing: OPUS_5_5 },
+  { prefix: "claude-opus-5", pricing: OPUS_5 },
+  { prefix: "claude-opus-4-8", pricing: OPUS_4_5_PLUS },
+  { prefix: "claude-opus-4-7", pricing: OPUS_4_5_PLUS },
+  { prefix: "claude-opus-4-6", pricing: OPUS_4_5_PLUS },
+  { prefix: "claude-opus-4-5", pricing: OPUS_4_5_PLUS },
+  { prefix: "claude-opus-4", pricing: OPUS_4 },
+  { prefix: "claude-sonnet-5-5", pricing: SONNET_5_5 },
+  { prefix: "claude-sonnet-5", pricing: SONNET_5 },
+  { prefix: "claude-sonnet-4", pricing: SONNET_4 },
+  { prefix: "claude-haiku-5-5", pricing: HAIKU_5_5 },
+  { prefix: "claude-haiku-4", pricing: HAIKU_4 },
+  { prefix: "claude-fable-5-2", pricing: FABLE_5_2 },
+  { prefix: "claude-fable-5", pricing: FABLE_5 },
+  { prefix: "claude-3-5-sonnet", pricing: SONNET_4 },
+  { prefix: "claude-3-5-haiku", pricing: HAIKU_4 },
+  { prefix: "claude-3-opus", pricing: OPUS_4 },
 ];
 
 // Family-word fallback. Some Anthropic gateways and proxy deployments
@@ -61,14 +78,18 @@ const PRICING_BY_PREFIX: Array<{ prefix: string; pricing: ModelPricing }> = [
 // in the id and price by family. Less precise (we don't know the version
 // for cache-pricing accuracy) but the alternative — silently logging
 // $0 forever — is worse.
+// Unknown versions price at the current generation.
 const FAMILY_FALLBACK: Array<{ token: string; pricing: ModelPricing }> = [
-  { token: "opus", pricing: OPUS },
-  { token: "sonnet", pricing: SONNET },
-  { token: "haiku", pricing: HAIKU },
+  { token: "fable", pricing: FABLE_5_2 },
+  { token: "opus", pricing: OPUS_5_5 },
+  { token: "sonnet", pricing: SONNET_5_5 },
+  { token: "haiku", pricing: HAIKU_5_5 },
 ];
 
 export function pricingFor(modelId: string): ModelPricing | null {
-  const id = modelId.toLowerCase();
+  // Strip platform prefixes (`anthropic.`, `us.anthropic.`) so Bedrock-style ids
+  // still hit the exact version entry instead of the family fallback.
+  const id = modelId.toLowerCase().replace(/^(?:[a-z]{2,6}\.)?anthropic\./, "");
   let best: { prefix: string; pricing: ModelPricing } | null = null;
   for (const entry of PRICING_BY_PREFIX) {
     if (id.startsWith(entry.prefix)) {

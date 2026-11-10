@@ -2,6 +2,7 @@ import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
 import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { getAnthropicClient, getAnthropicModel } from "@/lib/llm/anthropic";
+import { withModelDefaults } from "@/lib/llm/request";
 import { buildToolBridge } from "@/lib/mcp/tool-bridge";
 import { awaitApproval } from "@/lib/chat/approvals";
 import { requiresApproval as defaultRequiresApproval } from "@/lib/mcp/write-tools";
@@ -246,7 +247,7 @@ export async function runAgentLoop(opts: RunAgentOptions): Promise<RunAgentResul
             )
           : visibleTools;
       const messageStream = anthropic.messages.stream(
-        {
+        withModelDefaults({
           model: getAnthropicModel(),
           max_tokens: maxTokensPerTurn,
           system: [
@@ -264,7 +265,7 @@ export async function runAgentLoop(opts: RunAgentOptions): Promise<RunAgentResul
           ],
           tools,
           messages: conversation,
-        },
+        }),
         { signal },
       );
 
@@ -298,7 +299,7 @@ export async function runAgentLoop(opts: RunAgentOptions): Promise<RunAgentResul
       }
       if (err instanceof Anthropic.RateLimitError) {
         emit("error", {
-          message: `Anthropic rate limit hit (${err.status}). Wait ~60s and retry, or refine the query (smaller limit, tighter filter). To raise the ceiling, upgrade rate-limit tier in the Anthropic console or switch ANTHROPIC_MODEL to claude-haiku-4-5.`,
+          message: `Anthropic rate limit hit (${err.status}). Wait ~60s and retry, or refine the query (smaller limit, tighter filter). To raise the ceiling, upgrade rate-limit tier in the Anthropic console or switch the model to claude-haiku-5-5 in /config.`,
           kind: "rate_limit",
           anthropic_message: err.message,
         });
@@ -356,6 +357,32 @@ export async function runAgentLoop(opts: RunAgentOptions): Promise<RunAgentResul
       if (finalMessage.stop_reason === "max_tokens") {
         conversation.push({ role: "assistant", content: finalMessage.content });
         emit("text", "\n\n_[Response truncated — hit the output token limit. Ask a narrower question or request the rest to continue.]_");
+        emit("done", {
+          stop_reason: finalMessage.stop_reason,
+          usage: totals,
+          iterations: iter + 1,
+          turn_count: conversation.length,
+        });
+        if (surface) {
+          void logUsage({
+            ts: new Date().toISOString(),
+            model: getAnthropicModel(),
+            surface,
+            iterations: iter + 1,
+            usage: totals,
+          });
+        }
+        return { finalMessages: conversation, endedNormally: true };
+      }
+      // Safety classifiers on the 5.5 generation can decline a request
+      // (HTTP 200, stop_reason "refusal", stop_details.category). Tell the
+      // operator plainly instead of reporting an unexpected stop.
+      if (finalMessage.stop_reason === "refusal") {
+        conversation.push({ role: "assistant", content: finalMessage.content });
+        const details = (finalMessage as { stop_details?: { category?: string | null } }).stop_details;
+        emit("text", `
+
+_[Claude declined to continue this request${details?.category ? ` (${details.category})` : ""}. Rephrase it, narrow it, or start a new conversation.]_`);
         emit("done", {
           stop_reason: finalMessage.stop_reason,
           usage: totals,

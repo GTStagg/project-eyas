@@ -13,7 +13,7 @@ This document is the architectural narrative — what we built, why we made each
 
 ## What this is
 
-**Eyas** is a self-hosted Next.js application that drives CrowdStrike Falcon through Claude — wrapping [`eyas-mcp`](https://github.com/GTStagg/eyas-mcp) — a maintained continuation of CrowdStrike's [`falcon-mcp`](https://github.com/crowdstrike/falcon-mcp) Model Context Protocol server, which upstream moved to maintenance mode — and a [FalconPy](https://falconpy.io)-based Python sidecar. The name *eyas* is the falconry term for a young falcon being trained: Eyas is raised on the same craft as Falcon, distinctly its own thing. **Unofficial** and explicitly not a Falcon Console replacement — quality is measured by whether the agentic workflows are useful, not by feature parity. The codebase is intended as a working reference for two audiences: customer security teams (SOC, IR, Falcon administration) evaluating an agent layer for their own tenant, and CrowdStrike Sales Engineers demonstrating what `falcon-mcp` + FalconPy + Claude can do together.
+**Eyas** is a self-hosted Next.js application that drives CrowdStrike Falcon through Claude — wrapping [`eyas-mcp`](https://github.com/GTStagg/eyas-mcp) — an independent Falcon Model Context Protocol server derived from CrowdStrike's MIT-licensed `falcon-mcp` (see [NOTICE](../NOTICE.md)) — and a [FalconPy](https://falconpy.io)-based Python sidecar. The name *eyas* is the falconry term for a young falcon being trained: Eyas is raised on the same craft as Falcon, distinctly its own thing. **Unofficial** and explicitly not a Falcon Console replacement — quality is measured by whether the agentic workflows are useful, not by feature parity. The codebase is intended as a working reference for two audiences: customer security teams (SOC, IR, Falcon administration) evaluating an agent layer for their own tenant, and CrowdStrike Sales Engineers demonstrating what an MCP server + FalconPy + Claude can do together.
 
 The core thesis: a security console is a particularly good fit for an agentic MCP-based interaction model, because:
 
@@ -101,22 +101,21 @@ The route does ~25-35 deterministic API calls. The agent does **zero** tool call
 
 Two MCP servers compose into one logical tool surface for the agent:
 
-### 1. `eyas-mcp` (the MCP server, ~200 tools)
+### 1. `eyas-mcp` (the MCP server, ~217 tools)
 
-The MCP server: a maintained continuation of CrowdStrike's `falcon-mcp` (upstream is in maintenance mode), pinned by git commit in `versions.json`. It covers Detections, Hosts, Vulnerabilities, Intel (search plus full report and actor content), Recon, Cases, Quarantine, Correlation Rules, Data Security, Discover, Fusion workflows, NGSIEM (search, listings, CQL function lookup), Threat Graph, MalQuery, Identity Protection reads, CAO hunting guides, Guardian, network containment, and read-only RTR — single-host, multi-host, and CrowdStrike-published scripts. Most of these were first built in the FalconPy sidecar below and have since moved into the server.
+The MCP server: an independent project derived from CrowdStrike's `falcon-mcp`, installed from git and pinned by commit in `versions.json` (never from a package index). It covers Detections, Hosts, Vulnerabilities, Intel (search plus full report and actor content), Recon, Cases, Quarantine, Correlation Rules, Data Security, Discover, Fusion workflows, NGSIEM (search, listings, CQL function lookup), Threat Graph, MalQuery, Identity Protection reads, CAO hunting guides, Guardian, network containment, host-group membership with a group-by-group check, prevention posture, RTR (read-only commands, custom-script upload / run / status / delete, and a readiness wait that runs a probe script), bulk detection close, and CrowdStrike-published scripts. Most of these were first built in the FalconPy sidecar below and have since moved into the server. The rule since then: generic Falcon operations live in eyas-mcp; Eyas-specific content (script library, playbooks, classifier, provisioning) stays in Eyas and runs on top of them.
 
 It runs as a `uvx`-spawned stdio child in dev and the standalone bundle, or as an HTTP service on a private Docker network in the Compose path (`x-api-key` injected by us). Either way Falcon credentials never leave the host the app runs on.
 
-### 2. `falcon-extras` (our sidecar, ~70 tools)
+### 2. `falcon-extras` (our sidecar, 56 tools)
 
-A Python MCP server in `falcon-extras/` we wrote on top of FalconPy. It holds what the MCP server doesn't cover, and the curated workflows the agent needs a higher-level primitive for:
+A Python MCP server in `falcon-extras/` we wrote on top of FalconPy. It holds Eyas's own content and the curated workflows the agent needs a higher-level primitive for. Where the Falcon write itself now belongs to eyas-mcp, the sidecar validates and renders, then Eyas carries out the call on eyas-mcp's native tools (`lib/mcp/native-dispatch.ts`):
 
-- **Agentic patching** (read + write) — Spotlight remediation manifest, RTR script library, CloudFile transport. ~30 patching scripts in a manifest schema with parameter validation.
-- **Agentic IR** — the five-phase playbook, campaign scoping, the cleanup catalog (host-quarantine-file, host-delete-folder, host-kill-process, host-remove-ifeo-hijack, etc.), and ledger-driven closure.
+- **Agentic patching** (read + write) — Spotlight remediation manifest and the RTR script library: ~30 patching scripts in a manifest schema with parameter validation. Eyas renders the script; eyas-mcp uploads it as a one-off private script, runs it with `runscript -CloudFile=` and deletes it.
+- **Agentic IR** — the five-phase playbook, campaign scoping, the cleanup catalog (host-quarantine-file, host-delete-folder, host-kill-process, host-remove-ifeo-hijack, etc.), ledger-driven closure, and an operator decision step for original detections the workflow never touched.
 - **Process-tree reconstruction** — `extras_host_process_tree` walks NGSIEM `ProcessRollup2` events, builds the ancestry chain via `ParentProcessId`, and runs Eyas's deterministic classifier, which returns a delivery-vector verdict (`phishing_doc` / `c2_agent` / `lateral_winrm` / `ifeo_hijack` / etc.) with confidence + rationale. (The MCP server has its own process-tree tool with a generic heuristic; Eyas keeps this one because IR branches on its verdicts.)
-- **Authoritative host-group membership** — walks every group rather than trusting the host record, because IR restores the captured list verbatim.
 - **Provisioning and setup** — canonical-named host groups, prevention policies, IOA rules and exclusions for IR quarantine and Shadow-AI, monitor-first data-protection creates, and tenant teardown.
-- **NGSIEM search with a CQL pre-flight linter**, `extras_host_rat_install_scan` (17-product image-name regex catalog), and Shadow-AI hunting.
+- `extras_host_rat_install_scan` (17-product image-name regex catalog), Shadow-AI hunting, and the CQL linter that guards Eyas's own internal NGSIEM searches (the agent's searches use eyas-mcp's bounded `falcon_search_ngsiem`).
 
 The sidecar follows two conventions worth calling out for a peer reviewer:
 
@@ -204,9 +203,9 @@ For the reviewer who wants to dig in after the demo:
 
 ## Versions we ship against
 
-- **eyas-mcp** (the MCP server, continued from `falcon-mcp`): pinned by git commit in `versions.json`; `/status` and the bundle's `BUILD-INFO.txt` show the running pin.
-- **FalconPy**: 1.6.2 (sidecar); upgrades require re-checking the NGSIEM uber-class quirk noted in CLAUDE.md.
-- **Anthropic SDK**: tracks current stable; default model `claude-sonnet-4-6` for chat surfaces, `claude-opus-4-7` for synthesis-heavy reports where token cost is justified.
+- **eyas-mcp** (the MCP server): 0.21.0, pinned by git commit in `versions.json`; `/status` and the bundle's `BUILD-INFO.txt` show the running pin.
+- **FalconPy**: 1.6.6 (sidecar, hash-locked); upgrades require re-checking the NGSIEM uber-class quirk noted in CLAUDE.md.
+- **Anthropic SDK**: `@anthropic-ai/sdk` 0.69 (pinned). Default model `claude-sonnet-5-5`, with `claude-opus-5-5` as the higher-quality option, configurable in `/config`. Every request sets `output_config.effort` (`medium`) where the model supports it and gets at least 16K `max_tokens`, because thinking counts against it on the 5.5 models (`lib/llm/request.ts`).
 - **Next.js**: 15.x (App Router, Server Actions, streaming responses).
 
 ---

@@ -5,6 +5,7 @@ import {
   saveRuntimeConfig,
   MIN_CHAT_MAX_TOKENS,
   MAX_CHAT_MAX_TOKENS,
+  DEFAULT_ANTHROPIC_MODEL,
   type ConfigFile,
 } from "@/lib/config/runtime";
 import {
@@ -190,7 +191,7 @@ export async function PATCH(request: Request) {
     apiKey: nextApiKey,
     authToken: nextAuthToken,
     baseURL: effectiveBaseURL,
-    model: nextModel ?? "claude-sonnet-4-6",
+    model: nextModel ?? DEFAULT_ANTHROPIC_MODEL,
   });
   if (!probe.ok) {
     return NextResponse.json(

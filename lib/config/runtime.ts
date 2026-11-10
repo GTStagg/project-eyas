@@ -10,13 +10,16 @@ import {
 } from "./store";
 import { DEFAULT_FALCON_BASE_URL } from "./environments";
 
-const DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-4-6";
+// The everyday default; claude-opus-5-5 is the higher-quality option. Request
+// defaults for this generation (max_tokens floor, explicit effort) live in
+// lib/llm/request.ts.
+export const DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-5-5";
 
 // Per-turn output-token cap for the /chat surface (operator-editable via
 // /config). The default gives long scripts/playbooks room; the ceiling is the
-// universal-safe max across the current model family — Sonnet 4.6 / Haiku 4.5
-// cap output at 64K, Opus 4.8 reaches 128K, so 64K stays model-agnostic and is
-// plenty for chat output. The chat loop streams, so high caps carry no
+// universal-safe max across the models an operator may still pick — the 5.5
+// generation reaches 128K output, but Sonnet 4.6 / Haiku 4.5 cap at 64K, so 64K
+// stays model-agnostic and is plenty for chat output (thinking included). The chat loop streams, so high caps carry no
 // HTTP-timeout risk. Values are stored as a string in settings and parsed here.
 export const DEFAULT_CHAT_MAX_TOKENS = 16384;
 export const MIN_CHAT_MAX_TOKENS = 1024;
