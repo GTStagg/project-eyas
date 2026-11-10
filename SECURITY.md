@@ -43,7 +43,7 @@ data to a language model. These are the destinations:
 | Anthropic API, or the gateway you configure | Your prompts, the conversation so far, and **the results of every tool the agent calls**, including Falcon detections, host details, vulnerabilities and similar records, plus knowledge-base passages retrieved for the turn | Chat, agentic panels, triage, reports and scheduled reports. Deterministic dashboards that don't involve the agent send nothing to the model. |
 | CrowdStrike AIDR (optional, per environment) | The text of each chat prompt and each assistant reply | Only when AIDR is configured for the active environment |
 | Webhook URLs you configure (optional) | Generated reports and briefings | When you send a report, or when a scheduled job you've enabled delivers one |
-| GitHub API (`api.github.com`) | A request for the latest upstream release (with `GITHUB_TOKEN` if you set one) | Only when the `release-watcher` scheduled job is enabled |
+| GitHub API (`api.github.com`) | A request comparing Eyas's pinned eyas-mcp commit with eyas-mcp's latest (with `GITHUB_TOKEN` if you set one) | Only when the `release-watcher` scheduled job is enabled |
 
 Running the MCP client inside Eyas, instead of through Anthropic's hosted MCP
 connector, keeps your Falcon credentials on your host. It also means only the

@@ -131,7 +131,7 @@ The `/vulnerabilities` By-patch view exposes "Build patch plan" (decision docume
 
 The `/ngsiem` surface ships 60+ curated CQL playbooks across nine MITRE categories (incl. Shadow AI + Supply Chain) plus a save-your-own-question facility, fronted by a deterministic Pipeline Health strip showing data-connection / parser / lookup-file counts.
 
-When `SCHEDULER_ENABLED=true` and `OUTBOUND_WEBHOOK_URL` is configured, the `SCHEDULES` env manifest arms recurring read-only agentic runs that POST their markdown to the webhook — `patch-digest` (top open ExPRT-High+ has-fix bundle), `daily-briefing` (the same one-page report `/briefing` produces), and `release-watcher` (notifies on new upstream `falcon-mcp` GitHub releases). Operators self-hosting pick their own cadence per job.
+When `SCHEDULER_ENABLED=true` and `OUTBOUND_WEBHOOK_URL` is configured, the `SCHEDULES` env manifest arms recurring read-only agentic runs that POST their markdown to the webhook — `patch-digest` (top open ExPRT-High+ has-fix bundle), `daily-briefing` (the same one-page report `/briefing` produces), and `release-watcher` (notifies when eyas-mcp, the Falcon MCP server Eyas runs, has commits newer than Eyas's pinned commit). Operators self-hosting pick their own cadence per job.
 
 ---
 
