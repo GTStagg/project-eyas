@@ -24,6 +24,9 @@
   ship with the bundle.
 
 ### Changed
+- **MCP server pinned to eyas-mcp 0.21.0 (c034131).** It now identifies itself
+  as eyas-mcp in its logs and to clients; no tool names or result shapes
+  changed.
 - **MCP server pinned to eyas-mcp bfc9f50.** Closing every open detection on a
   host now also closes the NGSIEM correlation alerts that name only that host,
   so the agent no longer closes them one by one. Alerts that also name other
