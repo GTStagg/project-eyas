@@ -23,7 +23,7 @@ const jetbrainsMono = localFont({
 export const metadata: Metadata = {
   title: "Eyas · Agentic Console for CrowdStrike Falcon",
   description:
-    "Eyas. An unofficial agentic console for the CrowdStrike falcon-mcp server. Not an official CrowdStrike product.",
+    "Eyas. An unofficial agentic console for CrowdStrike Falcon. Not an official CrowdStrike product.",
 };
 
 // Pre-hydration script — reads the persisted theme and stamps data-theme on

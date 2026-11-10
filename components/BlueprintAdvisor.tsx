@@ -165,7 +165,7 @@ export default function BlueprintAdvisor() {
               }
             }}
             rows={2}
-            placeholder="How would I build an approval-gated IR workflow on falcon-mcp + FalconPy + Claude?"
+            placeholder="How would I build an approval-gated IR workflow on eyas-mcp + FalconPy + Claude?"
             className="min-h-[3rem] flex-1 resize-y rounded-md border border-neutral-800 bg-neutral-950 px-3.5 py-2.5 font-mono text-[15px] text-neutral-100 placeholder:text-neutral-600 focus:border-neutral-600 focus:outline-none"
           />
           {busy ? (

@@ -24,12 +24,12 @@ export default function Footer() {
         </div>
 
         <Link
-          href="https://github.com/crowdstrike/falcon-mcp"
+          href="https://github.com/GTStagg/eyas-mcp"
           target="_blank"
           rel="noreferrer"
           className="flex items-center gap-1 font-mono uppercase tracking-[0.14em] text-neutral-500 transition-colors hover:text-neutral-300"
         >
-          Built on falcon-mcp · FalconPy · Claude
+          Built on eyas-mcp · FalconPy · Claude
           <ExternalLink className="h-3 w-3" strokeWidth={2} />
         </Link>
       </div>

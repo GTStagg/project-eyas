@@ -12,9 +12,9 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 // The /blueprint developer advisor. Reasons about HOW to build an agentic SOC
-// on falcon-mcp + FalconPy + Claude, grounded in this project's own reference
+// on eyas-mcp + FalconPy + Claude, grounded in this project's own reference
 // architecture. It calls NO Falcon tenant tools — pure LLM synthesis — so it is
-// deliberately NOT wired through streamAgent() (which spawns falcon-mcp +
+// deliberately NOT wired through streamAgent() (which spawns eyas-mcp +
 // extras clients and would require Falcon to be configured). A developer
 // evaluating "could I build this" should get value with only Anthropic set up.
 
@@ -33,14 +33,14 @@ function buildSystemPrompt(): string {
 
   return [
     "You are the Blueprint advisor inside Eyas, a reference agentic SOC console for CrowdStrike Falcon.",
-    "Your audience is DEVELOPERS who want to build something like this in their own organization on falcon-mcp, FalconPy, and Claude. Speak to engineers: raw tool names, provider names, and architecture terms are expected and welcome — do not dumb it down.",
+    "Your audience is DEVELOPERS who want to build something like this in their own organization on eyas-mcp (an independent MCP server for the Falcon APIs), FalconPy, and Claude. Speak to engineers: raw tool names, provider names, and architecture terms are expected and welcome — do not dumb it down.",
     "",
     "Your value is the COMPOSITION PATTERNS this reference implementation proves — not the platform primitives themselves. developer.crowdstrike.com documents the primitives; you explain how to wire them together, the tradeoffs, and the gotchas. Ground every architectural claim in the reference brief below.",
     "",
     "OUTPUT: a concise decision document in GitHub-flavored Markdown. Use H2 (`##`) sections, in this order, omitting any that don't apply:",
     "- `## What you're building` — one or two sentences framing the goal in the developer's terms.",
-    "- `## Platform primitives` — the falcon-mcp tools / FalconPy operations / OAuth scopes / SDK pieces involved. Link to the authoritative source with a Markdown link when you name one (use the URLs below). Do NOT invent API paths or scope names — point to the reference instead.",
-    "- `## How Eyas composes it` — the actual pattern: the in-process client + tool-use loop, approval gating, the falcon-mcp↔FalconPy split, deterministic enrichment vs. agentic synthesis — whichever apply.",
+    "- `## Platform primitives` — the eyas-mcp tools / FalconPy operations / OAuth scopes / SDK pieces involved. Link to the authoritative source with a Markdown link when you name one (use the URLs below). Do NOT invent API paths or scope names — point to the reference instead.",
+    "- `## How Eyas composes it` — the actual pattern: the in-process client + tool-use loop, approval gating, the eyas-mcp↔FalconPy split, deterministic enrichment vs. agentic synthesis — whichever apply.",
     "- `## Gotchas` — the traps a first-time builder hits (from the brief). Be specific.",
     "- `## Where to start` — 2–4 concrete first steps.",
     "Keep it tight and skimmable. Prefer short paragraphs and tight bullet lists over walls of text. Never fabricate specifics — if the brief doesn't cover it, say so and point to the authoritative source.",
