@@ -266,3 +266,31 @@ test("bulk close refuses a malformed host id and reports upstream errors", async
   assert.equal(err.ok, false);
   assert.match(err.error, /500/);
 });
+
+test("bulk close passes include_multi_host only when set, and keeps skipped_multi_host", async () => {
+  const n = fakeNative({
+    falcon_close_host_detections: () => ({
+      obj: {
+        found: 5,
+        closed: 5,
+        composite_ids: ["a", "b", "c", "d", "e"],
+        matched_by: { device_id: 3, related_fields_this_host_only: 2, related_fields_multi_host: 1 },
+        skipped_multi_host: { count: 1, composite_ids: ["m1"], reason: "names other hosts" },
+      },
+      error: null,
+    }),
+  });
+  const out = await runDispatch(
+    { ok: true, dispatch: { kind: "close_host_detections", device_id: AID1, resolution: "true_positive", include_multi_host: false } },
+    n.call,
+  );
+  assert.equal("include_multi_host" in n.calls[0].args, false);
+  assert.deepEqual(out.matched_by, { device_id: 3, related_fields_this_host_only: 2, related_fields_multi_host: 1 });
+  assert.equal(out.skipped_multi_host.count, 1);
+
+  await runDispatch(
+    { ok: true, dispatch: { kind: "close_host_detections", device_id: AID1, resolution: "true_positive", include_multi_host: true } },
+    n.call,
+  );
+  assert.equal(n.calls[1].args.include_multi_host, true);
+});

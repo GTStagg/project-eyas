@@ -215,7 +215,8 @@ async function checkStatus(dispatch: Obj, callNative: CallNative): Promise<Obj> 
 // Bulk close on the operator's request ("the host is clean, close everything
 // open on it"). IR Phase 4 doesn't use this: it closes only what the
 // remediation ledger matched (extras_ir_close_remediated). eyas-mcp closes
-// every open detection tied to the host, from any product, in batches.
+// every open detection tied to the host, from any product (NGSIEM correlation
+// alerts that name only this host included), in batches.
 // The result keeps the sidecar's former shape (scope_count / updated /
 // requested / composite_ids) that the IR record, summaries and UI read.
 async function closeHostDetections(dispatch: Obj, callNative: CallNative): Promise<Obj> {
@@ -226,6 +227,7 @@ async function closeHostDetections(dispatch: Obj, callNative: CallNative): Promi
     device_id: deviceId,
     resolution,
     ...(typeof dispatch.comment === "string" && dispatch.comment.trim() ? { comment: dispatch.comment } : {}),
+    ...(dispatch.include_multi_host === true ? { include_multi_host: true } : {}),
   });
   const o = res.obj;
   if (res.error || !o) return { ok: false, device_id: deviceId, verdict: resolution, error: res.error ?? "The close returned nothing." };
@@ -239,6 +241,10 @@ async function closeHostDetections(dispatch: Obj, callNative: CallNative): Promi
     requested: found,
     updated: closed,
     composite_ids: Array.isArray(o.composite_ids) ? o.composite_ids : [],
+    // eyas-mcp ≥ bfc9f50: how each alert was found, and correlation alerts
+    // that also name other hosts (left open unless include_multi_host).
+    ...(isObj(o.matched_by) ? { matched_by: o.matched_by } : {}),
+    ...(isObj(o.skipped_multi_host) ? { skipped_multi_host: o.skipped_multi_host } : {}),
     ...(found === 0 ? { note: "No open detections on this host — nothing to close." } : {}),
     ...(typeof o.warning === "string" ? { warning: o.warning } : {}),
   };

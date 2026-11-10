@@ -2,7 +2,7 @@
   "mcp-server": "0.20.2",
   "mcp-server-package": "eyas-mcp",
   "mcp-server-git": "https://github.com/GTStagg/eyas-mcp.git",
-  "mcp-server-ref": "2703a99b86519e94edbff36c600e4252675eab35",
+  "mcp-server-ref": "bfc9f50b7fd2b43d6f04352e7c6bfea0a2776e63",
   "crowdstrike-falconpy": "1.6.6",
   "mcp": "1.30.0"
 }
