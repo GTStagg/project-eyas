@@ -152,12 +152,27 @@ function snapshotBeforeMigrate(lastApplied: string | null): string | null {
   return dest;
 }
 
+/** Split a migration into statements on separator lines (`-->` alone on a
+ *  line). Compared line by line, not with a regex, so scanners don't read it
+ *  as HTML-comment filtering. */
+function splitStatements(sql: string): string[] {
+  const chunks: string[] = [];
+  let current: string[] = [];
+  for (const line of sql.split("\n")) {
+    if (line.trim() === "-->") {
+      chunks.push(current.join("\n"));
+      current = [];
+    } else {
+      current.push(line);
+    }
+  }
+  chunks.push(current.join("\n"));
+  return chunks.map((s) => s.trim()).filter(Boolean);
+}
+
 function applyOne(m: MigrationFile): void {
   const sql = fs.readFileSync(m.filePath, "utf8");
-  const stmts = sql
-    .split(/^\s*-->\s*$/m)
-    .map((s) => s.trim())
-    .filter(Boolean);
+  const stmts = splitStatements(sql);
   const tx = rawDb().transaction(() => {
     for (const stmt of stmts) rawDb().exec(stmt);
     rawDb()
