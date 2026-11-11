@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+### Security
+- **Removed `drizzle-kit`**, a dev-only tool that pulled in an old esbuild
+  (GHSA-67mh-4wv8-2f99). Migrations were already hand-written SQL run by Eyas's
+  own runner, so nothing at runtime changes; `npm audit` is now clean. The
+  `db:generate` / `db:studio` scripts and `drizzle.config.ts` are gone.
+
 ## 0.10.0 — Most of the add-on moves onto eyas-mcp; Claude 5.5 defaults
 
 ### Security

@@ -24,10 +24,10 @@ import { rawDb, dbFilePath } from "./client";
 //      before applying. WAL is checkpointed first so the backup file is
 //      self-contained. Rolling retention keeps the latest 5.
 //
-// We deliberately don't use drizzle-orm's `migrate()` from drizzle-kit's
-// journal — that format has churned across versions and we don't want
-// the bundle to depend on drizzle-kit at runtime. Drizzle ORM is still
-// used for typesafe queries (lib/db/schema.ts).
+// We deliberately don't use drizzle-orm's `migrate()` or drizzle-kit's
+// journal — that format has churned across versions. Migrations are
+// hand-written numbered .sql files; Drizzle ORM is still used for
+// typesafe queries (lib/db/schema.ts).
 
 const MIGRATIONS_DIR = path.join(process.cwd(), "lib", "db", "migrations");
 const BACKUPS_DIR_NAME = "backups";
