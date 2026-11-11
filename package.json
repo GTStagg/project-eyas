@@ -36,9 +36,7 @@
     "test:login-throttle": "node ./scripts/test-login-throttle.mjs",
     "test:register-race": "node ./scripts/test-register-race.mjs",
     "test:tool-classification": "node ./scripts/test-tool-classification.mjs",
-    "test:spawn-env": "node ./scripts/test-spawn-env.mjs",
-    "db:generate": "drizzle-kit generate --config=drizzle.config.ts",
-    "db:studio": "drizzle-kit studio --config=drizzle.config.ts"
+    "test:spawn-env": "node ./scripts/test-spawn-env.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "file:vendor/npm-offline/anthropic-ai-sdk-1.3.0.tgz",
@@ -64,7 +62,6 @@
     "@types/node": "^22.20.5",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
-    "drizzle-kit": "file:vendor/npm-offline/drizzle-kit-0.31.11.tgz",
     "tailwindcss": "^4.0.0",
     "tsx": "4.23.15",
     "typescript": "5.9.3"

@@ -32,7 +32,6 @@ const PACKAGES = [
   { name: "mammoth", version: "1.13.0" },
   { name: "@modelcontextprotocol/sdk", version: "1.32.2" },
   { name: "drizzle-orm", version: "0.45.4" },
-  { name: "drizzle-kit", version: "0.31.11" },
   { name: "lucide-react", version: "0.577.0" },
 ];
 

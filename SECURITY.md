@@ -248,15 +248,9 @@ into a fresh environment and checked against the OSV database on the same date.
 ### Current state
 
 - **npm, production:** `npm audit --omit=dev` reports **0 vulnerabilities**.
-- **npm, dev-only:** one moderate advisory remains:
-  - **What:** `esbuild <=0.24.2` (GHSA-67mh-4wv8-2f99), pulled in through
-    `drizzle-kit` → `@esbuild-kit/*`.
-  - **Why it doesn't apply:** the advisory concerns esbuild's development
-    *server* answering cross-origin requests. `drizzle-kit` only runs when a
-    maintainer generates migrations or opens Drizzle Studio, never in a
-    deployed instance, and doesn't start esbuild's server. The only available
-    fix is a drizzle-kit major downgrade.
-  - **Revisit when:** drizzle-kit drops `@esbuild-kit`.
+- **npm, dev-only:** `npm audit` reports **0 vulnerabilities**. The last
+  dev-only advisory (esbuild GHSA-67mh-4wv8-2f99, through `drizzle-kit`) was
+  cleared by removing `drizzle-kit`; migrations are hand-written SQL.
 - **Python:** the 34 packages resolved from `falcon-extras/requirements.txt`
   have no known advisories.
 
