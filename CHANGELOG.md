@@ -3,6 +3,8 @@
 ## Unreleased
 
 ### Changed
+- **MCP server pinned to eyas-mcp 91d0448** (still 0.21.0). Its server code is
+  the same as c034131; only its documentation changed.
 - **More of the add-on moved onto eyas-mcp.** Host-group and group-member
   listings, the contained-host list and identity detections now come straight
   from eyas-mcp's native searches; recording a detection verdict and running a
