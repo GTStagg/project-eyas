@@ -6,7 +6,6 @@
     "extras_adopt_shadow_ai_banned_host_group",
     "extras_classify_patch_coverage",
     "extras_close_all_open_detections_on_host",
-    "extras_data_protection_provision_playbook",
     "extras_create_data_protection_classification",
     "extras_create_data_protection_content_pattern",
     "extras_create_data_protection_policy",
@@ -26,14 +25,12 @@
     "extras_host_process_tree",
     "extras_host_rat_install_scan",
     "extras_host_shadow_ai_scan",
-    "extras_identity_ir_workflow_playbook",
     "extras_ir_campaign_scope",
     { "name": "extras_ir_close_remediated", "required_params": ["device_id", "remediated"] },
     { "name": "extras_ir_close_untouched_originals", "required_params": ["device_id", "before_iso", "verdict"] },
     "extras_ir_phase0_actionable_check",
     "extras_ir_phase0_detection_scope",
     "extras_ir_phase3_verification_scope",
-    "extras_ir_workflow_playbook",
     "extras_list_ioa_exclusions",
     "extras_list_ml_exclusions",
     "extras_list_patch_profiles",
@@ -50,7 +47,6 @@
     { "name": "extras_save_patch_profile", "required_params": ["name", "product", "url", "kind"] },
     "extras_shadow_ai_adopt_prevention",
     "extras_shadow_ai_check_prevention_binding",
-    "extras_shadow_ai_prevention_status",
-    "extras_shadow_ai_workflow_playbook"
+    "extras_shadow_ai_prevention_status"
   ]
 }

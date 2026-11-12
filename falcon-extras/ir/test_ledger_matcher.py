@@ -4,7 +4,7 @@ Per CLAUDE.md (memory: "extras_ir_close_remediated matcher contract"), every
 new remediation primitive needs three changes in lockstep:
 
   1. a ``kind ==`` branch in ``ledger_matcher.py``
-  2. a Phase 2 instruction in ``ir_playbook.py`` telling the agent to emit
+  2. a Phase 2 instruction in ``lib/eyas-tools/playbooks/ir.ts`` telling the agent to emit
      that ledger entry on success
   3. a unit test in this file exercising the new branch
 

@@ -41,7 +41,6 @@ from shadow_ai import (
 from shadow_ai import domain_regex_alternation as _ai_domain_regex_alternation
 from shadow_ai import image_regex_alternation as _ai_image_regex_alternation
 from shadow_ai.catalog import get_sanctioned_tools
-from shadow_ai_playbook import render_shadow_ai_playbook
 
 
 def _get_custom_ioa_client() -> CustomIOA:
@@ -772,31 +771,6 @@ def fleet_shadow_ai_egress(
         }
     except Exception as exc:
         return swallow_exc(exc)
-
-
-
-
-def shadow_ai_workflow_playbook(device_id: str) -> dict[str, Any]:
-    """Return the agentic Shadow-AI ban-and-clean workflow playbook for one host. Read-only.
-
-    Call this when the operator clicks "Ban + Clean" on a host in /shadow-ai
-    or asks for the agentic Shadow-AI workflow on a specific host. The
-    returned `playbook` text is your working instruction set for the rest of
-    the conversation — follow it phase by phase.
-
-    The playbook is parameterized with the target device_id and the
-    operator-configured banned host group id. Returns ok=False with a clear
-    error if FALCON_SHADOW_AI_BANNED_GROUP_ID is unset on the server.
-
-    Args:
-        device_id: Falcon AID of the target host.
-    """
-    if not device_id or not isinstance(device_id, str):
-        return {"ok": False, "error": "device_id required"}
-    playbook, err = render_shadow_ai_playbook(device_id)
-    if err:
-        return {"ok": False, "error": err}
-    return {"ok": True, "device_id": device_id, "playbook": playbook}
 
 
 
