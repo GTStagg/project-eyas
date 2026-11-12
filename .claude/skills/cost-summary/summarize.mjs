@@ -1,33 +1,22 @@
 #!/usr/bin/env node
 // cost-summary — segment the cost_log table in data/eyas.db by surface +
 // model, print USD spend with % share, cache hit %, and ⌀ iterations.
-// Pricing table mirrors lib/cost/pricing.ts; keep in sync when Anthropic
-// changes prices. (Cost moved from a JSONL file to SQLite — see lib/cost/log.ts.)
+// Pricing is read from lib/cost/pricing.ts. (Cost moved from a JSONL file to SQLite — see lib/cost/log.ts.)
 
 import Database from "better-sqlite3";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 
-// cacheWrite priced at the 1h-TTL rate (2x input), mirroring lib/cost/pricing.ts
-// — the tool catalog + chat system prompt are cached at ttl=1h. Keep in sync.
-const SONNET = { input: 3.0, output: 15.0, cacheWrite: 6.0, cacheRead: 0.3 };
-const OPUS = { input: 15.0, output: 75.0, cacheWrite: 30.0, cacheRead: 1.5 };
-const HAIKU = { input: 1.0, output: 5.0, cacheWrite: 2.0, cacheRead: 0.1 };
-
-const PRICING = [
-  { prefix: "claude-opus-4", p: OPUS },
-  { prefix: "claude-sonnet-4", p: SONNET },
-  { prefix: "claude-haiku-4", p: HAIKU },
-  { prefix: "claude-3-5-sonnet", p: SONNET },
-  { prefix: "claude-3-5-haiku", p: HAIKU },
-  { prefix: "claude-3-opus", p: OPUS },
-];
+// Prices come from lib/cost/pricing.ts itself (run.sh starts this under tsx),
+// so the summary and the in-app /cost page can't drift apart. A model the
+// table doesn't know is priced as Claude Sonnet 5.5.
+const { pricingFor } = await import(
+  pathToFileURL(path.resolve(process.cwd(), "lib/cost/pricing.ts")).href
+);
+const FALLBACK = pricingFor("claude-sonnet-5-5");
 
 function priceFor(model) {
-  if (!model) return SONNET;
-  for (const { prefix, p } of PRICING) if (model.startsWith(prefix)) return p;
-  if (model.includes("opus")) return OPUS;
-  if (model.includes("haiku")) return HAIKU;
-  return SONNET;
+  return (model && pricingFor(model)) || FALLBACK;
 }
 
 function costOf(usage, p) {

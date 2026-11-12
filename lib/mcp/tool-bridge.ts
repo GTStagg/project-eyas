@@ -5,6 +5,7 @@ import { projectToolResult } from "./projections";
 import { detectFalconError, parseToolResultObjects } from "./parse";
 import { EXTRAS_READ_ONLY, REQUIRES_APPROVAL } from "./write-tools";
 import type { CallNative } from "./native-dispatch";
+import { canonicalResources, canonicalTools } from "@/lib/llm/prompt-cache";
 import { EYAS_TOOLS, EYAS_TOOL_MAP } from "@/lib/eyas-tools";
 import type { EyasToolContext, NativeSearchResult } from "@/lib/eyas-tools/types";
 import { shapeNativePayload } from "./native-shape";
@@ -429,9 +430,11 @@ export async function buildToolBridge(
     return { content: projected || "(empty result)", isError: Boolean(resp.isError) };
   };
 
+  // Sorted so the cached prompt prefix is identical from turn to turn
+  // (eyas-mcp's own ordering changes per process — lib/llm/prompt-cache.ts).
   return {
-    anthropicTools,
-    resources: resourcesResp.resources as FalconResource[],
+    anthropicTools: canonicalTools(anthropicTools),
+    resources: canonicalResources(resourcesResp.resources as FalconResource[]),
     annotatedNativeWrites,
     unclassifiedSidecarTools,
     invoke,

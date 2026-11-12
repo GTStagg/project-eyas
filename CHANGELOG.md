@@ -64,6 +64,16 @@
   console writes.
 
 ### Fixed
+- **Chat reuses its prompt cache between turns.** The tool list and the
+  syntax-guide list came back from the MCP server in a different order each
+  turn, so every chat message paid to cache the ~175K-token tool catalog
+  again. They are now sorted, and the conversation so far is cached too, so a
+  long investigation no longer re-sends every earlier tool result at the full
+  price. On the dev instance a follow-up message dropped from about $0.70 to
+  about $0.02.
+- `/cost-summary` priced every call with older Claude Sonnet 4 rates and
+  overstated spend by about half; it now reads the same price table as the
+  in-app cost page.
 - **Teardown removes the IR-readiness exclusion.** It looked for the text
   "IR-readiness" in the exclusion's comment, which the setup never writes, so
   the exclusion was left behind on every teardown. It is now matched by the

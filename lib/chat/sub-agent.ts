@@ -4,6 +4,7 @@ import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { getAnthropicClient, getAnthropicModel } from "@/lib/llm/anthropic";
 import { createMessage } from "@/lib/llm/messages";
 import { assistantTurnContent, toolUsesToRun } from "@/lib/llm/request";
+import { withHistoryCacheMarker } from "@/lib/llm/prompt-cache";
 import { buildToolBridge } from "@/lib/mcp/tool-bridge";
 import { maybeFenceToolResult } from "@/lib/chat/agent-loop";
 import { requiresApproval as defaultRequiresApproval } from "@/lib/mcp/write-tools";
@@ -181,7 +182,8 @@ export async function runSubAgent(opts: SubAgentOptions): Promise<SubAgentResult
             },
           ],
           tools,
-          messages: conversation,
+          // Cache the history so each iteration reads it back (prompt-cache.ts).
+          messages: withHistoryCacheMarker(conversation, "5m"),
         },
         { signal },
       );

@@ -4,6 +4,7 @@ import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { getAnthropicClient, getAnthropicModel } from "@/lib/llm/anthropic";
 import { streamMessage } from "@/lib/llm/messages";
 import { assistantTurnContent, servedByFallback, toolUsesToRun } from "@/lib/llm/request";
+import { withHistoryCacheMarker } from "@/lib/llm/prompt-cache";
 import { buildToolBridge } from "@/lib/mcp/tool-bridge";
 import { awaitApproval } from "@/lib/chat/approvals";
 import { requiresApproval as defaultRequiresApproval } from "@/lib/mcp/write-tools";
@@ -266,7 +267,11 @@ export async function runAgentLoop(opts: RunAgentOptions): Promise<RunAgentResul
               .map((text) => ({ type: "text" as const, text })),
           ],
           tools,
-          messages: conversation,
+          // Cache the history too: each iteration then reads everything up
+          // to the previous tail from cache instead of re-sending it as
+          // uncached input. Same TTL as the system block (a longer TTL may
+          // not follow a shorter one).
+          messages: withHistoryCacheMarker(conversation, systemTtl),
         },
         {
           signal,

@@ -53,7 +53,7 @@ Headline ratios
 
 ## Limits
 
-- Pricing table mirrors `lib/cost/pricing.ts` (longest-prefix match on model id). Update both when Anthropic changes pricing.
+- Prices come straight from `lib/cost/pricing.ts` (longest-prefix match on model id), the same table the in-app /cost page uses.
 - A surface that doesn't appear in the log either wasn't called in the window or never logs (the read-only dashboard fetchers don't go through `logUsage()` because they don't run the agent loop).
 - Doesn't cross-reference `data/perf-log.jsonl` — that's `npm run perf-summary`. Use the two together: cost surfaces what you're paying for; perf surfaces what's slow.
 
