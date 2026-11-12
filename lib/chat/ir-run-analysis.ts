@@ -49,7 +49,8 @@ const NATURAL_PHASE: Record<string, Phase> = {
   extras_ir_close_remediated: 4,
   extras_ir_close_untouched_originals: 4,
   extras_close_all_open_detections_on_host: 4,
-  extras_update_detection_status: 4,
+  falcon_update_detections: 4,
+  extras_update_detection_status: 4, // retired sidecar name — older runs
   falcon_lift_host_containment: 4,
   extras_host_lift_containment: 4, // retired sidecar name — older runs
   extras_host_group_remove_members: 4,

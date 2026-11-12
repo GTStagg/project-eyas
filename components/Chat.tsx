@@ -1657,19 +1657,32 @@ function ApprovalSummary({ tool }: { tool: ToolUse }) {
     }
     whatHappens = "Closes every open detection on this host with the supplied verdict — no ledger matching, no per-id audit trail. Out-of-band rescue lane for queue drain.";
     ifDenied = "Detections stay open for individual review.";
-  } else if (tool.name === "extras_update_detection_status") {
-    const ids = Array.isArray(input.composite_ids) ? (input.composite_ids as string[]) : [];
-    title = "Update detection status";
+  } else if (tool.name === "falcon_update_detections") {
+    const ids = Array.isArray(input.ids) ? (input.ids as string[]) : [];
+    const addTags = Array.isArray(input.add_tags) ? (input.add_tags as string[]) : [];
+    const verdict = addTags.find((t) => t === "true_positive" || t === "false_positive" || t === "ignored");
+    title = verdict ? "Record a detection verdict" : "Update detections";
+    rows = [{ label: "Detections", value: String(ids.length) }];
+    if (get("status")) rows.push({ label: "Status", value: get("status") ?? "" });
+    if (verdict) rows.push({ label: "Verdict", value: verdict });
+    const otherTags = addTags.filter((t) => t !== verdict);
+    if (otherTags.length > 0) rows.push({ label: "Add tags", value: otherTags.join(", ") });
+    if (get("append_comment")) rows.push({ label: "Comment", value: get("append_comment") ?? "" });
+    const assignee = get("assign_to_name") ?? get("assign_to_user_id") ?? get("assign_to_uuid");
+    if (assignee) rows.push({ label: "Assign to", value: assignee });
+    if (input.unassign === true) rows.push({ label: "Assignee", value: "removed" });
+    whatHappens = "Updates the listed detections in Falcon: status, verdict tag, comment or assignee as shown. Changes are recorded in Falcon's audit log.";
+    ifDenied = "The detections stay as they are.";
+  } else if (tool.name === "falcon_execute_workflow") {
+    title = "Run a Fusion workflow";
     rows = [
-      { label: "Detections", value: String(ids.length) },
-      { label: "Verdict", value: get("verdict") ?? get("status") ?? "(unspecified)" },
+      { label: "Workflow", value: get("definition_id") ?? get("name") ?? "(unspecified)", mono: Boolean(get("definition_id")) },
     ];
-    whatHappens = "Sets the verdict tag on the listed detections (true_positive / false_positive). Status transitions are recorded in Falcon's audit log alongside the operator id.";
-    ifDenied = "Detection verdicts stay where they are.";
-  } else if (tool.name === "extras_workflows_execute") {
-    title = "Execute a Fusion workflow on demand";
-    rows = [{ label: "Workflow", value: get("workflow_id") ?? "(unspecified)", mono: true }];
-    whatHappens = "Triggers the named Fusion workflow once with the supplied input. Whatever actions the workflow defines (notifications, host actions, exports) fire.";
+    const params = input.parameters;
+    if (params && typeof params === "object" && Object.keys(params as object).length > 0) {
+      rows.push({ label: "Input", value: JSON.stringify(params), mono: true });
+    }
+    whatHappens = "Starts the workflow once with the input shown. Whatever the workflow does (notifications, host actions, tickets) happens.";
     ifDenied = "The workflow doesn't run.";
   } else if (tool.name === "extras_shadow_ai_adopt_prevention") {
     title = "Adopt the Shadow-AI prevention bundle";

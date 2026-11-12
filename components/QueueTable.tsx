@@ -229,7 +229,7 @@ function rowIrEligibility(r: QueueRow, irEnabled: boolean) {
   return null;
 }
 
-// idp_source_account is "DOMAIN\sam" format from extras_identity_detections;
+// idp_source_account is "DOMAIN\sam" format from the identity detection rows;
 // strip the domain to get the bare samAccountName.
 function extractSamFromAccount(acct?: string): string | undefined {
   if (!acct) return undefined;

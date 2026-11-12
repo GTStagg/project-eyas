@@ -524,7 +524,7 @@ function StatusBadge({ status }: { status: ProbeStatus }) {
 // ones. Anything unmatched lands in "Other" so new tools degrade gracefully
 // (and visibly) instead of silently disappearing.
 const TOOL_DOMAIN_RULES: { domain: string; match: (n: string) => boolean }[] = [
-  { domain: "Containment", match: (n) => /^extras_host_(contain|lift_containment|list_contained)$/.test(n) },
+  { domain: "Containment", match: (n) => /^extras_host_(contain|lift_containment)$/.test(n) },
   { domain: "Identity protection", match: (n) => n.startsWith("extras_identity_") },
   { domain: "Shadow AI", match: (n) => n.includes("shadow_ai") },
   {
@@ -535,7 +535,6 @@ const TOOL_DOMAIN_RULES: { domain: string; match: (n: string) => boolean }[] = [
       n === "extras_diagnose_ir_readiness" ||
       n === "extras_host_process_tree" ||
       n === "extras_host_rat_install_scan" ||
-      n === "extras_update_detection_status" ||
       n === "extras_close_all_open_detections_on_host",
   },
   { domain: "Host groups", match: (n) => n.startsWith("extras_host_group_") },

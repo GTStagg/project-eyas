@@ -2,29 +2,17 @@ import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { runAgentLoop } from "@/lib/chat/agent-loop";
 import { streamAgent } from "@/lib/chat/stream-agent";
 import { nativeSidecarPayload } from "@/lib/mcp/native-payload";
+import { fetchIdentityDetections } from "@/lib/identity/fetch-detections";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 // /identity — Identity Protection decision document. Deterministic-first: the
-// four extras_identity_* reads are fetched server-side in parallel and injected
+// four identity reads are fetched server-side in parallel and injected
 // as a context block (mirrors /discover, /intel), so the agent synthesizes
 // without spending iterations on tool calls and a no-scope tenant escapes
 // immediately. (Read-only surface; no per-tool [N] citations — the injected
 // snapshot is the ground truth the doc references by name.)
-
-function parseToolJson(result: unknown): Record<string, unknown> | null {
-  const content = (result as { content?: unknown })?.content;
-  const text = (Array.isArray(content) ? content : ([] as Array<{ type: string; text?: string }>))
-    .map((c) => (c.type === "text" && c.text ? c.text : ""))
-    .join("\n");
-  try {
-    const j = JSON.parse(text) as unknown;
-    return j && typeof j === "object" ? (j as Record<string, unknown>) : null;
-  } catch {
-    return null;
-  }
-}
 
 type IdentityData = {
   risky: Record<string, unknown> | null;
@@ -33,13 +21,12 @@ type IdentityData = {
   rules: Record<string, unknown> | null;
 };
 
-// Risky identities, IDP sensors and policy rules come from the MCP server's
-// native tools (same records as the former sidecar twins, verified live);
-// identity detections still come from the sidecar.
-async function fetchIdentity(extras: Client, mcp: Client): Promise<IdentityData> {
+// All four reads come from the MCP server's native tools; identity detections
+// add Eyas's open-only / no-policy-match rules (lib/identity/detections.ts).
+async function fetchIdentity(mcp: Client): Promise<IdentityData> {
   const [risky, detections, sensors, rules] = await Promise.all([
     nativeSidecarPayload(mcp, "falcon_search_risky_identities", { limit: 15 }),
-    extras.callTool({ name: "extras_identity_detections", arguments: { hours: 168, limit: 50 } }).then(parseToolJson),
+    fetchIdentityDetections(mcp, { hours: 168, limit: 50 }),
     nativeSidecarPayload(mcp, "falcon_search_idp_sensors", { limit: 50 }),
     nativeSidecarPayload(mcp, "falcon_search_idp_policy_rules", { limit: 200 }),
   ]);
@@ -140,7 +127,7 @@ function buildPrompt(): string {
 
 export async function POST() {
   return streamAgent(async ({ mcp, extras, emit, signal }) => {
-    const data = await fetchIdentity(extras, mcp);
+    const data = await fetchIdentity(mcp);
     if (identityScopePending(data)) {
       emit("scope_pending", {
         note: "The Falcon API client does not carry the Identity Protection (Identity Protection Entities:read) scope.",

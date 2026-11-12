@@ -214,7 +214,7 @@ def phase3_verification_scope(
         "prior_checked_count": prior_checked,
         "note": (
             "Pass `workflow_self_composite_ids` AND `retrospective_composite_ids` "
-            "to extras_update_detection_status with verdict='false_positive' "
+            "to falcon_update_detections (status='closed', add_tags=['false_positive']) "
             "(both buckets are never real — workflow-self is RTR runscript "
             "preamble noise; retrospective is Falcon's IOC engine surfacing "
             "historical telemetry as fresh detections after a custom IOC was "

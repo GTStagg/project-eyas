@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { withFalconMcpClient } from "@/lib/mcp/falcon-client";
-import { withFalconExtrasClient } from "@/lib/mcp/falcon-extras-client";
-import { parseConcatenatedJson, parseExtrasObjectResult } from "@/lib/mcp/parse";
+import { fetchContainedAids } from "@/lib/hosts/contained";
+import { fetchIdentityDetections } from "@/lib/identity/fetch-detections";
+import type { IdentityDetection } from "@/lib/identity/detections";
+import { parseConcatenatedJson } from "@/lib/mcp/parse";
 import {
   rankDetections,
   type IdentityOverlap,
@@ -34,30 +36,7 @@ const overlayCache = new Map<
   { overlay: IdentityOverlap; ts: number }
 >();
 
-type ContainedHost = { device_id?: string };
 
-// Raw shape returned by extras_identity_detections per row. Keep this loose
-// — the projection on the sidecar side is stable but adding fields shouldn't
-// break us.
-type IdpDetection = {
-  composite_id?: string;
-  id?: string;
-  severity?: number;
-  severity_name?: string;
-  display_name?: string;
-  description?: string;
-  created_timestamp?: string;
-  status?: string;
-  tactic?: string;
-  technique?: string;
-  user_name?: string;
-  source_account_name?: string;
-  source_account_domain?: string;
-  destination_account_name?: string;
-  source_endpoint_host_name?: string;
-  destination_endpoint_host_name?: string;
-  falcon_host_link?: string;
-};
 
 export async function GET() {
   const cutoff = new Date(
@@ -65,18 +44,14 @@ export async function GET() {
   ).toISOString();
 
   try {
-    // Both native falcon-mcp operations in this request — the endpoint
-    // detection search and the adversary-name resolution — run on ONE shared
-    // client. This is a single request against a single tenant, and the two
-    // native calls fire sequentially (detections up front in the Promise.all,
-    // adversary chip only after ranking + identity overlay), so they never
-    // contend on falcon-mcp's serial JSON-RPC queue. Pooling them onto one
-    // client saves a second native spawn + OAuth token mint. The two extras
-    // calls in the Promise.all below keep their own independent extras client.
+    // The endpoint and identity detection searches and the adversary-name
+    // resolution share ONE native client (the server handles concurrent
+    // requests on one connection), saving extra spawns + OAuth token mints.
+    // Contained AIDs open their own client.
     return await withFalconMcpClient(async (mcpClient) => {
       const [endpointRows, idpRows, containedAids] = await Promise.all([
         fetchOpenEndpointDetections(mcpClient, cutoff),
-        fetchOpenIdpDetections(),
+        fetchOpenIdpDetections(mcpClient),
         fetchContainedAids(),
       ]);
 
@@ -142,9 +117,8 @@ async function fetchOpenEndpointDetections(
   // with NGSIEM test rules or chatty correlation rules drown out the
   // endpoint queue.
   //
-  // IDP detections come in via fetchOpenIdpDetections through the sidecar's
-  // extras_identity_detections (which already drops policy-match noise and
-  // closed status). NGSIEM correlation results live on /ngsiem.
+  // IDP detections come in via fetchOpenIdpDetections (open only, with the
+  // policy-match noise dropped). NGSIEM correlation results live on /ngsiem.
   const filter =
     `product:'epp'+` +
     `created_timestamp:>'${cutoffIso}'+` +
@@ -163,36 +137,26 @@ async function fetchOpenEndpointDetections(
   return parseConcatenatedJson<Detection>(text);
 }
 
-async function fetchOpenIdpDetections(): Promise<RankInput[]> {
-  // IDP fan-out via the sidecar. Tool defaults already filter:
-  //   - status open only
-  //   - "Policy rule match" enforcement noise dropped (tactic-empty)
-  // If the tenant lacks Identity Protection scopes, this returns []
-  // silently — the queue degrades to endpoint-only with no error
-  // surfaced to the user.
-  const items = await withFalconExtrasClient(async (client) => {
-    try {
-      const result = await client.callTool({
-        name: "extras_identity_detections",
-        arguments: {
-          hours: WINDOW_DAYS * 24,
-          limit: IDP_LIMIT,
-        },
-      });
-      // parseExtrasObjectResult (not raw JSON.parse) so a raised sidecar tool
-      // or a structuredContent-only SDK response can't throw/empty-fail this
-      // real merged source silently. Still degrades to [] on failure by design.
-      const payload = parseExtrasObjectResult(result);
-      if (payload?.ok && Array.isArray(payload.items)) {
-        return payload.items as IdpDetection[];
-      }
-      return [];
-    } catch {
-      return [];
+async function fetchOpenIdpDetections(client: Client): Promise<RankInput[]> {
+  // Open identity detections from the native detection search, with Eyas's
+  // rules on top (lib/identity/detections.ts): open status only, and the
+  // "Policy rule match" enforcement noise (empty tactic) dropped. If the
+  // tenant lacks Identity Protection scopes this returns [] silently — the
+  // queue degrades to endpoint-only with no error surfaced to the user.
+  let items: IdentityDetection[] = [];
+  try {
+    const payload = await fetchIdentityDetections(client, {
+      hours: WINDOW_DAYS * 24,
+      limit: IDP_LIMIT,
+    });
+    if (payload.ok === true && Array.isArray(payload.items)) {
+      items = payload.items as IdentityDetection[];
     }
-  });
+  } catch {
+    items = [];
+  }
 
-  if (!items || items.length === 0) return [];
+  if (items.length === 0) return [];
 
   // Normalize to the Detection shape so rankDetections can score uniformly.
   // The hostname slot on the synthetic device gets source_endpoint_host_name
@@ -329,26 +293,3 @@ async function enrichTopRowsWithIdentity(rows: QueueRow[]): Promise<number> {
   return attached;
 }
 
-async function fetchContainedAids(): Promise<Set<string>> {
-  const aids = await withFalconExtrasClient(async (client) => {
-    try {
-      const result = await client.callTool({
-        name: "extras_host_list_contained",
-        arguments: { limit: 200 },
-      });
-      const text = (result.content as Array<{ type: string; text?: string }>)
-        .map((c) => (c.type === "text" && c.text ? c.text : ""))
-        .join("\n");
-      const payload = JSON.parse(text);
-      if (payload && payload.ok && Array.isArray(payload.items)) {
-        return (payload.items as ContainedHost[])
-          .map((h) => h.device_id)
-          .filter((x): x is string => Boolean(x));
-      }
-      return [];
-    } catch {
-      return [];
-    }
-  });
-  return new Set(aids ?? []);
-}

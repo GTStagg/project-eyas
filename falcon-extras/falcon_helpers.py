@@ -24,7 +24,6 @@ from falconpy import (
     MLExclusions,
     NGSIEM,
     PreventionPolicy,
-    Workflows,
 )
 
 
@@ -126,14 +125,6 @@ def _get_host_group_client(timeout: int | None = None) -> HostGroup:
     if timeout is not None:
         return HostGroup(timeout=timeout, **_falcon_kwargs())
     return HostGroup(**_falcon_kwargs())
-
-
-def _get_workflows_client() -> Workflows:
-    # Tight HTTP timeout so a slow `WorkflowExecutionsCombined` upstream
-    # surfaces as a structured exception inside our 60s MCP envelope rather
-    # than getting killed by the MCP transport with an opaque "Request timed
-    # out" error. 45s leaves headroom for response read + projection.
-    return Workflows(timeout=45, **_falcon_kwargs())
 
 
 def _get_alerts_client() -> Alerts:

@@ -79,11 +79,11 @@ def phase0_actionable_partition(device_id: str) -> dict[str, Any]:
             "bulk_close_calls": [             # When should_proceed_with_ir=False,
                                               # ready-to-fire close-call descriptors
                                               # the agent surfaces verbatim.
-                {
-                    "composite_ids": [...],
-                    "verdict": "false_positive" | None,
+                {   # falcon_update_detections arguments, plus `kind`
+                    "ids": [...],
                     "status": "closed",
-                    "comment": "...",
+                    "add_tags": ["false_positive"],   # omitted for shadow_ai_audit
+                    "append_comment": "...",
                     "kind": "workflow_self" | "shadow_ai_audit" | "retrospective",
                 },
                 ...
@@ -179,16 +179,17 @@ def phase0_actionable_partition(device_id: str) -> dict[str, Any]:
     )
     should_proceed = len(actionable) > 0
 
-    # Pre-compose the bulk-close calls so the agent doesn't have to
-    # reason about verdict/status/comment shape when short-circuiting.
+    # Pre-compose the bulk-close calls (falcon_update_detections arguments) so
+    # the agent doesn't have to reason about status/tag/comment shape when
+    # short-circuiting.
     bulk_close: list[dict[str, Any]] = []
     if not should_proceed:
         if workflow_self:
             bulk_close.append({
-                "composite_ids": [d["composite_id"] for d in workflow_self],
-                "verdict": "false_positive",
+                "ids": [d["composite_id"] for d in workflow_self],
                 "status": "closed",
-                "comment": (
+                "add_tags": ["false_positive"],
+                "append_comment": (
                     "Workflow-self-triggered — RTR runscript preamble matched "
                     "the PowerShell-encoded-command detector. Not real attacker "
                     "activity."
@@ -197,10 +198,9 @@ def phase0_actionable_partition(device_id: str) -> dict[str, Any]:
             })
         if shadow_ai_audit:
             bulk_close.append({
-                "composite_ids": [d["composite_id"] for d in shadow_ai_audit],
-                "verdict": None,
+                "ids": [d["composite_id"] for d in shadow_ai_audit],
                 "status": "closed",
-                "comment": (
+                "append_comment": (
                     "Shadow-AI audit IOC fire — detect-only domain IOC created "
                     "by Ban+Clean Phase 4 fired on continued AI-provider DNS. "
                     "Working as designed; no IR remediation appropriate."
@@ -209,10 +209,10 @@ def phase0_actionable_partition(device_id: str) -> dict[str, Any]:
             })
         if retrospective:
             bulk_close.append({
-                "composite_ids": [d["composite_id"] for d in retrospective],
-                "verdict": "false_positive",
+                "ids": [d["composite_id"] for d in retrospective],
                 "status": "closed",
-                "comment": (
+                "add_tags": ["false_positive"],
+                "append_comment": (
                     "Retrospective IOC match — fresh detection envelope, "
                     "underlying event timestamps predate the workflow window. "
                     "Falcon backfill, not new activity."

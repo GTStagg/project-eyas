@@ -1,7 +1,6 @@
 import "server-only";
 import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { withFalconMcpClient } from "@/lib/mcp/falcon-client";
-import { withFalconExtrasClient } from "@/lib/mcp/falcon-extras-client";
 import { parseConcatenatedJson, detectFalconError, isScopeDenied } from "@/lib/mcp/parse";
 import { db } from "@/lib/db/client";
 import { postureSnapshots } from "@/lib/db/schema";
@@ -16,6 +15,8 @@ import { fetchDataSecurityEntities } from "@/lib/dataprotection/fetch";
 import { fetchDiscoverSnapshot } from "@/lib/discover/native";
 import { fetchPreventionPosture } from "@/lib/prevention/posture";
 import { nativeSidecarPayload } from "@/lib/mcp/native-payload";
+import { fetchContainedHosts } from "@/lib/hosts/contained";
+import { fetchIdentityDetections } from "@/lib/identity/fetch-detections";
 import { clusterCampaigns } from "@/lib/queue/campaigns";
 import type { RankInput } from "@/lib/queue/rank";
 import type { Detection } from "@/components/DetectionsTable";
@@ -38,7 +39,7 @@ import {
 const DETECTION_WINDOW_DAYS = 14;
 const SPOTLIGHT_FILTER = "status:'open'+cve.exprt_rating:['CRITICAL','HIGH']";
 
-// Both extras tools and falcon-mcp tools return text content blocks; join them.
+// MCP tools return text content blocks; join them.
 function toText(result: unknown): string {
   const content = ((result as { content?: unknown })?.content ?? []) as Array<{
     type: string;
@@ -47,21 +48,10 @@ function toText(result: unknown): string {
   return content.map((c) => (c.type === "text" && c.text ? c.text : "")).join("\n");
 }
 
-// Sidecar (extras_*) tools return a single JSON object, not concatenated rows.
-function parseExtras(result: unknown): Record<string, unknown> | null {
-  try {
-    const j = JSON.parse(toText(result)) as unknown;
-    return j && typeof j === "object" ? (j as Record<string, unknown>) : null;
-  } catch {
-    return null;
-  }
-}
-
 // ---- detections -----------------------------------------------------------
 
 async function captureDetections(
   mcp: Client,
-  extras: Client,
 ): Promise<Pick<PostureMetrics, "detections">> {
   const cutoff = new Date(
     Date.now() - DETECTION_WINDOW_DAYS * 86_400_000,
@@ -80,19 +70,15 @@ async function captureDetections(
   const err = detectFalconError(detections);
   if (err) throw new Error(err);
 
-  // Contained hosts via the sidecar — tolerated if unavailable (stays null).
+  // Contained hosts — tolerated if unavailable (stays null). The count is the
+  // search's pagination.total, so it isn't capped at the page size.
   const containedAids = new Set<string>();
   let containedHosts: number | null = null;
   try {
-    const cRes = await extras.callTool({
-      name: "extras_host_list_contained",
-      arguments: { limit: 200 },
-    });
-    const payload = parseExtras(cRes);
-    if (payload?.ok === true && Array.isArray(payload.items)) {
-      const items = payload.items as Array<{ device_id?: string }>;
-      for (const h of items) if (h.device_id) containedAids.add(h.device_id);
-      containedHosts = items.length;
+    const c = await fetchContainedHosts(mcp, 200);
+    if (c.ok && !("scope_pending" in c)) {
+      for (const h of c.items) if (h.device_id) containedAids.add(h.device_id);
+      containedHosts = c.total;
     }
   } catch {
     // contained_hosts stays null
@@ -226,7 +212,6 @@ async function captureCoverage(mcp: Client): Promise<Pick<PostureMetrics, "cover
 
 async function captureIdentity(
   mcp: Client,
-  extras: Client,
 ): Promise<Pick<PostureMetrics, "identity">> {
   // Three independent IDP calls; each nulls its own field on failure so a
   // partial-scope tenant still records what it can.
@@ -250,12 +235,8 @@ async function captureIdentity(
   }
 
   try {
-    const r = await extras.callTool({
-      name: "extras_identity_detections",
-      arguments: { hours: 168, limit: 500 },
-    });
-    const p = parseExtras(r);
-    if (p?.ok === true && Array.isArray(p.items)) {
+    const p = await fetchIdentityDetections(mcp, { hours: 168, limit: 500 });
+    if (p.ok === true && Array.isArray(p.items)) {
       out.idp_detections_7d = p.items.length;
     }
   } catch {
@@ -436,13 +417,12 @@ export async function captureSnapshot(): Promise<CaptureResult> {
   const metrics = emptyPostureMetrics();
 
   try {
-    await withFalconMcpClient(async (mcp) =>
-      withFalconExtrasClient(async (extras) => {
+    await withFalconMcpClient(async (mcp) => {
         const settled = await Promise.allSettled([
-          captureDetections(mcp, extras),
+          captureDetections(mcp),
           captureVulns(mcp),
           captureCoverage(mcp),
-          captureIdentity(mcp, extras),
+          captureIdentity(mcp),
           capturePrevention(mcp),
           captureDataProtection(mcp),
           captureCases(mcp),
@@ -457,10 +437,9 @@ export async function captureSnapshot(): Promise<CaptureResult> {
             );
           }
         }
-      }),
-    );
+    });
   } catch (err) {
-    // Failed to open the Falcon clients at all (missing creds / sidecar down).
+    // Failed to open the Falcon client at all (missing creds / server down).
     return {
       ok: false,
       envId,
