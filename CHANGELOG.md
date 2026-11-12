@@ -39,6 +39,13 @@
   the group from the active environment when called, so a group created or
   adopted earlier in a chat turn is seen straight away. The add-on is down to
   30 tools.
+- **IR quarantine policy provisioning runs inside Eyas.** Adopting or creating
+  the per-platform quarantine policies, raising their settings, ordering them
+  first and installing the IR-readiness exclusion now use eyas-mcp's policy
+  and exclusion tools. The precedence move asks eyas-mcp to put the policy
+  first rather than resending a full order built from a partial list, so it
+  can no longer reorder or drop unrelated policies. Detaching a policy from a
+  group moved too. The add-on is down to 28 tools.
 - Verdicts are now recorded as the `true_positive` / `false_positive` tag with
   `status='closed'` on the native detection update, the same tag the Falcon
   console writes.

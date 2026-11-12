@@ -188,7 +188,8 @@ export const REQUIRES_APPROVAL: ReadonlySet<string> = new Set<string>([
   // to a host group, so it's gated. Status / dry-run paths are separate
   // tools or flags and remain read-only.
   "extras_shadow_ai_adopt_prevention",
-  // falcon-extras — IR quarantine setup. One-time tenant provisioning.
+  // IR quarantine setup (in-process Eyas tools, lib/eyas-tools/quarantine*.ts).
+  // One-time tenant provisioning.
   // Creates the canonical "Project Eyas - IR Quarantine" host group OR
   // creates / adopts the prevention policies bound to it (per-platform:
   // Windows / macOS / Linux) at AGGRESSIVE prevention sliders. Persistent
@@ -197,7 +198,7 @@ export const REQUIRES_APPROVAL: ReadonlySet<string> = new Set<string>([
   "extras_create_quarantine_host_group",
   "extras_adopt_quarantine_host_group",
   "extras_provision_quarantine_policy",
-  // falcon-extras — generic prevention-policy → host-group detach.
+  // Generic prevention-policy → host-group detach (in-process Eyas tool).
   // Inverse of the add-host-group action we use during provisioning.
   // Used to clean up legacy operator-created policies that are still
   // attached to the IR Quarantine / Shadow-AI Banned groups alongside
