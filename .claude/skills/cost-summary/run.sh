@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
 set -euo pipefail
 cd "$(dirname "$0")/../../.."
-exec node .claude/skills/cost-summary/summarize.mjs "$@"
+exec node node_modules/tsx/dist/cli.mjs .claude/skills/cost-summary/summarize.mjs "$@"
