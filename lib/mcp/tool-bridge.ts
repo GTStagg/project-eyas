@@ -349,7 +349,7 @@ export async function buildToolBridge(
     anthropicTools.push({
       name: READ_RESOURCE_TOOL_NAME,
       description:
-        "Read a Falcon MCP resource by URI. Use this when a tool's description tells you to consult a syntax guide — an FQL guide before constructing a `filter` expression, or the NGSIEM CQL guide before authoring an NGSIEM search — before making the call. Available resource URIs are listed in the system prompt.",
+        "Read an eyas-mcp resource (a syntax guide) by URI. Use this when a tool's description tells you to consult a syntax guide — an FQL guide before constructing a `filter` expression, or the NGSIEM CQL guide before authoring an NGSIEM search — before making the call. Available resource URIs are listed in the system prompt.",
       input_schema: {
         type: "object",
         properties: {

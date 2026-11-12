@@ -11,14 +11,14 @@ export type DevPortalLink = { topic: string; url: string; blurb: string };
 
 export const DEV_PORTAL_LINKS: DevPortalLink[] = [
   {
-    topic: "Falcon MCP",
-    url: "https://developer.crowdstrike.com/falcon-mcp/overview/",
-    blurb: "The official Model Context Protocol server — the read surface your loop composes.",
+    topic: "eyas-mcp",
+    url: "https://github.com/GTStagg/eyas-mcp",
+    blurb: "The MCP server this console runs on — the Falcon surface your loop composes: tools, schemas and release notes.",
   },
   {
     topic: "Python SDK (FalconPy)",
     url: "https://developer.crowdstrike.com/sdks/python/",
-    blurb: "The SDK a sidecar uses to cover writes and gaps falcon-mcp doesn't reach yet.",
+    blurb: "The Python SDK for anything your MCP server doesn't cover yet.",
   },
   {
     topic: "API Reference",
@@ -46,11 +46,6 @@ export const DEV_PORTAL_LINKS: DevPortalLink[] = [
     blurb: "Outcome-oriented recipes: investigate threats, automate response, hunt vulnerabilities.",
   },
   {
-    topic: "falcon-mcp source",
-    url: "https://github.com/CrowdStrike/falcon-mcp",
-    blurb: "The MCP server's source — module list, tool schemas, and release notes.",
-  },
-  {
     topic: "FalconPy source",
     url: "https://github.com/CrowdStrike/falconpy",
     blurb: "The Python SDK's source — the operation names a sidecar wraps.",
@@ -73,9 +68,9 @@ export const BLUEPRINT_SEEDS: BlueprintSeed[] = [
       "How do I put a human-in-the-loop approval gate in front of every Falcon write action (containment, IOC creation, policy changes) in a Claude tool-use loop?",
   },
   {
-    label: "falcon-mcp vs. FalconPy — when do I need a sidecar?",
+    label: "MCP server vs. your own tools — where does custom code go?",
     question:
-      "falcon-mcp covers a lot of reads but I need writes and some capabilities it doesn't expose. How do I decide what to use falcon-mcp for versus building a FalconPy sidecar, and how do I compose both into one agent loop?",
+      "My MCP server covers most Falcon operations, but I also have workflow logic of my own (playbooks, script libraries, provisioning). How do I decide what belongs in the MCP server versus my app's own tools, and how do I compose both into one agent loop?",
   },
   {
     label: "Deterministic enrichment + agentic synthesis",
@@ -90,6 +85,6 @@ export const BLUEPRINT_SEEDS: BlueprintSeed[] = [
   {
     label: "Composing multiple MCP servers into one loop",
     question:
-      "How do I merge falcon-mcp and my own FalconPy MCP server into a single tool catalog that one Claude loop can drive, and what are the gotchas?",
+      "How do I merge an MCP server's tools and my app's own in-process tools into a single tool catalog that one Claude loop can drive, and what are the gotchas?",
   },
 ];

@@ -4,7 +4,7 @@ import { getToolCatalog } from "@/lib/mcp/catalog";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// Diagnostics sibling to /api/falcon-mcp-list-tools, but the curated view: the
+// Diagnostics sibling to /api/eyas-mcp-list-tools, but the curated view: the
 // exact agent-visible tool set (suppression applied), both providers, each
 // annotated read-only vs. approval-gated. Session-authed by root middleware.ts.
 // Backs the /agent-toolbox page's verification probe + optional client refresh.

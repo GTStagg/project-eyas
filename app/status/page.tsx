@@ -207,7 +207,7 @@ export default async function Status() {
             <Group title="API">
               <Row label="Build details" value="/api/build-info" />
               <Row label="Detections" value="/api/detections" />
-              <Row label="Available Falcon tools" value="/api/falcon-mcp-list-tools" />
+              <Row label="Available Falcon tools" value="/api/eyas-mcp-list-tools" />
               <Row label="Liveness probe" value="/api/healthz" />
               <Row label="Health checks" value="/api/health" />
             </Group>

@@ -1,11 +1,9 @@
-"""falcon-extras: tiny MCP sidecar exposing FalconPy-only capabilities that
-falcon-mcp v0.9 doesn't provide (notably host containment).
+"""falcon-extras: the Python add-on (sidecar) holding the Eyas tools that
+have not yet moved into the console.
 
-This is the demo's "art of the possible" companion server: it shows that the
-manual agent loop in the Next.js app can plug in additional MCP servers
-alongside the upstream falcon-mcp, with no protocol-level differences. The
-intentionally-small surface area is two tools: contain a host, lift
-containment. Both are write-capable and gated by the Next.js approval flow.
+It plugs into the same agent loop as eyas-mcp, with no protocol-level
+differences. It is being retired: Eyas's own tools move into lib/eyas-tools/
+one family at a time, and generic Falcon operations belong in eyas-mcp.
 
 Transport: stdio. The Next.js process spawns this as a child and the lifecycle
 follows the dev server.
@@ -54,7 +52,7 @@ def about() -> str:
     """
     payload = {
         "name": "falcon-extras",
-        "purpose": "FalconPy-backed MCP sidecar for capabilities upstream falcon-mcp v0.9 doesn't ship (host containment).",
+        "purpose": "Eyas's remaining add-on tools (Shadow-AI, process tree, exclusions, data-protection setup) while they move into the console itself.",
         "python": f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
         "falconpy": _pkg_version("crowdstrike-falconpy"),
         "mcp_sdk": _pkg_version("mcp"),
@@ -286,7 +284,7 @@ def extras_host_shadow_ai_scan(
     """Four-layer shadow-AI scan on a single host. Read-only.
 
     Combines four NGSIEM passes (executed sequentially on one search
-    job each — falcon-mcp serializes per client):
+    job each — the add-on serializes per client):
 
       1. ProcessRollup2 → image-name match (AI desktop apps).
       2. ProcessRollup2 → cmdline match (MCP servers, agentic frameworks).

@@ -15,7 +15,7 @@ import { requiresApproval } from "@/lib/mcp/write-tools";
 export type CatalogTool = {
   name: string;
   description: string;
-  provider: "falcon-mcp" | "extension";
+  provider: "eyas-mcp" | "extension";
   gated: boolean;
   /** Native tool that advertises a write via MCP annotation (readOnlyHint:false).
    *  Healthy state: annotatedWrite ⇒ gated. See ToolCatalog.driftWarnings. */
@@ -32,7 +32,7 @@ export type CatalogResource = {
 
 export type ToolCatalogCounts = {
   total: number;
-  falconMcp: number;
+  eyasMcp: number;
   extension: number;
   gated: number;
   readOnly: number;
@@ -59,7 +59,7 @@ export type ToolCatalog = {
 // Sidecar tools are uniformly named `extras_*`; everything else (including the
 // synthetic `falcon_read_resource`) is served by the upstream falcon-mcp client.
 function classifyProvider(name: string): CatalogTool["provider"] {
-  return name.startsWith("extras_") ? "extension" : "falcon-mcp";
+  return name.startsWith("extras_") ? "extension" : "eyas-mcp";
 }
 
 function paramNamesOf(schema: Anthropic.Tool["input_schema"]): string[] {
@@ -91,7 +91,7 @@ async function buildCatalog(): Promise<ToolCatalog> {
 
     const counts: ToolCatalogCounts = {
       total: tools.length,
-      falconMcp: tools.filter((t) => t.provider === "falcon-mcp").length,
+      eyasMcp: tools.filter((t) => t.provider === "eyas-mcp").length,
       extension: tools.filter((t) => t.provider === "extension").length,
       gated: tools.filter((t) => t.gated).length,
       readOnly: tools.filter((t) => !t.gated).length,
@@ -120,7 +120,7 @@ async function buildCatalog(): Promise<ToolCatalog> {
       ok: false,
       error: err instanceof Error ? err.message : String(err),
       tools: [],
-      counts: { total: 0, falconMcp: 0, extension: 0, gated: 0, readOnly: 0 },
+      counts: { total: 0, eyasMcp: 0, extension: 0, gated: 0, readOnly: 0 },
       resources: [],
       suppressedNativeWrites,
       driftWarnings: [],
@@ -158,7 +158,7 @@ export async function getToolCatalog(opts?: { force?: boolean }): Promise<ToolCa
       // sidecar tools means one of the two MCP processes came up empty mid-build
       // (partial failure) — don't pin that incomplete catalog for the full TTL;
       // re-probe each request until both sources report tools.
-      if (catalog.ok && catalog.counts.falconMcp > 0 && catalog.counts.extension > 0) {
+      if (catalog.ok && catalog.counts.eyasMcp > 0 && catalog.counts.extension > 0) {
         catalogState.cache = { at: Date.now(), catalog };
       }
       return catalog;
