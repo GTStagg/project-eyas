@@ -30,6 +30,7 @@ bash .claude/skills/validate-bundle/run.sh path/to/project-eyas-vX.Y.Z.zip
 5. **eyas-mcp wheels staged.** `vendor/falcon-mcp-wheels/` must contain at least one `.whl`. Without wheels the recipient's offline install path falls back to PyPI, which corp-blocked networks can't reach.
 6. **`BUILD-INFO.txt` and `build-info.json` present and consistent.** Both must exist; `build-info.json.appVersion` must equal `package.json.version`. Catches version drift after a forgotten `npm version` bump.
 7. **`server.js` at bundle root.** The bundle's entrypoint. Without it, `start.sh` errors with the "may be corrupt" message.
+7b. **Gateway lock, if requested.** The lock is opt-in (`ANTHROPIC_GATEWAY_BASE_URL` at `make-dist.sh` time). An unlocked default build passes. A bundle whose `build-info.json` claims a lock must carry `forcedGatewayUrl` in its compiled `.next/` output, or the check fails. `REQUIRE_GATEWAY_LOCK=1` makes an unlocked bundle fail too.
 8. **`start.sh` is executable** (mode bit set in zip).
 
 ### Smoke-boot (skippable)
@@ -59,5 +60,6 @@ All structural checks ✓. If boot enabled, `/api/health` returned 200 within 60
 | Retired `falcon-extras` files present | A sidecar staging step was restored in `make-dist.sh` | Remove it; nothing under `falcon-extras/` ships |
 | Native `.node` file | New dep with a per-platform binary | Replace with a JS / WASM equivalent (cross-platform standalone is the constraint; see auth scrypt migration as precedent) |
 | Wheels missing | Build host doesn't have python3, or PyPI was unreachable during build | Re-run on a host with PyPI access; the warning is in `make-dist.sh` stderr |
+| Gateway lock not in compiled output | The `build-flags.ts` bake didn't take before `npm run build` | Rebuild with `ANTHROPIC_GATEWAY_BASE_URL` set and no dev server running |
 | `BUILD-INFO.txt` version drift | `npm version` bump didn't happen, or `versions.json` wasn't updated | Bump appropriately and rebuild |
 | Boot fails on `/api/health` | Bundle is structurally sound but server crashes on startup | Read `node server.js` stderr from the temp dir; common cause is a missing optional dep |
