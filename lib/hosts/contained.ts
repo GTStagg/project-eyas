@@ -20,6 +20,26 @@ export type ContainedHost = {
   last_seen?: string;
 };
 
+const CONTAINED_HOST_FIELDS: (keyof ContainedHost)[] = [
+  "device_id",
+  "hostname",
+  "platform_name",
+  "os_product_name",
+  "os_version",
+  "rtr_state",
+  "status",
+  "last_seen",
+];
+
+function projectContainedHost(row: unknown): ContainedHost {
+  const r = (row ?? {}) as Record<string, unknown>;
+  const out: ContainedHost = {};
+  for (const f of CONTAINED_HOST_FIELDS) {
+    if (typeof r[f] === "string") out[f] = r[f] as string;
+  }
+  return out;
+}
+
 export type ContainedHostsResult =
   | { ok: true; items: ContainedHost[]; total: number }
   | { ok: true; scope_pending: true; items: []; total: 0 }
@@ -36,7 +56,9 @@ export async function fetchContainedHosts(
   });
   if (p.scope_pending === true) return { ok: true, scope_pending: true, items: [], total: 0 };
   if (p.ok !== true) return { ok: false, error: String(p.error ?? "host search failed") };
-  const items = (Array.isArray(p.items) ? p.items : []) as ContainedHost[];
+  // The native search returns full host records (~100 fields, including the
+  // CID); keep only what the containment surfaces read.
+  const items = (Array.isArray(p.items) ? p.items : []).map(projectContainedHost);
   // pagination.total counts every contained host, not just this page.
   const total = typeof p.total === "number" ? p.total : items.length;
   return { ok: true, items, total };
