@@ -67,14 +67,9 @@ export function childProcessEnv(): Record<string, string> {
     cfg.shadowAiSanctionedTools.length ? cfg.shadowAiSanctionedTools.join(",") : undefined,
   );
 
-  // Saved per-tenant generic-installer param-sets (JSON array). The sidecar's
-  // extras_list_patch_profiles reads this on each invocation; the agent then
-  // resolves win-app-install with a chosen profile's params. Stripped when the
-  // tenant has none so a stale inherited value can't leak across environments.
-  setOrStrip(
-    "FALCON_PATCH_PROFILES",
-    cfg.patchProfiles?.length ? JSON.stringify(cfg.patchProfiles) : undefined,
-  );
+  // Saved patch profiles are read in-process (extras_list_patch_profiles in
+  // lib/eyas-tools); no child process needs them, so never pass them on.
+  setOrStrip("FALCON_PATCH_PROFILES", undefined);
 
   // Neutralize falcon-mcp behavior flags that must never be inherited from a
   // stray shell/.env export. 0.16.0 makes read-only + tool-filtering

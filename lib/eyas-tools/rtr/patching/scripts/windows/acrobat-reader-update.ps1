@@ -4,7 +4,9 @@
 # is also a fresh install if Reader isn't present.
 $url = "https://admdownload.adobe.com/bin/live/readerdc64_en_a_install.exe"
 # /sAll = silent everything, /rs = restart suppress, /msi = pass through to msiexec.
-$exit = Install-FromUrl -Url $url -ProductName "Adobe Acrobat Reader DC" -Kind "exe" `
-    -SilentArgs "/sAll /rs /msi /norestart"
+$result = @(Install-FromUrl -Url $url -ProductName "Adobe Acrobat Reader DC" -Kind "exe" `
+    -SilentArgs "/sAll /rs /msi /norestart")
+$result | Where-Object { $_ -isnot [int] }
+$exit = Get-InstallExitCode $result
 Write-Output "[falcon-extras] acrobat-reader-update exit=$exit host=$env:COMPUTERNAME"
 exit $exit

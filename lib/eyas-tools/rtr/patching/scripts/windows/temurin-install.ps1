@@ -12,6 +12,8 @@ $url = "https://api.adoptium.net/v3/installer/latest/$ver/ga/windows/x64/jdk/hot
 # Adoptium's MSI is a Wix bundle. Default flags install to %ProgramFiles%\Eclipse Adoptium\
 # without modifying PATH or registering as the system JDK -- we leave those calls to
 # whoever provisioned the host. /qn /norestart already covered by Install-FromUrl.
-$exit = Install-FromUrl -Url $url -ProductName "Eclipse Temurin JDK $ver" -Kind "msi"
+$result = @(Install-FromUrl -Url $url -ProductName "Eclipse Temurin JDK $ver" -Kind "msi")
+$result | Where-Object { $_ -isnot [int] }
+$exit = Get-InstallExitCode $result
 Write-Output "[falcon-extras] temurin-install version=$ver exit=$exit host=$env:COMPUTERNAME"
 exit $exit

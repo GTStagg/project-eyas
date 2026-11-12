@@ -31,8 +31,6 @@ bash .claude/skills/validate-bundle/run.sh path/to/project-eyas-vX.Y.Z.zip
    - `server.py`
    - `requirements.txt`
    - `falcon_scripts.py`
-   - `patching/` (manifest.json, library.py, rtr.py, scripts/…)
-   - `cleanup/` (manifest.json, library.py, scripts/…)
    `server.py` imports each of these — missing any will `ModuleNotFoundError` at first launch on the recipient's machine.
 5. **Wheels staged.** `vendor/falcon-mcp-wheels/` and `vendor/falcon-extras-wheels/` must each contain at least one `.whl`. Without wheels the recipient's offline install path falls back to PyPI, which corp-blocked networks can't reach.
 6. **`BUILD-INFO.txt` and `build-info.json` present and consistent.** Both must exist; `build-info.json.appVersion` must equal `package.json.version`. Catches version drift after a forgotten `npm version` bump.

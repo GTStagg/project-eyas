@@ -50,9 +50,18 @@ if [ "$SIZE" -lt 100000 ]; then
 fi
 
 python3 - "$TMP" <<'PY'
-import sys, re, json, pathlib, collections
-sys.path.insert(0, "falcon-extras")
-from patching import library
+import sys, re, json, pathlib, collections, subprocess
+
+
+def match_many(triples):
+    """Match (vendor, product, os) triples against Eyas's patch catalog
+    (lib/eyas-tools/rtr) in one call; returns a script id or None each."""
+    out = subprocess.run(
+        ["node", "scripts/rtr-library-cli.mjs", "match"],
+        input=json.dumps([{"vendor": v, "product": p, "os": o} for v, p, o in triples]),
+        capture_output=True, text=True, check=True,
+    )
+    return json.loads(out.stdout)
 
 html = open(sys.argv[1], encoding="utf-8", errors="replace").read()
 
@@ -137,7 +146,8 @@ for hit, n in counts.items():
     buckets[key] += n
     representatives.setdefault(key, hit)
 
-covered, uncovered = [], []
+# Every candidate (vendor, product, os) for every bucket, matched in one call.
+plans = []
 for (vendor, product), n in sorted(buckets.items(), key=lambda x: -x[1]):
     # Pick the OS family by vendor when obvious.
     os_filter = "windows"
@@ -152,9 +162,16 @@ for (vendor, product), n in sorted(buckets.items(), key=lambda x: -x[1]):
     candidates = [product]
     if not product.lower().startswith(vendor.lower()):
         candidates.append(f"{vendor} {product}".strip())
-    match = next((m for c in candidates if (m := library.match_remediation(vendor, c, os_filter))), None)
-    if match:
-        covered.append((n, vendor, product, match["id"]))
+    plans.append((n, vendor, product, os_filter, candidates))
+
+flat = [(v, c, o) for _, v, _, o, cands in plans for c in cands]
+ids = iter(match_many(flat)) if flat else iter([])
+covered, uncovered = [], []
+for n, vendor, product, os_filter, candidates in plans:
+    got = [next(ids) for _ in candidates]
+    match_id = next((i for i in got if i), None)
+    if match_id:
+        covered.append((n, vendor, product, match_id))
     else:
         uncovered.append((n, vendor, product, representatives[(vendor, product)]))
 

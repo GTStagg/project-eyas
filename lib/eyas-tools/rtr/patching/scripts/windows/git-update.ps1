@@ -11,7 +11,9 @@ if (-not $asset) {
 # Inno Setup silent flags: /VERYSILENT (no UI), /NORESTART (let our reboot policy decide),
 # /SUPPRESSMSGBOXES (don't block on prompts), /CLOSEAPPLICATIONS (kill open git.exe so
 # files aren't locked). Default install path / components.
-$exit = Install-FromUrl -Url $asset.browser_download_url -ProductName "Git for Windows" -Kind "exe" `
-    -SilentArgs "/VERYSILENT /NORESTART /SUPPRESSMSGBOXES /CLOSEAPPLICATIONS"
+$result = @(Install-FromUrl -Url $asset.browser_download_url -ProductName "Git for Windows" -Kind "exe" `
+    -SilentArgs "/VERYSILENT /NORESTART /SUPPRESSMSGBOXES /CLOSEAPPLICATIONS")
+$result | Where-Object { $_ -isnot [int] }
+$exit = Get-InstallExitCode $result
 Write-Output "[falcon-extras] git-update version=$($asset.name) exit=$exit host=$env:COMPUTERNAME"
 exit $exit

@@ -8,6 +8,8 @@ if (-not $asset) {
     Write-Error "Could not locate Notepad++ x64 installer in latest release."
     exit 6
 }
-$exit = Install-FromUrl -Url $asset.browser_download_url -ProductName "Notepad++" -Kind "exe" -SilentArgs "/S"
+$result = @(Install-FromUrl -Url $asset.browser_download_url -ProductName "Notepad++" -Kind "exe" -SilentArgs "/S")
+$result | Where-Object { $_ -isnot [int] }
+$exit = Get-InstallExitCode $result
 Write-Output "[falcon-extras] notepadpp-update version=$($asset.name) exit=$exit host=$env:COMPUTERNAME"
 exit $exit

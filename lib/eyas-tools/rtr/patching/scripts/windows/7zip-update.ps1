@@ -8,6 +8,8 @@ if (-not $asset) {
     Write-Error "Could not locate 7-Zip x64 MSI in latest release."
     exit 6
 }
-$exit = Install-FromUrl -Url $asset.browser_download_url -ProductName "7-Zip" -Kind "msi"
+$result = @(Install-FromUrl -Url $asset.browser_download_url -ProductName "7-Zip" -Kind "msi")
+$result | Where-Object { $_ -isnot [int] }
+$exit = Get-InstallExitCode $result
 Write-Output "[falcon-extras] 7zip-update version=$($asset.name) exit=$exit host=$env:COMPUTERNAME"
 exit $exit

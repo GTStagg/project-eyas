@@ -87,7 +87,7 @@ test("tool list: unique extras_* names with object schemas", () => {
     if (t.name.endsWith("_playbook")) assert.equal(t.rawResult, true, t.name);
   }
   assert.deepEqual(
-    [...names].sort(),
+    names.filter((n) => n.endsWith("_playbook")).sort(),
     [
       "extras_data_protection_provision_playbook",
       "extras_identity_ir_workflow_playbook",

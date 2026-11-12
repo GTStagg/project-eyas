@@ -22,7 +22,9 @@ try {
 } catch {
     Write-Output "[falcon-extras] WARN: product-details lookup failed ($($_.Exception.Message)); falling back to redirector"
     $url = "https://download.mozilla.org/?product=firefox-msi-latest-ssl&os=win64&lang=en-US"
-    $exit = Install-FromUrl -Url $url -ProductName "Mozilla Firefox" -Kind "msi"
+    $result = @(Install-FromUrl -Url $url -ProductName "Mozilla Firefox" -Kind "msi")
+    $result | Where-Object { $_ -isnot [int] }
+    $exit = Get-InstallExitCode $result
     Write-Output "[falcon-extras] firefox-update exit=$exit host=$env:COMPUTERNAME"
     exit $exit
 }
@@ -33,6 +35,8 @@ try {
 $encodedFile = "Firefox%20Setup%20$version.msi"
 $url = "https://archive.mozilla.org/pub/firefox/releases/$version/win64/en-US/$encodedFile"
 
-$exit = Install-FromUrl -Url $url -ProductName "Mozilla Firefox $version" -Kind "msi"
+$result = @(Install-FromUrl -Url $url -ProductName "Mozilla Firefox $version" -Kind "msi")
+$result | Where-Object { $_ -isnot [int] }
+$exit = Get-InstallExitCode $result
 Write-Output "[falcon-extras] firefox-update exit=$exit host=$env:COMPUTERNAME"
 exit $exit

@@ -24,7 +24,7 @@ The script:
 1. `curl`s the rendered HTML.
 2. Greps every `Update <Vendor> <Product>...` / `Install patch for ...` remediation string.
 3. Buckets by leading-vendor token (Mozilla, Microsoft Windows, Microsoft Office family, Notepad++, etc.).
-4. For each bucket, looks up whether a manifest entry covers it via `library.match_remediation` on a representative string.
+4. For each bucket, looks up whether a manifest entry covers it via `matchRemediation` (`lib/eyas-tools/rtr/library.ts`, called through `scripts/rtr-library-cli.mjs match`) on a representative string.
 5. Prints two ranked tables: **covered** (with the script id that handles it, host-count high-to-low) and **uncovered** (host-count high-to-low, candidate for next-batch curation).
 
 ## Reading the output

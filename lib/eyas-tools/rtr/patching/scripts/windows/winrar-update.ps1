@@ -14,6 +14,8 @@ if (-not $href) {
 }
 if ($href -notmatch "^https?://") { $href = $base + ($(if ($href.StartsWith("/")) { "" } else { "/" })) + $href }
 # WinRAR's installer accepts /S for silent install (Inno-like).
-$exit = Install-FromUrl -Url $href -ProductName "WinRAR" -Kind "exe" -SilentArgs "/S"
+$result = @(Install-FromUrl -Url $href -ProductName "WinRAR" -Kind "exe" -SilentArgs "/S")
+$result | Where-Object { $_ -isnot [int] }
+$exit = Get-InstallExitCode $result
 Write-Output "[falcon-extras] winrar-update url=$href exit=$exit host=$env:COMPUTERNAME"
 exit $exit

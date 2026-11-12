@@ -25,11 +25,29 @@
   banned group ids from the active environment when called, and refuse a
   host id, group id or user name that isn't well-formed. The add-on is down
   to 46 tools.
+- **The patch and cleanup script library runs inside Eyas.** Listing,
+  resolving, dry-running and running patch and cleanup scripts, checking
+  long-running patches, saved patch profiles and the vulnerability page's
+  coverage check are served by Eyas instead of the add-on, under the same tool
+  names, with every render checked against the former add-on's output. A
+  patch profile saved earlier in a chat turn is now visible to a later step of
+  the same turn. The add-on is down to 36 tools.
 - Verdicts are now recorded as the `true_positive` / `false_positive` tag with
   `status='closed'` on the native detection update, the same tag the Falcon
   console writes.
 
 ### Fixed
+- **Rendered patch and cleanup scripts keep every `?`.** The script
+  renderer deleted every `?` along with the non-ASCII characters it meant to
+  strip. That broke `rc=$?` exit-code checks in the Linux and macOS patch
+  scripts, the Edge, Firefox and Zoom download URLs, generic-installer URLs
+  with a query string, and several PowerShell regexes. Only non-ASCII
+  characters are dropped now.
+- **Windows patch scripts report a failed install.** The 13 scripts that use
+  the shared installer helper captured its progress lines along with the
+  exit code, so the log came out as one jumbled line at the end and a failed
+  install (for example MSI 1603) still exited 0. They now print the progress
+  lines in order and exit with the installer's code.
 - The posture snapshot's contained-host count is no longer capped at 200.
 - The approval card for a Fusion workflow run showed "(unspecified)" for the
   workflow; it now shows the definition id and the input.
@@ -37,6 +55,9 @@
   cascade) it received only the first 12 KB of the ~70 KB text, because every
   tool result was capped. Playbook results now arrive in full. The IR button's
   server-side load was not affected.
+- The cleanup script catalog (about 25 KB) reached the agent cut off at 12 KB,
+  so it couldn't see every cleanup action before deciding one didn't exist.
+  Both script catalogs now arrive in full.
 
 ### Security
 - **Removed `drizzle-kit`**, a dev-only tool that pulled in an old esbuild

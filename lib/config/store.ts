@@ -126,9 +126,9 @@ function pruneSanctionedTools(list: string[] | undefined): string[] | undefined 
 
 const MAX_PATCH_PROFILES = 200;
 
-// Shape-guard for persisted patch profiles. NOT the security boundary — the
-// sidecar re-validates every param against the win-app-install manifest regex
-// at save time (extras_save_patch_profile) and again at resolve time, so a
+// Shape-guard for persisted patch profiles. NOT the security boundary — Eyas
+// re-validates every param against the win-app-install manifest regex at save
+// time (extras_save_patch_profile) and again at resolve time, so a
 // malformed entry can never reach a runscript. This just keeps the stored JSON
 // well-formed: drop non-objects / missing required fields / bad kind, trim
 // strings, dedupe by id (last write wins), cap at MAX_PATCH_PROFILES keeping the
