@@ -207,6 +207,7 @@ export function buildCampaignRecords(
         cmdline: String(n.cmdline ?? "").slice(0, 200),
         ppid: n.ppid ?? null,
         ts: n.ts ?? null,
+        ...(n.blocked === true ? { blocked: true } : {}),
       })),
     });
   }

@@ -3,6 +3,12 @@
 ## Unreleased
 
 ### Changed
+- **MCP server pinned to eyas-mcp 11e9564** (still 0.21.0). A detection whose
+  process Falcon blocked before it ran has no process-start record, so its
+  process tree used to come back empty and the IR campaign scope left it
+  ungrouped. eyas-mcp now builds that process from its block event and walks
+  its parents, so blocked detections get a delivery vector and join their
+  campaign. The detection drawer marks such a process "blocked".
 - **MCP server pinned to eyas-mcp f9449d5** (still 0.21.0). eyas-mcp now
   lists its tools and resources in the same order in every process, so the
   prompt cache holds across restarts on its side too; Eyas keeps its own
