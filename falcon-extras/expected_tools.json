@@ -1,13 +1,5 @@
 {
   "_doc": "Tools the Project Eyas frontend (and IR playbook) depends on at runtime. Bumping this list is the contract for sidecar deploys: make-dist.sh validates the bundled sidecar registers every name here; /api/health surfaces missing entries so a partial deploy is visible before the operator hits a broken page. Frontend-referenced names come from grepping app/lib/components for `extras_*`; IR-workflow names come from falcon-extras/ir_playbook.py since the agent calls those by name. Add an entry whenever a new tool becomes load-bearing for a route, primer, or playbook step.",
   "_doc_required_params": "An entry may be a plain string (name-only check) OR an object {\"name\": ..., \"required_params\": [...]}. The object form additionally pins the agent-facing parameter contract: verify_tools.py asserts every listed param still appears in the registered tool's input schema, so a modular-refactor wrapper-signature drift (a dropped or renamed gated-tool param) fails the build instead of NameError-ing only when the tool fires. Seed required_params ONLY for safety-critical write tools where a missing param is dangerous. This pins the wrapper / agent-facing contract; it does NOT do full wrapper-to-impl dataflow (a kwarg mismatch that only errors at call time is still caught only by the AST sweep + /audit-write-tools).",
-  "tools": [
-    "extras_create_data_protection_classification",
-    "extras_create_data_protection_content_pattern",
-    "extras_create_data_protection_policy",
-    "extras_create_ioa_exclusion",
-    "extras_create_ml_exclusion",
-    "extras_list_ioa_exclusions",
-    "extras_list_ml_exclusions"
-  ]
+  "tools": []
 }

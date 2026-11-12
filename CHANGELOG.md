@@ -98,6 +98,12 @@
   they are in Falcon. A group created or adopted earlier in a chat turn is
   seen straight away. The add-on is down to 7 tools (exclusions and Data
   Protection creates).
+- **Exclusions and Data Protection creates moved into Eyas.** Listing and
+  creating IOA / ML exclusions and creating Data Protection content patterns,
+  classifications and policies now run in the console on eyas-mcp, with the
+  same duplicate refusal, regex check and monitor-first defaults. The Tuning
+  panel's exclusion check now comes from the eyas-mcp health probe. The add-on
+  registers no tools any more and is removed in the next change.
 - Verdicts are now recorded as the `true_positive` / `false_positive` tag with
   `status='closed'` on the native detection update, the same tag the Falcon
   console writes.

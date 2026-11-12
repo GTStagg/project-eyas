@@ -55,7 +55,9 @@ const expected = new Set(
   ),
 );
 
-check("sidecar registers tools", registered.size > 0, String(registered.size));
+// The sidecar registers no tools any more (every tool runs in Eyas); the
+// checks below still guard anything it might register again.
+check("Eyas serves tools", eyasNames.size > 0, String(eyasNames.size));
 const dupes = [...eyasNames].filter((t) => registered.has(t));
 check("no tool is served by both Eyas and the sidecar", dupes.length === 0, dupes.join(", "));
 const eyasUnclassified = [...eyasNames].filter((t) => !REQUIRES_APPROVAL.has(t) && !EXTRAS_READ_ONLY.has(t));

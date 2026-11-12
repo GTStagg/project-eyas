@@ -100,8 +100,6 @@ export type FalconExtrasAbout = {
 // Probe failures (network, malformed response) default to TRUE — a
 // transient blip should never make a real surface vanish from the nav.
 export type FalconExtrasCapabilities = {
-  mlExclusions: boolean;
-  ioaExclusions: boolean;
   /** IR scope-capture tool callable + returning a structured response on a
    *  bogus AID. Catches sidecar regressions before they manifest mid-IR. */
   irCampaignScope: boolean;
@@ -142,6 +140,11 @@ export type FalconMcpCapabilities = {
   // AIDR:read; false only on confirmed denial → gates the "AI agent activity"
   // dashboard surface with the same staged-build semantics.
   guardian: boolean;
+  // IOA / ML exclusion reads (falcon_search_exclusions). Read scope stands in
+  // for write scope: CrowdStrike grants them as a pair, and the create call
+  // surfaces its own scope error if they diverge. Gates the /tuning Tune chip.
+  mlExclusions: boolean;
+  ioaExclusions: boolean;
 };
 
 export type FalconExtrasInfo = {
@@ -286,6 +289,8 @@ async function probeFalconMcp(): Promise<ProbeResult> {
           .catch(() => true);
 
       const quarantineProbe = denialProbe("falcon_search_quarantined_files", { limit: 1 });
+      const mlExclusionsProbe = denialProbe("falcon_search_exclusions", { exclusion_type: "ml", limit: 1 });
+      const ioaExclusionsProbe = denialProbe("falcon_search_exclusions", { exclusion_type: "ioa", limit: 1 });
       const correlationProbe = denialProbe("falcon_search_correlation_rules", { limit: 1 });
       const dataProtectionProbe = denialProbe("falcon_search_data_security_entities", {
         entity_type: "classification",
@@ -318,7 +323,7 @@ async function probeFalconMcp(): Promise<ProbeResult> {
       const workflowsProbe = denialProbe("falcon_search_workflow_definitions", { limit: 1 });
       const discoverProbe = denialProbe("falcon_search_managed_assets", { limit: 1 });
 
-      const [tools, info, intel, cases, quarantine, correlationRules, dataProtection, guardian, threatGraph, malQuery, idp, recon, workflows, discover] =
+      const [tools, info, intel, cases, quarantine, correlationRules, dataProtection, guardian, threatGraph, malQuery, idp, recon, workflows, discover, mlExclusions, ioaExclusions] =
         await Promise.all([
           client.listTools(),
           Promise.resolve(client.getServerVersion()),
@@ -334,6 +339,8 @@ async function probeFalconMcp(): Promise<ProbeResult> {
           reconProbe,
           workflowsProbe,
           discoverProbe,
+          mlExclusionsProbe,
+          ioaExclusionsProbe,
         ]);
       return {
         count: tools.tools.length,
@@ -350,6 +357,8 @@ async function probeFalconMcp(): Promise<ProbeResult> {
         recon,
         workflows,
         discover,
+        mlExclusions,
+        ioaExclusions,
       };
     });
     return {
@@ -369,6 +378,8 @@ async function probeFalconMcp(): Promise<ProbeResult> {
         recon: result.recon,
         workflows: result.workflows,
         discover: result.discover,
+        mlExclusions: result.mlExclusions,
+        ioaExclusions: result.ioaExclusions,
       },
     };
   } catch (err) {
@@ -387,60 +398,16 @@ async function probeFalconExtras(): Promise<FalconExtrasInfo> {
   const t0 = Date.now();
   try {
     const probe = await withFalconExtrasClient(async (client) => {
-      // Generic capability probe — call a sidecar tool and decide whether
-      // the underlying Falcon scope is granted. Sidecar tools follow the
-      // staged-build convention: scope-denial returns
-      //   {ok: true, scope_pending: true, items: []}
-      // anything else (including ok=true with empty data) means the scope
-      // is usable. Default-on-error TRUE so a transient blip doesn't hide
-      // a real surface from the nav.
-      const probeCap = (
-        name: string,
-        args: Record<string, unknown> = {},
-      ): Promise<boolean> =>
-        client
-          .callTool({ name, arguments: args })
-          .then((r) => {
-            const text = (
-              r.content as Array<{ type: string; text?: string }>
-            )
-              .map((c) => (c.type === "text" && c.text ? c.text : ""))
-              .join("\n");
-            try {
-              const payload = JSON.parse(text);
-              if (payload?.scope_pending === true) return false;
-              return true;
-            } catch {
-              return true;
-            }
-          })
-          .catch(() => true);
-
-      // Exclusion probes use the read variants with limit=1 — cheap, returns
-      // scope_pending when the *-exclusions:read scope is missing. We treat
-      // read scope as a proxy for write scope: in practice CrowdStrike grants
-      // them as a pair, and the create call surfaces its own scope error if
-      // they diverge.
-      const mlExclusionsProbe = probeCap("extras_list_ml_exclusions", { limit: 1 });
-      const ioaExclusionsProbe = probeCap("extras_list_ioa_exclusions", { limit: 1 });
-      // extras_ir_campaign_scope and extras_diagnose_ir_readiness run
+      // The exclusion capability flags moved to the eyas-mcp probe with their
+      // tools. extras_ir_campaign_scope and extras_diagnose_ir_readiness run
       // in-process (lib/eyas-tools), so they are always loaded; nothing to
       // probe in the sidecar.
       const irCampaignScopeProbe = Promise.resolve(true);
       const irReadinessProbe = Promise.resolve(true);
 
-      const [
-        toolList,
-        info,
-        mlExclusions,
-        ioaExclusions,
-        irCampaignScope,
-        irReadiness,
-      ] = await Promise.all([
+      const [toolList, info, irCampaignScope, irReadiness] = await Promise.all([
         client.listTools(),
         Promise.resolve(client.getServerVersion()),
-        mlExclusionsProbe,
-        ioaExclusionsProbe,
         irCampaignScopeProbe,
         irReadinessProbe,
       ]);
@@ -461,8 +428,6 @@ async function probeFalconExtras(): Promise<FalconExtrasInfo> {
         serverVersion: info?.version,
         about,
         capabilities: {
-          mlExclusions,
-          ioaExclusions,
           irCampaignScope,
           irReadiness,
         },

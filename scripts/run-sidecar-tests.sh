@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
-# Run every falcon-extras pure-function test suite. These cover the
-# load-bearing pure functions whose regressions don't surface in
-# typecheck or Playwright (today: the IOA-exclusion regex pre-flight). Run from
-# the project root: `npm run test:sidecar`.
+# Run every falcon-extras pure-function test suite. The add-on registers no
+# tools any more, so there are none today; the runner stays until the add-on
+# is removed. Run from the project root: `npm run test:sidecar`.
 
 set -euo pipefail
 
@@ -21,8 +20,9 @@ fi
 SUITES=()
 while IFS= read -r f; do SUITES+=("$f"); done < <(find falcon-extras -name 'test_*.py' -not -path '*/.venv/*' | sort)
 if [ "${#SUITES[@]}" -eq 0 ]; then
-  echo "ERROR: no sidecar test suites found." >&2
-  exit 1
+  # Every add-on tool now runs in Eyas; nothing is left to test here.
+  echo "No sidecar test suites (the add-on registers no tools)."
+  exit 0
 fi
 
 PASS=0
