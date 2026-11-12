@@ -21,8 +21,6 @@ from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 
-from ir_playbook import render_ir_playbook
-from data_protection_playbook import render_data_protection_playbook
 
 # All cluster-specific imports (FalconPy clients, shadow_ai catalog, patching
 # library, etc.) live in the per-cluster impl modules now. Each @mcp.tool()
@@ -464,31 +462,6 @@ def extras_rtr_run_cleanup(
     """
     from rtr_tools import rtr_run_cleanup as _impl
     return _impl(script_id, device_ids, params, dry_run, confirm_large_batch, evidence)
-
-
-@mcp.tool()
-def extras_ir_workflow_playbook(device_id: str) -> dict[str, Any]:
-    """Return the agentic IR workflow playbook for a single host. Read-only.
-
-    Call this when the operator asks for an agentic IR / quarantine-and-clean
-    workflow on a specific host (e.g. they say "run the IR workflow on
-    WIN11-HR-03" or click the IR button on the /hosts page). The returned
-    `playbook` text is your working instruction set for the rest of the
-    conversation — follow it verbatim, phase by phase.
-
-    The playbook is parameterized with the target device_id and the
-    operator-configured quarantine host group id. Returns ok=False with a
-    clear error if FALCON_QUARANTINE_GROUP_ID is not set on the server.
-
-    Args:
-        device_id: Falcon AID of the target host.
-    """
-    if not device_id or not isinstance(device_id, str):
-        return {"ok": False, "error": "device_id required"}
-    playbook, err = render_ir_playbook(device_id)
-    if err:
-        return {"ok": False, "error": err}
-    return {"ok": True, "device_id": device_id, "playbook": playbook}
 
 
 @mcp.tool()
@@ -1062,31 +1035,6 @@ def extras_host_group_remove_members(
 # can be in the millions on large tenants and the GraphQL API caps page sizes.
 
 
-@mcp.tool()
-def extras_identity_ir_workflow_playbook(
-    entity_id: str | None = None, sam_account_name: str | None = None
-) -> dict[str, Any]:
-    """Return the agentic identity-IR workflow playbook for a specific entity.
-    Read-only. Mirrors extras_ir_workflow_playbook (host) but pivots on an
-    identity entity rather than an AID.
-
-    The agent calls this when the operator asks for an agentic identity IR
-    workflow on a user; the returned text becomes the agent's working
-    playbook for the rest of the conversation. The defining shape of
-    identity IR is the **endpoint cascade** — Falcon's IDP API surface
-    doesn't include account-disable / session-kill / password-reset, so the
-    load-bearing remediation is to run the host IR playbook on each
-    endpoint the user has been logged into recently.
-
-    Args:
-        entity_id: Optional. IDP entity id from the GraphQL API.
-        sam_account_name: Optional. AD samAccountName. At least one of
-            entity_id or sam_account_name must be provided.
-    """
-    from identity import identity_ir_workflow_playbook as _impl
-    return _impl(entity_id, sam_account_name)
-
-
 # Known remote-access-tool image-name catalog. Each entry is
 # (regex_alternation_atom, canonical_tool, family). The regex atoms are
 # joined into one CQL alternation; a match on the image basename routes
@@ -1281,26 +1229,6 @@ def extras_fleet_shadow_ai_egress(
 # `python.exe`) would block legitimate Python work fleetwide. The detect
 # pass surfaces every match in the detection feed first.
 # ---------------------------------------------------------------------------
-
-
-@mcp.tool()
-def extras_shadow_ai_workflow_playbook(device_id: str) -> dict[str, Any]:
-    """Return the agentic Shadow-AI ban-and-clean workflow playbook for one host. Read-only.
-
-    Call this when the operator clicks "Ban + Clean" on a host in /shadow-ai
-    or asks for the agentic Shadow-AI workflow on a specific host. The
-    returned `playbook` text is your working instruction set for the rest of
-    the conversation — follow it phase by phase.
-
-    The playbook is parameterized with the target device_id and the
-    operator-configured banned host group id. Returns ok=False with a clear
-    error if FALCON_SHADOW_AI_BANNED_GROUP_ID is unset on the server.
-
-    Args:
-        device_id: Falcon AID of the target host.
-    """
-    from shadow_ai.tools import shadow_ai_workflow_playbook as _impl
-    return _impl(device_id)
 
 
 @mcp.tool()
@@ -1655,22 +1583,6 @@ def extras_create_ioa_exclusion(
 # DataProtectionConfiguration collection. The creates are WRITE ACTIONS,
 # approval-gated in lib/mcp/write-tools.ts, monitor-first defaults.
 # ---------------------------------------------------------------------------
-
-
-@mcp.tool()
-def extras_data_protection_provision_playbook() -> dict[str, Any]:
-    """Return the agentic Data Protection provisioning playbook. Read-only.
-
-    Call this when the operator asks to provision / set up / stand up Data
-    Protection (DLP) coverage for a sensitive-data type — e.g. "watch for SSNs
-    on Windows", "protect our internal codenames", or they click "Provision
-    coverage" on the /data-protection page. The returned `playbook` text is
-    your working instruction set for the rest of the conversation: precheck
-    existing coverage, synthesize + validate the regexes from the operator's
-    description, then build the monitor-first content-pattern -> classification
-    -> policy chain (each create approval-gated). Follow it step by step.
-    """
-    return {"ok": True, "playbook": render_data_protection_playbook()}
 
 
 @mcp.tool()

@@ -1,0 +1,51 @@
+// Generated from falcon-extras/data_protection_playbook.py when the playbook moved into Eyas.
+// This is the playbook text the agent follows; edit it here. Inputs are
+// validated by the caller (lib/eyas-tools/playbooks.ts) before they are
+// interpolated, because playbook results reach the model unfenced.
+
+export function dataProtectionPlaybookText(): string {
+  return [
+    `You are provisioning CrowdStrike Falcon **Data Protection (DLP)** coverage for a sensitive-data type the operator wants to start watching. You orchestrate a short multi-step chain; the operator gates each write through the approval UI. Default posture is **monitor-first**: stand the coverage up watching (not blocking), confirm it's matching the right data with no false positives, and only then is enforce a separate, deliberate follow-up.`,
+    ``,
+    `**The DLP chain is three layers, built bottom-up. Thread the returned id from each step into the next:**`,
+    `1. **Content pattern** — the regex matcher. \`extras_create_data_protection_content_pattern\`. Returns an \`id\`.`,
+    `2. **Classification** — binds one or more content-pattern ids + a detection rule. \`extras_create_data_protection_classification\` with \`content_patterns=[<pattern id from step 1>]\`. Returns an \`id\`.`,
+    `3. **Policy** — the platform-scoped (win/mac) enforcement unit that binds classification ids and lands on hosts. \`extras_create_data_protection_policy\` with \`classifications=[<classification id from step 2>]\`.`,
+    ``,
+    `**Approval-gate discipline (same contract as every other write workflow): each create call pauses for explicit operator approval — that IS the gate. DO NOT add your own meta-confirmation prompts ('Shall I proceed?', 'Approve to create the classification?') between steps. They double-gate the operator and stall the chain. When a step's create returns success, call the next step's create immediately. If the operator wants to stop, they deny the gate.**`,
+    ``,
+    `## Step 1 — Scope the target (read-only)`,
+    `Establish two things before writing anything. If the operator's request already states them, don't re-ask — extract and proceed.`,
+    `- **What sensitive data?** A plain-language description and, ideally, one or two real-shaped (non-sensitive) examples — an account-number format, an internal codename list, a document-marking string. You'll turn this into regexes in Step 3.`,
+    `- **Which platform(s)?** DLP policies are platform-scoped. \`win\`, \`mac\`, or both. If unstated, ask once — this is load-bearing and there's no safe default.`,
+    ``,
+    `## Step 1.5 — Precheck for existing coverage (read-only, REQUIRED — no redundant config)`,
+    `Before creating anything, check whether coverage already exists. This mirrors the IOC precheck discipline: don't stand up a second content pattern for data the tenant already classifies.`,
+    `- Call \`falcon_search_data_security_entities\` with \`entity_type='content_pattern'\` and scan for a pattern whose category/name already covers this data (fetch regex bodies with \`falcon_get_data_security_entities\`).`,
+    `- Call \`falcon_search_data_security_entities\` with \`entity_type='classification'\`, then with \`entity_type='policy'\` (plus \`platform_name\` — required for policies) to see what's already wired.`,
+    `- **If a matching content pattern or classification already exists:** surface it to the operator (name + id) and ask whether to (a) reuse the existing id and only add the missing upper layer — e.g. pattern exists but no policy binds it — or (b) deliberately create a parallel one. Default recommendation is reuse. Skipping a created layer and reusing an existing id is the *better* outcome, not a failure.`,
+    ``,
+    `## Step 2 — Synthesize and validate the regexes (this is the agentic core)`,
+    `Translate the operator's description into one or more regexes for the content pattern. This is your synthesis to own — be rigorous:`,
+    `- **Anchor to the real shape.** \`ACME-00012345\` → \`\\bACME-\\d{8}\\b\`, not \`.*ACME.*\`. Over-broad regexes generate noise and erode operator trust in the whole DLP rollout.`,
+    `- **Avoid catastrophic backtracking** — no nested unbounded quantifiers like \`(\\w+)+\`. DLP regexes evaluate against high-volume content; a pathological pattern is a performance problem on every host.`,
+    `- **Prefer several precise regexes over one mega-regex.** A content pattern accepts a list; one regex per distinct format reads better and is easier to tune.`,
+    `- **Provide a non-sensitive \`example\`** that demonstrates a match, and set a \`category\` from Falcon's set: 'Custom', 'PII', 'PCI DSS', 'ITAR', 'Secret'.`,
+    `- **Show the operator the regexes and one example match BEFORE the create gate fires**, as part of the decision document — so the approval is informed, not blind. Do not invent or include real sensitive values (real SSNs, real account numbers) in examples.`,
+    ``,
+    `## Step 3 — Build the chain, monitor-first (writes — each approval-gated)`,
+    `- \`extras_create_data_protection_content_pattern(name, regexes=[...], category, region="ALL", example=...)\`. \`region\` is "ALL" or an ISO-3166 alpha-3 country code (e.g. "USA") — NOT "global". Capture the returned \`id\`.`,
+    `- \`extras_create_data_protection_classification(name, content_patterns=[<pattern id>], protection_mode="monitor", detection_severity=...)\`. **Keep \`protection_mode="monitor"\` — do not pass \`"enforce"\` in this workflow even if the operator asks to block; explain that enforce is a deliberate promotion after a clean monitor run.** Capture the returned \`id\`.`,
+    `- \`extras_create_data_protection_policy(name, platform=<win|mac>, classifications=[<classification id>])\`. If the operator named both platforms, create one policy per platform (the policy is platform-scoped — a win policy will not cover mac hosts). Defaults are monitor-safe (inspection on, \`block_all_data_access\` off).`,
+    `- If a scope is not yet granted, a create returns \`scope_pending\` — surface that to the operator verbatim (the Data Protection write scope needs granting on the API client) and stop; don't keep trying the rest of the chain.`,
+    ``,
+    `## Step 4 — Decision document`,
+    `Close with a compact decision document, not a log dump. Sections:`,
+    `- **Verdict** — one line: what coverage now exists (e.g. 'Monitoring SSNs on Windows — pattern + classification + policy created, watching only').`,
+    `- **What was created** — a small table: layer | name | id. Include any existing id you reused instead of creating.`,
+    `- **Regexes** — the patterns you synthesized, with the example match.`,
+    `- **Posture** — explicitly state it's MONITOR (detect-only), and what that means: detections will fire in the queue, nothing is blocked.`,
+    `- **Promote to enforce (operator follow-up)** — the deliberate next step: once a monitor run is clean, flip the classification to enforce (Falcon Console → Data Protection, or a future update tool) and set the policy's response action. Don't do this automatically.`,
+    `- **Verify** — point the operator at /data-protection to see the new policy in the posture table, and note that matches surface as detections.`,
+  ].join("\n");
+}

@@ -233,13 +233,13 @@ export function requiresApproval(toolName: string): boolean {
   return REQUIRES_APPROVAL.has(toolName);
 }
 
-// falcon-extras tools reviewed as read-only (2026-11-08): queries, playbook
-// text, diagnostics and RTR command-status polling. The sidecar sets no MCP
-// annotations, so this list is the classification: a sidecar tool that is in
-// neither REQUIRES_APPROVAL nor this set is treated as an unclassified write
-// and gated (see ToolBridge.unclassifiedSidecarTools). Every sidecar tool in
-// falcon-extras/expected_tools.json must be in exactly one of the two lists;
-// scripts/test-tool-classification.mjs enforces that in CI.
+// Eyas tools (falcon-extras sidecar or in-process lib/eyas-tools) reviewed as
+// read-only (2026-11-08): queries, playbook text, diagnostics and RTR
+// command-status polling. Neither carries MCP annotations, so this list is the
+// classification: an Eyas tool in neither REQUIRES_APPROVAL nor this set is
+// treated as an unclassified write and gated (see
+// ToolBridge.unclassifiedSidecarTools). scripts/test-tool-classification.mjs
+// enforces that every one is in exactly one of the two lists.
 export const EXTRAS_READ_ONLY: ReadonlySet<string> = new Set<string>([
   "extras_classify_patch_coverage",
   "extras_data_protection_provision_playbook",

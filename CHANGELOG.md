@@ -8,6 +8,12 @@
   from eyas-mcp's native searches; recording a detection verdict and running a
   Fusion workflow use eyas-mcp's native write tools (still approval-gated).
   Six add-on tools are gone; the add-on is down to 50.
+- **The workflow playbooks run inside Eyas.** The IR, identity-IR, Shadow-AI
+  and Data Protection playbooks are now served by Eyas itself instead of the
+  add-on, with the same text and tool names. They read the quarantine and
+  banned group ids from the active environment when called, and refuse a
+  host id, group id or user name that isn't well-formed. The add-on is down
+  to 46 tools.
 - Verdicts are now recorded as the `true_positive` / `false_positive` tag with
   `status='closed'` on the native detection update, the same tag the Falcon
   console writes.
@@ -16,6 +22,10 @@
 - The posture snapshot's contained-host count is no longer capped at 200.
 - The approval card for a Fusion workflow run showed "(unspecified)" for the
   workflow; it now shows the definition id and the input.
+- When the agent loaded the IR playbook itself (for example in the identity-IR
+  cascade) it received only the first 12 KB of the ~70 KB text, because every
+  tool result was capped. Playbook results now arrive in full. The IR button's
+  server-side load was not affected.
 
 ### Security
 - **Removed `drizzle-kit`**, a dev-only tool that pulled in an old esbuild

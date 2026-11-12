@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import type Anthropic from "@anthropic-ai/sdk";
 import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { buildToolBridge, type FalconResource } from "@/lib/mcp/tool-bridge";
+import { buildToolBridge, makeCallNative, type FalconResource } from "@/lib/mcp/tool-bridge";
+import { EYAS_TOOL_MAP } from "@/lib/eyas-tools";
 import { parseConcatenatedJson } from "@/lib/mcp/parse";
 import {
   loadConversation,
@@ -456,12 +457,29 @@ async function callExtrasTool(
   }
 }
 
+/** Run a prefetch tool: Eyas's in-process tool when one exists (the playbook),
+ *  otherwise the sidecar's. */
+async function callPrefetchTool(
+  mcp: Client,
+  extras: Client,
+  name: string,
+  args: Record<string, unknown>,
+): Promise<{ content: string; isError: boolean }> {
+  const tool = EYAS_TOOL_MAP.get(name);
+  if (!tool) return callExtrasTool(extras, name, args);
+  try {
+    return await tool.run(args, { callNative: makeCallNative(mcp) });
+  } catch (err) {
+    return { content: err instanceof Error ? err.message : String(err), isError: true };
+  }
+}
+
 /** Pull the two IR ground-truth host facts from a raw falcon_search_hosts
  *  result. Called server-side via callExtrasTool(mcp, …), so this sees the
  *  FULL device body — product_type_desc survives here, unlike the slim agent
  *  projection (lib/mcp/projections.ts::hostProjection drops it). This is the
  *  code-side capture of what the playbook used to ask the agent to track in
- *  prose (falcon-extras/ir_playbook.py — the "contained_at_start" flag). Both
+ *  prose (lib/eyas-tools/playbooks/ir.ts — the "contained_at_start" flag). Both
  *  fields default to null (unknown) on any parse gap rather than guessing. */
 function parseHostFacts(rawContent: string): {
   containedAtStart: boolean | null;
@@ -488,6 +506,7 @@ function parseHostFacts(rawContent: string): {
  *  stages (playbook ~50ms, actionable_check ~1s, campaign_scope often 5-8s)
  *  rather than three bubbles popping after the slowest completes. */
 async function prefetchIrContext(opts: {
+  mcp: Client;
   extras: Client;
   emit: Emit;
   aid: string;
@@ -503,7 +522,7 @@ async function prefetchIrContext(opts: {
   scope: { content: string; isError: boolean };
   actionable: { content: string; isError: boolean };
 }> {
-  const { extras, emit, aid, priorHint } = opts;
+  const { mcp, extras, emit, aid, priorHint } = opts;
 
   const playbookId = `ir-prefetch-playbook-${Date.now()}`;
   const scopeId = `ir-prefetch-scope-${Date.now()}`;
@@ -541,7 +560,7 @@ async function prefetchIrContext(opts: {
     input: Record<string, unknown>,
   ): Promise<{ content: string; isError: boolean; durationMs: number; summary: string | undefined }> => {
     const t0 = Date.now();
-    const r = await callExtrasTool(extras, name, input);
+    const r = await callPrefetchTool(mcp, extras, name, input);
     const durationMs = Date.now() - t0;
     const summary = summarizeToolResult(name, r.content, r.isError);
     emit("tool_result", {
@@ -805,6 +824,7 @@ export async function POST(request: Request) {
       }
 
       const prefetch = await prefetchIrContext({
+        mcp,
         extras,
         emit,
         aid: irPrimer.aid,

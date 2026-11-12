@@ -22,7 +22,7 @@ Match policy (CLAUDE.md "extras_ir_close_remediated matcher contract"):
 * Unknown / "other" kinds never match — they're notes, not actions.
 
 Adding a new remediation primitive: add a ``kind ==`` branch here, add a
-Phase 2 instruction in ``ir_playbook.py`` telling the agent to emit that
+Phase 2 instruction in ``lib/eyas-tools/playbooks/ir.ts`` telling the agent to emit that
 ledger entry on success, and add a unit test exercising the matcher branch.
 """
 

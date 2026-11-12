@@ -29,17 +29,24 @@ ALLOWLIST=(
 # Pull every gated tool name from the registry (anything inside the
 # REQUIRES_APPROVAL Set, double- or single-quoted, ignoring `// …` comments).
 read_into GATED < <(
-  awk '/REQUIRES_APPROVAL/,/\]\)/' "$WRITE_TOOLS_FILE" \
+  awk '/^export const REQUIRES_APPROVAL/,/\]\)/' "$WRITE_TOOLS_FILE" \
     | sed 's://.*$::' \
     | grep -oE '"[a-z_][a-z0-9_]+"' \
     | tr -d '"' \
     | sort -u
 )
 
-# Find sidecar tools whose name matches the write-shape regex.
+# Eyas's in-process tools (lib/eyas-tools): same extras_* naming, no sidecar def.
+read_into EYAS_TOOL_NAMES < <(
+  grep -rhoE 'name: "extras_[a-z0-9_]+"' lib/eyas-tools 2>/dev/null \
+    | sed -E 's/name: "([a-z0-9_]+)"/\1/' \
+    | sort -u
+)
+
+# Sidecar and in-process Eyas tools whose name matches the write-shape regex.
 read_into SIDECAR_WRITE_CANDIDATES < <(
-  grep -oE '^def extras_[a-z0-9_]+' "$SIDECAR" \
-    | sed 's/^def //' \
+  { grep -oE '^def extras_[a-z0-9_]+' "$SIDECAR" | sed 's/^def //'; printf '%s\n' "${EYAS_TOOL_NAMES[@]}"; } \
+    | grep -v '^$' \
     | grep -E '^(extras_(create|delete|update|add|remove|close|save)_|extras_host_(contain|lift_containment|group_(add|remove)_members)|extras_rtr_run_(patch|cleanup|falcon_script)|extras_rtr_check_patch_status)' \
     | sort -u
 )
@@ -284,12 +291,12 @@ done
 # via the native lists rather than a sidecar `def`.
 echo
 echo "${BOLD}Registry freshness${NC}"
-known_upstream=$(printf '%s\n' "${UPSTREAM_WRITES[@]}" "${NATIVE_WRITES[@]}" "${NATIVE_ADOPTED[@]}")
+known_upstream=$(printf '%s\n' "${UPSTREAM_WRITES[@]}" "${NATIVE_WRITES[@]}" "${NATIVE_ADOPTED[@]}" "${EYAS_TOOL_NAMES[@]}")
 for g in "${GATED[@]}"; do
   if grep -q "^def $g\b" "$SIDECAR" || echo "$known_upstream" | grep -qx "$g"; then
     : # ok
   else
-    echo "  ${RED}✗${NC} $g ${RED}(in registry but no sidecar def + not in upstream/native list)${NC}"
+    echo "  ${RED}✗${NC} $g ${RED}(in registry but no sidecar def, Eyas tool or upstream/native entry)${NC}"
     fail=1
   fi
 done

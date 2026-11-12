@@ -31,7 +31,6 @@ bash .claude/skills/validate-bundle/run.sh path/to/project-eyas-vX.Y.Z.zip
    - `server.py`
    - `requirements.txt`
    - `falcon_scripts.py`
-   - `ir_playbook.py`
    - `patching/` (manifest.json, library.py, rtr.py, scripts/…)
    - `cleanup/` (manifest.json, library.py, scripts/…)
    `server.py` imports each of these — missing any will `ModuleNotFoundError` at first launch on the recipient's machine.

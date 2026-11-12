@@ -5,6 +5,7 @@ import { projectToolResult } from "./projections";
 import { detectFalconError, parseToolResultObjects } from "./parse";
 import { EXTRAS_READ_ONLY, REQUIRES_APPROVAL } from "./write-tools";
 import { DISPATCH_TOOLS, dispatchOf, runDispatch, type CallNative } from "./native-dispatch";
+import { EYAS_TOOLS, EYAS_TOOL_MAP } from "@/lib/eyas-tools";
 
 export type FalconResource = {
   uri: string;
@@ -190,6 +191,36 @@ const ANNOTATION_GATE_EXEMPT: ReadonlySet<string> = new Set<string>([
   "falcon_run_falcon_script",
 ]);
 
+// Native calls made on the agent's behalf by an Eyas tool (dispatch envelopes
+// and lib/eyas-tools). A wrapped upstream error or isError result comes back as
+// `error`, never as an empty success.
+export function makeCallNative(client: Client): CallNative {
+  return async (toolName, args, opts) => {
+    try {
+      const r = await client.callTool(
+        { name: toolName, arguments: args },
+        undefined,
+        opts?.timeoutMs ? { timeout: opts.timeoutMs } : undefined,
+      );
+      const objs = parseToolResultObjects<Record<string, unknown>>(
+        r.content as Array<{ type: string; text?: string }>,
+      );
+      const err = detectFalconError(objs);
+      if (err) return { obj: null, error: err };
+      if (r.isError) {
+        const text = (r.content as Array<{ type: string; text?: string }>)
+          .map((c) => (c.type === "text" ? c.text ?? "" : ""))
+          .join(" ")
+          .trim();
+        return { obj: null, error: text || `${toolName} failed` };
+      }
+      return { obj: objs[0] ?? null, error: null };
+    } catch (e) {
+      return { obj: null, error: e instanceof Error ? e.message : String(e) };
+    }
+  };
+}
+
 export async function buildToolBridge(
   client: Client,
   extras?: Client | null,
@@ -228,8 +259,12 @@ export async function buildToolBridge(
   }
   for (const t of extrasToolsResp.tools) {
     if (isSuppressed(t.name)) continue;
+    // Eyas's in-process tools (lib/eyas-tools) replace a sidecar tool of the
+    // same name while the sidecar is being retired.
+    if (EYAS_TOOL_MAP.has(t.name)) continue;
     if (!toolToClient.has(t.name)) toolToClient.set(t.name, extras as Client);
   }
+  const eyasTools = EYAS_TOOLS.filter((t) => !toolToClient.has(t.name));
 
   const allTools = [
     ...toolsResp.tools.filter((t) => !isSuppressed(t.name)),
@@ -257,15 +292,27 @@ export async function buildToolBridge(
     if (REQUIRES_APPROVAL.has(t.name) || EXTRAS_READ_ONLY.has(t.name)) continue;
     unclassifiedSidecarTools.add(t.name);
   }
+  // Eyas's in-process tools carry no annotations either; same fail-closed rule.
+  for (const t of eyasTools) {
+    if (REQUIRES_APPROVAL.has(t.name) || EXTRAS_READ_ONLY.has(t.name)) continue;
+    unclassifiedSidecarTools.add(t.name);
+  }
 
-  const anthropicTools: Anthropic.Tool[] = allTools.map((t) => ({
-    name: t.name,
-    description: t.description ?? "",
-    input_schema: (t.inputSchema as Anthropic.Tool["input_schema"]) ?? {
-      type: "object",
-      properties: {},
-    },
-  }));
+  const anthropicTools: Anthropic.Tool[] = [
+    ...allTools.map((t) => ({
+      name: t.name,
+      description: t.description ?? "",
+      input_schema: (t.inputSchema as Anthropic.Tool["input_schema"]) ?? {
+        type: "object" as const,
+        properties: {},
+      },
+    })),
+    ...eyasTools.map((t) => ({
+      name: t.name,
+      description: t.description,
+      input_schema: t.input_schema,
+    })),
+  ];
 
   if (resourcesResp.resources.length > 0) {
     anthropicTools.push({
@@ -286,31 +333,7 @@ export async function buildToolBridge(
     });
   }
 
-  // Native calls made on the agent's behalf by a dispatching Eyas tool.
-  const callNative: CallNative = async (toolName, args, opts) => {
-    try {
-      const r = await client.callTool(
-        { name: toolName, arguments: args },
-        undefined,
-        opts?.timeoutMs ? { timeout: opts.timeoutMs } : undefined,
-      );
-      const objs = parseToolResultObjects<Record<string, unknown>>(
-        r.content as Array<{ type: string; text?: string }>,
-      );
-      const err = detectFalconError(objs);
-      if (err) return { obj: null, error: err };
-      if (r.isError) {
-        const text = (r.content as Array<{ type: string; text?: string }>)
-          .map((c) => (c.type === "text" ? c.text ?? "" : ""))
-          .join(" ")
-          .trim();
-        return { obj: null, error: text || `${toolName} failed` };
-      }
-      return { obj: objs[0] ?? null, error: null };
-    } catch (e) {
-      return { obj: null, error: e instanceof Error ? e.message : String(e) };
-    }
-  };
+  const callNative = makeCallNative(client);
 
   const invoke: ToolBridge["invoke"] = async (name, input) => {
     if (name === READ_RESOURCE_TOOL_NAME) {
@@ -324,6 +347,17 @@ export async function buildToolBridge(
         .filter(Boolean)
         .join("\n");
       return { content: text || "(empty resource)", isError: false };
+    }
+
+    const eyasTool = EYAS_TOOL_MAP.get(name);
+    if (eyasTool && !toolToClient.has(name)) {
+      try {
+        const r = await eyasTool.run(input, { callNative });
+        if (eyasTool.rawResult) return r;
+        return { content: projectToolResult(name, r.content) || r.content, isError: r.isError };
+      } catch (e) {
+        return { content: e instanceof Error ? e.message : String(e), isError: true };
+      }
     }
 
     const target = toolToClient.get(name) ?? client;

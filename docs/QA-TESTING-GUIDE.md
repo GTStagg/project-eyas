@@ -211,7 +211,7 @@ Run dev with `npm run dev` (port 3000). Standalone notes live in a dedicated sec
 
 - Closed detections from a prior session show up in scope → server-side filter regressed; check `falcon-extras/ir/phase0.py:23,65` + `campaign_scope.py:45,77`.
 - The agent "asks" whether to run the playbook → IR primer detection (`detectIrPrimer` in `app/api/chat/route.ts`) regressed or `IR_TOOL_FILTER` not applied.
-- Host quarantined despite `should_proceed_with_ir: false` → Phase 0.5 gate regressed (agent ignored the partition result). Check `falcon-extras/ir_playbook.py` Phase 0.5 section is rendering AND the chat route's IR primer is pre-fetching `extras_ir_phase0_actionable_check`.
+- Host quarantined despite `should_proceed_with_ir: false` → Phase 0.5 gate regressed (agent ignored the partition result). Check the Phase 0.5 section in `lib/eyas-tools/playbooks/ir.ts` is rendering AND the chat route's IR primer is pre-fetching `extras_ir_phase0_actionable_check`.
 - Phase 4 closes a detection that was never touched in Phase 2 → ledger matcher / closer regressed (run `npm run test:sidecar`).
 - Containment lifted on a host that was already contained at engagement start → `contained_at_start` flag ignored.
 
