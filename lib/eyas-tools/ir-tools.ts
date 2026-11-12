@@ -121,7 +121,7 @@ export const IR_TOOLS: EyasTool[] = [
       "    workflow_self_count, retrospective_count, total, truncated,",
       "    prior_open_composite_ids, prior_open_count, prior_checked_count",
     ].join("\n"),
-    input_schema: {"type": "object", "properties": {"device_id": {"title": "Device Id", "type": "string"}, "since_iso": {"title": "Since Iso", "type": "string"}, "prior_composite_ids": {"items": {"type": "string"}, "type": "array", "title": "Prior Composite Ids"}}, "required": ["device_id", "since_iso"]},
+    input_schema: {"type": "object", "properties": {"device_id": {"title": "Device Id", "type": "string"}, "since_iso": {"title": "Since Iso", "type": "string"}, "prior_composite_ids": {"anyOf": [{"items": {"type": "string"}, "type": "array"}, {"type": "null"}], "default": null, "title": "Prior Composite Ids"}}, "required": ["device_id", "since_iso"]},
     run: async (input, ctx) => jsonResult(await phase3VerificationScope(ctx, input)),
   },
   {
@@ -188,7 +188,7 @@ export const IR_TOOLS: EyasTool[] = [
       "        the artifact field, or the cleanup was preventative),",
       "    batch_errors? (only if any batch failed).",
     ].join("\n"),
-    input_schema: {"type": "object", "properties": {"device_id": {"title": "Device Id", "type": "string"}, "remediated": {"items": {"additionalProperties": true, "type": "object"}, "title": "Remediated", "type": "array"}, "verdict": {"default": "true_positive", "title": "Verdict", "type": "string"}, "comment": {"type": "string", "title": "Comment"}, "before_iso": {"type": "string", "title": "Before Iso"}}, "required": ["device_id", "remediated"]},
+    input_schema: {"type": "object", "properties": {"device_id": {"title": "Device Id", "type": "string"}, "remediated": {"items": {"additionalProperties": true, "type": "object"}, "title": "Remediated", "type": "array"}, "verdict": {"default": "true_positive", "title": "Verdict", "type": "string"}, "comment": {"anyOf": [{"type": "string"}, {"type": "null"}], "default": null, "title": "Comment"}, "before_iso": {"anyOf": [{"type": "string"}, {"type": "null"}], "default": null, "title": "Before Iso"}}, "required": ["device_id", "remediated"]},
     run: async (input, ctx) => jsonResult(await closeRemediated(ctx, input)),
   },
   {
@@ -221,7 +221,7 @@ export const IR_TOOLS: EyasTool[] = [
       "    ok, device_id, verdict, before_iso, scope_count, updated,",
       "    composite_ids, left_open_after_cutoff, batch_errors?.",
     ].join("\n"),
-    input_schema: {"type": "object", "properties": {"device_id": {"title": "Device Id", "type": "string"}, "before_iso": {"title": "Before Iso", "type": "string"}, "verdict": {"title": "Verdict", "type": "string"}, "comment": {"type": "string", "title": "Comment"}}, "required": ["device_id", "before_iso", "verdict"]},
+    input_schema: {"type": "object", "properties": {"device_id": {"title": "Device Id", "type": "string"}, "before_iso": {"title": "Before Iso", "type": "string"}, "verdict": {"title": "Verdict", "type": "string"}, "comment": {"anyOf": [{"type": "string"}, {"type": "null"}], "default": null, "title": "Comment"}}, "required": ["device_id", "before_iso", "verdict"]},
     run: async (input, ctx) => jsonResult(await closeUntouchedOriginals(ctx, input)),
   },
   {
@@ -272,7 +272,7 @@ export const IR_TOOLS: EyasTool[] = [
       "    composite_ids (every id closed), matched_by (how each was found),",
       "    skipped_multi_host? ({count, composite_ids}), warning?.",
     ].join("\n"),
-    input_schema: {"type": "object", "properties": {"device_id": {"title": "Device Id", "type": "string"}, "verdict": {"title": "Verdict", "type": "string"}, "comment": {"type": "string", "title": "Comment"}, "include_multi_host": {"default": false, "title": "Include Multi Host", "type": "boolean"}}, "required": ["device_id", "verdict"]},
+    input_schema: {"type": "object", "properties": {"device_id": {"title": "Device Id", "type": "string"}, "verdict": {"title": "Verdict", "type": "string"}, "comment": {"anyOf": [{"type": "string"}, {"type": "null"}], "default": null, "title": "Comment"}, "include_multi_host": {"default": false, "title": "Include Multi Host", "type": "boolean"}}, "required": ["device_id", "verdict"]},
     run: async (input, ctx) => jsonResult(await closeAllOpenOnHost(ctx, input)),
   },
 ];
