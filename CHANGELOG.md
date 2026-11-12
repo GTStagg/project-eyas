@@ -3,13 +3,17 @@
 ## Unreleased
 
 ### Changed
-- **MCP server pinned to eyas-mcp fe9b76c** (still 0.21.0). It adds host-group
+- **MCP server pinned to eyas-mcp 208acdd** (still 0.21.0). It adds host-group
   and policy lookups by id, safer host-group membership changes, relative
   policy precedence moves, a time limit and raw signing fields on process
   trees, batched alert lookups, and a warning for unknown CQL functions.
   `falcon_get_host_group_membership` now lists a group that no longer exists
   under `unresolved_group_ids` instead of failing; the IR playbook leaves
   those out of the Phase 4 restore.
+  It also batches Custom IOA rule updates (up to 100 rules per call, each sent
+  in full from the live rule), makes an IOA exclusion's `cl_regex` optional,
+  adds an opt-in duplicate check on exclusion creates, and cleans comment and
+  name characters Falcon would reject.
 - **More of the add-on moved onto eyas-mcp.** Host-group and group-member
   listings, the contained-host list and identity detections now come straight
   from eyas-mcp's native searches; recording a detection verdict and running a
