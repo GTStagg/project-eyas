@@ -3,8 +3,13 @@
 ## Unreleased
 
 ### Changed
-- **MCP server pinned to eyas-mcp 91d0448** (still 0.21.0). Its server code is
-  the same as c034131; only its documentation changed.
+- **MCP server pinned to eyas-mcp fe9b76c** (still 0.21.0). It adds host-group
+  and policy lookups by id, safer host-group membership changes, relative
+  policy precedence moves, a time limit and raw signing fields on process
+  trees, batched alert lookups, and a warning for unknown CQL functions.
+  `falcon_get_host_group_membership` now lists a group that no longer exists
+  under `unresolved_group_ids` instead of failing; the IR playbook leaves
+  those out of the Phase 4 restore.
 - **More of the add-on moved onto eyas-mcp.** Host-group and group-member
   listings, the contained-host list and identity detections now come straight
   from eyas-mcp's native searches; recording a detection verdict and running a
