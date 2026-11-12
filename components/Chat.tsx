@@ -1699,6 +1699,27 @@ function ApprovalSummary({ tool }: { tool: ToolUse }) {
     ];
     whatHappens = "Creates a new empty static host group on this tenant with the canonical app-managed naming. After this, save the returned id as the IR quarantine group on the active environment, then run extras_provision_quarantine_policy to attach the prevention policies.";
     ifDenied = "No new host group is created. You can paste an existing group id into /config instead and skip directly to provisioning.";
+  } else if (tool.name === "extras_teardown_project_eyas_managed") {
+    const live = input.dry_run === false;
+    title = live ? "Tear down every Project Eyas object on this tenant" : "Preview a Project Eyas teardown (no changes)";
+    rows = [{ label: "Mode", value: live ? "EXECUTE — deletes objects" : "dry run — lists what would be removed" }];
+    whatHappens = live
+      ? "Detaches, disables and deletes every Project Eyas prevention policy, deletes the Project Eyas Shadow-AI rule groups and the IR-readiness exclusion, then deletes the IR Quarantine and Shadow-AI Banned host groups. Hosts in those groups fall back to their other policies. This cannot be undone; re-run the /config setup cards to start again."
+      : "Lists the Project Eyas host groups, prevention policies, rule groups and exclusions a teardown would remove. Nothing is changed.";
+    ifDenied = live ? "Nothing is deleted." : "No preview is produced.";
+  } else if (tool.name === "extras_delete_prevention_policy") {
+    title = "Delete a prevention policy";
+    rows = [{ label: "Policy", value: get("prevention_policy_id") ?? "(unspecified)", mono: true }];
+    whatHappens = "Disables and deletes the policy. It must already be detached from every host group. This cannot be undone.";
+    ifDenied = "The policy stays.";
+  } else if (tool.name === "extras_delete_ioa_rule_group") {
+    title = "Delete a Custom IOA rule group";
+    rows = [
+      { label: "Rule group", value: get("rule_group_id") ?? "(unspecified)", mono: true },
+      { label: "Comment", value: get("comment") ?? "Project Eyas teardown" },
+    ];
+    whatHappens = "Deletes the rule group and its rules. Falcon refuses if a prevention policy still uses it. This cannot be undone.";
+    ifDenied = "The rule group stays.";
   } else if (tool.name === "extras_detach_prevention_policy_from_host_group") {
     title = "Detach a prevention policy from a host group";
     rows = [
