@@ -55,9 +55,11 @@ export function childProcessEnv(): Record<string, string> {
   setOrStrip("FALCON_BASE_URL", cfg.falcon.baseUrl);
   setOrStrip("FALCON_MEMBER_CID", cfg.falcon.memberCid);
 
-  // Per-tenant operational fields.
-  setOrStrip("FALCON_QUARANTINE_GROUP_ID", cfg.irQuarantineGroupId);
-  setOrStrip("FALCON_SHADOW_AI_BANNED_GROUP_ID", cfg.shadowAiBannedGroupId);
+  // The IR quarantine and Shadow-AI banned group ids are read in-process
+  // (lib/eyas-tools) at call time; no child process needs them, so never pass
+  // them on (a stale inherited export is stripped).
+  setOrStrip("FALCON_QUARANTINE_GROUP_ID", undefined);
+  setOrStrip("FALCON_SHADOW_AI_BANNED_GROUP_ID", undefined);
 
   // The Shadow-AI sanction list is read in-process (lib/eyas-tools/shadow-ai);
   // no child process needs it, so never pass it on.

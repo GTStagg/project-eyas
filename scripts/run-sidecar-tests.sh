@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Run every falcon-extras pure-function test suite. These cover the
-# load-bearing classifiers + clustering whose regressions don't surface in
-# typecheck or Playwright (process-tree clustering, CQL linter, the AI-egress
-# catalog shared with Eyas). Run from the project root: `npm run test:sidecar`.
+# load-bearing pure functions whose regressions don't surface in
+# typecheck or Playwright (today: the IOA-exclusion regex pre-flight). Run from
+# the project root: `npm run test:sidecar`.
 
 set -euo pipefail
 

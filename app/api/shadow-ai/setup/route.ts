@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { getRuntimeConfig } from "@/lib/config/runtime";
-import { withFalconExtrasClient } from "@/lib/mcp/falcon-extras-client";
 import { withFalconMcpClient } from "@/lib/mcp/falcon-client";
+import { makeEyasToolContext } from "@/lib/mcp/tool-bridge";
 import { fetchPreventionPosture } from "@/lib/prevention/posture";
+import { preventionStatus } from "@/lib/eyas-tools/shadow-ai/prevention";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -19,22 +20,7 @@ export const dynamic = "force-dynamic";
 //     the agent rediscover it.
 //
 // Read-only end-to-end. The button itself fires a chat primer hand-off;
-// the actual write happens via the approval-gated sidecar tool.
-
-type ToolText = { type?: string; text?: string };
-
-function parseToolResult(result: unknown): unknown {
-  if (!result || typeof result !== "object") return null;
-  const content = (result as { content?: ToolText[] }).content;
-  if (!Array.isArray(content) || content.length === 0) return null;
-  const first = content[0];
-  if (!first || typeof first.text !== "string") return null;
-  try {
-    return JSON.parse(first.text);
-  } catch {
-    return null;
-  }
-}
+// the actual write happens via the approval-gated tool.
 
 type PostureGroup = { id?: string; name?: string };
 type PosturePolicy = {
@@ -75,16 +61,13 @@ export async function GET() {
     });
   }
 
-  return withFalconMcpClient((mcp) => withFalconExtrasClient(async (client) => {
+  return withFalconMcpClient(async (mcp) => {
     const [statusRaw, posturePayload] = await Promise.all([
-      client.callTool({
-        name: "extras_shadow_ai_prevention_status",
-        arguments: {},
-      }),
+      preventionStatus(makeEyasToolContext(mcp)),
       fetchPreventionPosture(mcp),
     ]);
 
-    const status = (parseToolResult(statusRaw) as StatusResp | null) ?? {};
+    const status = (statusRaw as StatusResp | null) ?? {};
     const posture: PostureResp = posturePayload.ok ? { ok: true, items: posturePayload.items as PosturePolicy[] } : {};
 
     const boundPolicies = (posture.items ?? [])
@@ -117,5 +100,5 @@ export async function GET() {
       },
       boundPolicies,
     });
-  }));
+  });
 }

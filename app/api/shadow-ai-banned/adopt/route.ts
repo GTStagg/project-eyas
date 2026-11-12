@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import { withFalconExtrasClient } from "@/lib/mcp/falcon-extras-client";
-import { parseExtrasObjectResult } from "@/lib/mcp/parse";
+import { withFalconMcpClient } from "@/lib/mcp/falcon-client";
+import { makeEyasToolContext } from "@/lib/mcp/tool-bridge";
+import { adoptBannedHostGroup } from "@/lib/eyas-tools/shadow-ai/prevention";
 import { updateActiveEnvironment } from "@/lib/config/environments";
 import { invalidateHealthCache } from "@/lib/health";
 import { isBusy } from "@/lib/chat/in-flight";
@@ -44,15 +45,11 @@ export async function POST(request: Request) {
   const requested = (raw as Record<string, unknown> | null)?.name;
   const name = typeof requested === "string" && requested.trim() ? requested.trim() : CANONICAL_NAME;
 
-  let payload: AdoptResult | null;
+  let payload: AdoptResult;
   try {
-    payload = await withFalconExtrasClient(async (client) => {
-      const result = await client.callTool({
-        name: "extras_adopt_shadow_ai_banned_host_group",
-        arguments: { name },
-      });
-      return parseExtrasObjectResult(result) as AdoptResult;
-    });
+    payload = (await withFalconMcpClient((client) =>
+      adoptBannedHostGroup(makeEyasToolContext(client), { name }),
+    )) as AdoptResult;
   } catch (err) {
     return NextResponse.json(
       { ok: false, error: err instanceof Error ? err.message : String(err) },
@@ -60,14 +57,7 @@ export async function POST(request: Request) {
     );
   }
 
-  if (payload === null) {
-    return NextResponse.json(
-      { ok: false, error: "falcon-extras sidecar is disabled" },
-      { status: 503 },
-    );
-  }
-
-  // Zero / multiple matches (or any sidecar-side failure) is an expected
+  // Zero / multiple matches (or any lookup failure) is an expected
   // semantic result, not a transport error — return it at 200 and do NOT
   // persist anything.
   if (payload.ok !== true || typeof payload.id !== "string" || !payload.id) {
