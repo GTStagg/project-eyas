@@ -427,9 +427,6 @@ async function probeFalconExtras(): Promise<FalconExtrasInfo> {
       // actually load and return a structured response. Failures register here
       // instead of mid-IR-engagement. Bogus AID short-circuits the campaign
       // walk to count=0 quickly.
-      // extras_close_all_open_detections_on_host is intentionally NOT probed
-      // here — calling it bypasses the agent-loop approval gate and would
-      // actually close detections; the manifest verifier covers its presence.
       const irCampaignScopeProbe = probeCap("extras_ir_campaign_scope", {
         device_id: "00000000000000000000000000000000",
       });

@@ -150,6 +150,7 @@ export const REQUIRES_APPROVAL: ReadonlySet<string> = new Set<string>([
   // closer above is for out-of-band rescue / queue drain.
   "extras_ir_close_remediated",
   // Post-ledger close of the untouched Phase 0 originals, on the operator's say-so.
+  // These three closers are in-process Eyas tools (lib/eyas-tools/ir/closers.ts).
   "extras_ir_close_untouched_originals",
   // Host group membership (static groups only) — in-process Eyas tools over
   // falcon_perform_host_group_action (lib/eyas-tools/host-group-tools.ts).

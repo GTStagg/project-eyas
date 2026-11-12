@@ -456,7 +456,7 @@ async function callExtrasTool(
   }
 }
 
-/** Run a prefetch tool: Eyas's in-process tool when one exists (the playbook),
+/** Run a prefetch tool: Eyas's in-process tool when one exists (playbooks, IR scope),
  *  otherwise the sidecar's. */
 async function callPrefetchTool(
   mcp: Client,
@@ -1117,7 +1117,8 @@ export async function POST(request: Request) {
               since_iso: new Date(identity.startedAt).toISOString(),
             };
             if (scope.ids.length > 0) args.prior_composite_ids = scope.ids;
-            const res = await callExtrasTool(
+            const res = await callPrefetchTool(
+              mcp,
               extras,
               "extras_ir_phase3_verification_scope",
               args,

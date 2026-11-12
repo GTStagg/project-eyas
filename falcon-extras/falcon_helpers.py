@@ -184,8 +184,7 @@ def reject_unsafe_device_id(device_id: Any) -> dict[str, Any] | None:
     characters; anything else — in particular a value containing ``'`` or ``\\``
     — is a typo or an FQL-injection attempt. Reject-don't-escape, same posture
     as eyas-mcp's identity tools (strict user-name charset, AID as 32 hex). The IR
-    scope walkers are reachable by the agent (``extras_ir_phase3_verification_scope``
-    is not in the route's IR tool filter), so this is the sidecar-side
+    campaign-scope walker is reachable by the agent, so this is the sidecar-side
     defense-in-depth behind the route's IR_PRIMER_RX hex capture.
 
     Returns an error dict for the caller to return verbatim, or None when safe.
@@ -267,33 +266,5 @@ def _check_response(
     if err:
         return {"ok": False, "error": err, "surface": surface}
     return None
-
-
-# ---------------------------------------------------------------------------
-# Cross-cutting constants
-# ---------------------------------------------------------------------------
-
-
-# v3 Alerts API status values for `update_status`. Note: TP/FP is NOT in here
-# — that's a tag, not a status (see CLAUDE.md "v3 Alerts API: status is
-# lifecycle-only; TP/FP is a tag").
-_VALID_DETECTION_STATUSES = {"new", "in_progress", "reopened", "closed"}
-
-_VALID_DETECTION_VERDICTS = {"true_positive", "false_positive"}
-
-# The tag value written for each TP/FP verdict. These MUST match what the
-# Falcon console writes when an operator sets a verdict on a v3 alert — which
-# is the literal string (`true_positive` / `false_positive`), NOT the legacy
-# `FalconUITagged*` prefix. The prefix was a legacy `/detects` (v1/v2)
-# convention for UI-applied tags; the v3 unified-detections experience dropped
-# it. Confirmed empirically (2026-06-22): in our us-2 tenant 396 console-tagged
-# alerts carry zero `FalconUITagged*` and the verdict tag present is literal
-# (`ignored`), and falcon-mcp 0.12.0's native `falcon_update_detections` passes
-# the verdict straight through as `add_tag: <verdict>`. Writing the literal
-# keeps our verdicts identical to console-applied ones.
-_VERDICT_TAG = {
-    "true_positive": "true_positive",
-    "false_positive": "false_positive",
-}
 
 

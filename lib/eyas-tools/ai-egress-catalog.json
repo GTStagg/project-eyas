@@ -1,0 +1,302 @@
+[
+  {
+    "pattern": "api\\.openai\\.com",
+    "tool": "OpenAI API",
+    "posture": "saas_inference_api"
+  },
+  {
+    "pattern": "api\\.anthropic\\.com",
+    "tool": "Anthropic API",
+    "posture": "saas_inference_api"
+  },
+  {
+    "pattern": "generativelanguage\\.googleapis\\.com",
+    "tool": "Google Gemini API",
+    "posture": "saas_inference_api"
+  },
+  {
+    "pattern": "api\\.mistral\\.ai",
+    "tool": "Mistral API",
+    "posture": "saas_inference_api"
+  },
+  {
+    "pattern": "api\\.cohere\\.(?:com|ai)",
+    "tool": "Cohere API",
+    "posture": "saas_inference_api"
+  },
+  {
+    "pattern": "api\\.perplexity\\.ai",
+    "tool": "Perplexity API",
+    "posture": "saas_inference_api"
+  },
+  {
+    "pattern": "api\\.together\\.(?:ai|xyz)",
+    "tool": "Together AI",
+    "posture": "saas_inference_api"
+  },
+  {
+    "pattern": "api\\.fireworks\\.ai",
+    "tool": "Fireworks AI",
+    "posture": "saas_inference_api"
+  },
+  {
+    "pattern": "api\\.groq\\.com",
+    "tool": "Groq API",
+    "posture": "saas_inference_api"
+  },
+  {
+    "pattern": "api\\.deepseek\\.com",
+    "tool": "DeepSeek API",
+    "posture": "saas_inference_api"
+  },
+  {
+    "pattern": "api\\.x\\.ai",
+    "tool": "xAI API",
+    "posture": "saas_inference_api"
+  },
+  {
+    "pattern": "api\\.deepinfra\\.com",
+    "tool": "DeepInfra",
+    "posture": "saas_inference_api"
+  },
+  {
+    "pattern": "api\\.openrouter\\.ai",
+    "tool": "OpenRouter",
+    "posture": "saas_inference_api"
+  },
+  {
+    "pattern": "openrouter\\.ai",
+    "tool": "OpenRouter",
+    "posture": "saas_inference_api"
+  },
+  {
+    "pattern": "router\\.huggingface\\.co",
+    "tool": "HuggingFace Inference",
+    "posture": "saas_inference_api"
+  },
+  {
+    "pattern": "api-inference\\.huggingface\\.co",
+    "tool": "HuggingFace Inference",
+    "posture": "saas_inference_api"
+  },
+  {
+    "pattern": "chatgpt\\.com",
+    "tool": "ChatGPT (web)",
+    "posture": "saas_chat_browser"
+  },
+  {
+    "pattern": "chat\\.openai\\.com",
+    "tool": "ChatGPT (web)",
+    "posture": "saas_chat_browser"
+  },
+  {
+    "pattern": "claude\\.ai",
+    "tool": "Claude (web)",
+    "posture": "saas_chat_browser"
+  },
+  {
+    "pattern": "gemini\\.google\\.com",
+    "tool": "Gemini (web)",
+    "posture": "saas_chat_browser"
+  },
+  {
+    "pattern": "bard\\.google\\.com",
+    "tool": "Bard (web)",
+    "posture": "saas_chat_browser"
+  },
+  {
+    "pattern": "copilot\\.microsoft\\.com",
+    "tool": "Microsoft Copilot (web)",
+    "posture": "saas_chat_browser"
+  },
+  {
+    "pattern": "www\\.perplexity\\.ai",
+    "tool": "Perplexity (web)",
+    "posture": "saas_chat_browser"
+  },
+  {
+    "pattern": "perplexity\\.ai",
+    "tool": "Perplexity (web)",
+    "posture": "saas_chat_browser"
+  },
+  {
+    "pattern": "poe\\.com",
+    "tool": "Poe",
+    "posture": "saas_chat_browser"
+  },
+  {
+    "pattern": "you\\.com",
+    "tool": "You.com",
+    "posture": "saas_chat_browser"
+  },
+  {
+    "pattern": "chat\\.mistral\\.ai",
+    "tool": "Le Chat (Mistral)",
+    "posture": "saas_chat_browser"
+  },
+  {
+    "pattern": "chat\\.deepseek\\.com",
+    "tool": "DeepSeek Chat",
+    "posture": "saas_chat_browser"
+  },
+  {
+    "pattern": "grok\\.com",
+    "tool": "Grok (web)",
+    "posture": "saas_chat_browser"
+  },
+  {
+    "pattern": "(?:.*\\.)?character\\.ai",
+    "tool": "Character.ai",
+    "posture": "saas_chat_browser"
+  },
+  {
+    "pattern": "(?:.*\\.)?janitorai\\.com",
+    "tool": "JanitorAI",
+    "posture": "saas_chat_browser"
+  },
+  {
+    "pattern": "api\\.github\\.com",
+    "tool": "GitHub API (incl. Copilot)",
+    "posture": "code_assistant_api"
+  },
+  {
+    "pattern": "copilot-proxy\\.githubusercontent\\.com",
+    "tool": "GitHub Copilot",
+    "posture": "code_assistant_api"
+  },
+  {
+    "pattern": "api\\.individual\\.githubcopilot\\.com",
+    "tool": "GitHub Copilot (individual)",
+    "posture": "code_assistant_api"
+  },
+  {
+    "pattern": "api\\.business\\.githubcopilot\\.com",
+    "tool": "GitHub Copilot (business)",
+    "posture": "code_assistant_api"
+  },
+  {
+    "pattern": "sourcegraph\\.com",
+    "tool": "Sourcegraph Cody",
+    "posture": "code_assistant_api"
+  },
+  {
+    "pattern": "(?:.*\\.)?sourcegraph\\.com",
+    "tool": "Sourcegraph Cody",
+    "posture": "code_assistant_api"
+  },
+  {
+    "pattern": "api\\.tabnine\\.com",
+    "tool": "Tabnine",
+    "posture": "code_assistant_api"
+  },
+  {
+    "pattern": "server\\.codeium\\.com",
+    "tool": "Codeium",
+    "posture": "code_assistant_api"
+  },
+  {
+    "pattern": "(?:.*\\.)?codeium\\.com",
+    "tool": "Codeium",
+    "posture": "code_assistant_api"
+  },
+  {
+    "pattern": "huggingface\\.co",
+    "tool": "Hugging Face",
+    "posture": "model_hub"
+  },
+  {
+    "pattern": "(?:.*\\.)?huggingface\\.co",
+    "tool": "Hugging Face",
+    "posture": "model_hub"
+  },
+  {
+    "pattern": "hf\\.co",
+    "tool": "Hugging Face",
+    "posture": "model_hub"
+  },
+  {
+    "pattern": "replicate\\.com",
+    "tool": "Replicate",
+    "posture": "model_hub"
+  },
+  {
+    "pattern": "api\\.replicate\\.com",
+    "tool": "Replicate",
+    "posture": "model_hub"
+  },
+  {
+    "pattern": "civitai\\.com",
+    "tool": "Civitai",
+    "posture": "model_hub"
+  },
+  {
+    "pattern": "modelscope\\.cn",
+    "tool": "ModelScope",
+    "posture": "model_hub"
+  },
+  {
+    "pattern": "(?:.*\\.)?modelscope\\.cn",
+    "tool": "ModelScope",
+    "posture": "model_hub"
+  },
+  {
+    "pattern": "ollama\\.com",
+    "tool": "Ollama (model registry)",
+    "posture": "model_hub"
+  },
+  {
+    "pattern": "registry\\.ollama\\.ai",
+    "tool": "Ollama (model registry)",
+    "posture": "model_hub"
+  },
+  {
+    "pattern": "smithery\\.ai",
+    "tool": "Smithery (MCP registry)",
+    "posture": "agent_infra"
+  },
+  {
+    "pattern": "api\\.smithery\\.ai",
+    "tool": "Smithery (MCP registry)",
+    "posture": "agent_infra"
+  },
+  {
+    "pattern": "(?:.*\\.)?smithery\\.ai",
+    "tool": "Smithery (MCP registry)",
+    "posture": "agent_infra"
+  },
+  {
+    "pattern": "api\\.smith\\.langchain\\.com",
+    "tool": "LangSmith",
+    "posture": "agent_infra"
+  },
+  {
+    "pattern": "smith\\.langchain\\.com",
+    "tool": "LangSmith",
+    "posture": "agent_infra"
+  },
+  {
+    "pattern": "api\\.langchain\\.com",
+    "tool": "LangChain",
+    "posture": "agent_infra"
+  },
+  {
+    "pattern": "langfuse\\.com",
+    "tool": "Langfuse",
+    "posture": "agent_infra"
+  },
+  {
+    "pattern": "(?:.*\\.)?langfuse\\.com",
+    "tool": "Langfuse",
+    "posture": "agent_infra"
+  },
+  {
+    "pattern": "helicone\\.ai",
+    "tool": "Helicone",
+    "posture": "agent_infra"
+  },
+  {
+    "pattern": "(?:.*\\.)?helicone\\.ai",
+    "tool": "Helicone",
+    "posture": "agent_infra"
+  }
+]
