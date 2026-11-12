@@ -37,8 +37,10 @@ export function toPid(v: unknown): number | string | null {
 const strOrNull = (v: unknown): string | null => (typeof v === "string" && v ? v : null);
 
 /** A native tree node in the sidecar's {pid, ppid, os_pid, image, cmdline,
- *  user, user_sid, signed, ts} shape, plus the native `sha256` and raw
- *  `signing` fields. */
+ *  user, user_sid, signed, ts} shape, plus the native `sha256`, raw `signing`
+ *  and, when present, `blocked` / `source_event` / `parent_image` (a process
+ *  the sensor blocked before it ran has no ProcessRollup2; eyas-mcp ≥ 11e9564
+ *  builds it from its ProcessBlocked event). */
 export function nodeFromNative(n: Obj): TreeNode {
   const signing = n.signing && typeof n.signing === "object" ? (n.signing as Obj) : null;
   const fileSign = signing ? String(signing.file_sign_info ?? "") : "";
@@ -58,6 +60,9 @@ export function nodeFromNative(n: Obj): TreeNode {
   };
   if (strOrNull(n.sha256)) node.sha256 = n.sha256;
   if (signing) node.signing = signing;
+  if (typeof n.blocked === "boolean") node.blocked = n.blocked;
+  if (strOrNull(n.source_event)) node.source_event = n.source_event;
+  if (strOrNull(n.parent_image)) node.parent_image = n.parent_image;
   if (typeof n.depth === "number") node.depth = n.depth;
   return node;
 }
@@ -211,7 +216,7 @@ export async function hostProcessTree(ctx: EyasToolContext, input: Obj): Promise
   const pivot = ancestry[0];
   return {
     ok: true,
-    pivot: { pid: pivot.pid, image: pivot.image, cmdline: pivot.cmdline, ts: pivot.ts },
+    pivot: { pid: pivot.pid, image: pivot.image, cmdline: pivot.cmdline, ts: pivot.ts, blocked: pivot.blocked === true },
     delivery_vector: deliveryVector,
     ancestry,
     descendants,

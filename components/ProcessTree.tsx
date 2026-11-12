@@ -23,6 +23,7 @@ type ProcessNode = {
   ts?: unknown;
   depth?: number;
   verdict?: string;
+  blocked?: boolean;
 };
 
 type DeliveryVector = {
@@ -293,6 +294,14 @@ function NodeRow({
           {isPivot && (
             <span className="rounded bg-red-900/60 px-1.5 text-[9px] uppercase tracking-wider text-red-200">
               pivot
+            </span>
+          )}
+          {node.blocked && (
+            <span
+              className="rounded bg-emerald-900/50 px-1.5 text-[9px] uppercase tracking-wider text-emerald-200"
+              title="Falcon blocked this process before it ran"
+            >
+              blocked
             </span>
           )}
         </div>

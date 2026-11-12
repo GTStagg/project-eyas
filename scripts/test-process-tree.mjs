@@ -122,6 +122,9 @@ test("native node maps to the sidecar shape", () => {
   assert.deepEqual(node.signing, { sign_info_flags: "8683520" });
   assert.equal(pt.nodeFromNative({ signing: { file_sign_info: "Signed: Microsoft" } }).signed, true);
   assert.equal(pt.nodeFromNative({ signing: { file_sign_info: "Unsigned" } }).signed, false);
+  const blocked = pt.nodeFromNative({ process_id: "7", blocked: true, source_event: "ProcessBlocked", parent_image: "wmiprvse.exe" });
+  assert.deepEqual([blocked.blocked, blocked.source_event, blocked.parent_image], [true, "ProcessBlocked", "wmiprvse.exe"]);
+  assert.equal("blocked" in pt.nodeFromNative({ process_id: "7" }), false);
   assert.equal(pt.toPid("99999999999999999999"), "99999999999999999999");
   assert.equal(pt.toPid("abc"), null);
 });
@@ -189,7 +192,7 @@ test("host process tree: native call, pivot-first ancestry, classifier", async (
   assert.equal(out.descendants[0].depth, 1);
   assert.equal(out.window_widened, false);
   assert.equal(out.events_scanned, 812);
-  assert.deepEqual(out.pivot, { pid: 30, image: "C:\\Users\\a\\Downloads\\evil.exe", cmdline: "", ts: "2026-11-12T15:55:09.000Z" });
+  assert.deepEqual(out.pivot, { pid: 30, image: "C:\\Users\\a\\Downloads\\evil.exe", cmdline: "", ts: "2026-11-12T15:55:09.000Z", blocked: false });
 });
 
 test("host process tree: parent lookup demotes; no pivot; input errors", async () => {
@@ -205,6 +208,22 @@ test("host process tree: parent lookup demotes; no pivot; input errors", async (
   const w = await pt.hostProcessTree(widened.ctx, { device_id: AID, pivot_pid: 2, pivot_ts_iso: "2026-11-12T00:00:00Z" });
   assert.equal(w.window_widened, true);
   assert.equal(w.delivery_vector.confidence, "medium");
+  assert.equal(w.pivot.blocked, false);
+
+  const blockedTree = fakeCtx({
+    falcon_get_process_tree: () => ({
+      pivot: { ...nativeNode(9, 8, "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe"), blocked: true, source_event: "ProcessBlocked", parent_image: "wmiprvse.exe" },
+      ancestry: [{ ...nativeNode(8, 1, "C:\\Windows\\System32\\wbem\\WmiPrvSE.exe"), depth: 1, blocked: false, source_event: "ProcessRollup2" }],
+      descendants: [],
+      window: { events_scanned: 9, anchor_recovered: true },
+      searches: [{ purpose: "window", status: "completed", event_count: 9 }, { purpose: "blocked_probe", status: "completed", event_count: 1 }],
+    }),
+  });
+  const b = await pt.hostProcessTree(blockedTree.ctx, { device_id: AID, pivot_pid: 9, pivot_ts_iso: "2026-11-12T00:00:00Z" });
+  assert.equal(b.pivot.blocked, true);
+  assert.equal(b.ancestry[0].source_event, "ProcessBlocked");
+  assert.equal(b.delivery_vector.kind, "wmi_persistence");
+  assert.equal(b.anchor_recovered, true);
 
   const empty = fakeCtx({
     falcon_get_process_tree: () => ({ pivot: null, ancestry: [], descendants: [], window: { events_scanned: 0 }, searches: [{ purpose: "window", status: "completed", event_count: 0 }] }),
