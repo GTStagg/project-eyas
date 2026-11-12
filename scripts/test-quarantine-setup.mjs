@@ -210,3 +210,123 @@ test("membership writes: validated ids go to the native action; bad input never 
   assert.equal(dyn.ok, false);
   assert.match(dyn.error, /dynamic/);
 });
+
+// ---- provisioning + detach (lib/eyas-tools/quarantine-provision.ts) --------
+
+const prov = await import(pathToFileURL(path.join(root, "lib/eyas-tools/quarantine-provision.ts")).href);
+
+test("settings push: sliders up, toggles on, grouped shape flattened, no-op detected", () => {
+  const grouped = [
+    { name: "ML", settings: [cautious("OnSensorMLSlider"), { id: "Det", value: { detection: "MODERATE" } }] },
+    { name: "Behavior", settings: [{ id: "ScriptControl", value: { enabled: false } }, { id: "Odd", value: { mode: "x" } }] },
+  ];
+  const p = prov.planMaxProtectiveSettings(grouped);
+  assert.equal(p.slidersTouched, 2);
+  assert.equal(p.togglesTouched, 1);
+  assert.deepEqual(p.flat, [
+    { id: "OnSensorMLSlider", value: { detection: "AGGRESSIVE", prevention: "AGGRESSIVE" } },
+    { id: "Det", value: { detection: "AGGRESSIVE" } },
+    { id: "ScriptControl", value: { enabled: true } },
+    { id: "Odd", value: { mode: "x" } },
+  ]);
+  // The input is not mutated.
+  assert.equal(grouped[0].settings[0].value.detection, "CAUTIOUS");
+  const done = prov.planMaxProtectiveSettings([aggressive("A"), { id: "T", value: { enabled: true } }]);
+  assert.equal(done.slidersTouched + done.togglesTouched, 0);
+});
+
+function provCtx({ policies = [], records = {}, exclusions = [], detections = [], fail = {} } = {}) {
+  const calls = [];
+  let n = 0;
+  return {
+    calls,
+    callNative: async (name, args) => {
+      calls.push({ name, args });
+      if (fail[name]) return { obj: null, error: fail[name] };
+      if (name === "falcon_get_policies") return { obj: { found: [records[args.ids[0]] ?? { id: args.ids[0], prevention_settings: [] }], not_found: [] }, error: null };
+      if (name === "falcon_create_policy") return { obj: { id: `new-${args.platform_name}-${++n}` }, error: null };
+      if (name === "falcon_create_exclusion") return { obj: { id: "excl-new" }, error: null };
+      return { obj: {}, error: null };
+    },
+    searchNative: async (name) => {
+      calls.push({ name });
+      if (name === "falcon_search_policies") return { ok: true, items: policies };
+      if (name === "falcon_search_exclusions") return { ok: true, items: exclusions };
+      if (name === "falcon_search_detections") return { ok: true, items: detections };
+      return { ok: false, error: `unexpected ${name}` };
+    },
+  };
+}
+const names = (ctx) => ctx.calls.map((c) => c.name);
+
+test("provision adopt: rename, push, precedence first per platform, exclusion already there", async () => {
+  const win = policy({ id: "pw", name: "Old IR policy", prevention_settings: [{ settings: [cautious("OnSensorMLSlider")] }] });
+  const ctx = provCtx({ policies: [win], records: { pw: win }, exclusions: [readinessExclusion] });
+  const r = await prov.provisionQuarantinePolicy(ctx, { host_group_id: GID, mode: "adopt" });
+  assert.equal(r.ok, true, JSON.stringify(r.errors));
+  // Windows adopted + renamed; Mac and Linux created, attached and enabled.
+  assert.deepEqual(r.actions.filter((a) => a.step === "rename").map((a) => a.platform), ["windows"]);
+  assert.deepEqual(r.actions.filter((a) => a.step === "create_and_attach").map((a) => a.platform), ["mac", "linux"]);
+  const rename = ctx.calls.find((c) => c.name === "falcon_update_policy" && c.args.name);
+  assert.equal(rename.args.name, "Project Eyas - IR Quarantine (auto, windows)");
+  const push = ctx.calls.find((c) => c.name === "falcon_update_policy" && c.args.settings);
+  assert.deepEqual(push.args.settings, [{ id: "OnSensorMLSlider", value: { detection: "AGGRESSIVE", prevention: "AGGRESSIVE" } }]);
+  const creates = ctx.calls.filter((c) => c.name === "falcon_create_policy").map((c) => c.args.platform_name);
+  assert.deepEqual(creates, ["Mac", "Linux"]);
+  const acts = ctx.calls.filter((c) => c.name === "falcon_perform_policy_action").map((c) => c.args.action_name);
+  assert.deepEqual(acts, ["add-host-group", "enable", "add-host-group", "enable"]);
+  const prec = ctx.calls.filter((c) => c.name === "falcon_set_policy_precedence").map((c) => c.args);
+  assert.deepEqual(prec.map((p) => [p.platform_name, p.place_first, typeof p.move_id]), [
+    ["Windows", true, "string"], ["Mac", true, "string"], ["Linux", true, "string"],
+  ]);
+  assert.equal(prec.every((p) => !("ids" in p)), true, "relative mode, never a full id list");
+  const ex = r.actions.find((a) => a.step === "ir_readiness_exclusion");
+  assert.equal(ex.present, true);
+  assert.equal(ex.created, false);
+  assert.equal(names(ctx).includes("falcon_create_exclusion"), false);
+});
+
+test("provision create_dedicated ignores the shared policy; missing exclusion is created", async () => {
+  const shared = policy({ id: "ps", name: "Ops", groups: [{ id: GID }, { id: "other" }] });
+  const det = { composite_id: "c1", pattern_id: 10197 };
+  const ctx = provCtx({ policies: [shared], exclusions: [], detections: [det] });
+  const r = await prov.provisionQuarantinePolicy(ctx, { host_group_id: GID, mode: "create_dedicated" });
+  assert.equal(r.ok, true);
+  assert.equal(ctx.calls.filter((c) => c.name === "falcon_create_policy").length, 3);
+  assert.equal(ctx.calls.some((c) => c.name === "falcon_update_policy" && c.args.id === "ps"), false);
+  const ex = ctx.calls.find((c) => c.name === "falcon_create_exclusion").args;
+  assert.equal(ex.exclusion_type, "ioa");
+  assert.equal(ex.pattern_id, "10197");
+  assert.equal(ex.cl_regex, q.RTR_PREAMBLE_FULL_REGEX);
+  assert.equal(ex.ifn_regex, q.READINESS_IFN_REGEX);
+  assert.deepEqual(ex.host_groups, [GID]);
+  assert.equal(ex.skip_if_duplicate, true);
+});
+
+test("provision: errors per stage are reported and the rest continues", async () => {
+  const ctx = provCtx({ fail: { falcon_create_policy: "HTTP 400: bad", falcon_set_policy_precedence: "HTTP 500" }, exclusions: [readinessExclusion] });
+  const r = await prov.provisionQuarantinePolicy(ctx, { host_group_id: GID });
+  assert.equal(r.ok, false);
+  assert.deepEqual(r.errors.map((e) => [e.platform, e.stage]), [["windows", "create_policies"], ["mac", "create_policies"], ["linux", "create_policies"]]);
+  assert.equal(names(ctx).includes("falcon_set_policy_precedence"), false, "nothing to reorder when nothing was provisioned");
+  assert.match((await prov.provisionQuarantinePolicy(provCtx(), {})).error, /host_group_id is required/);
+  assert.match((await prov.provisionQuarantinePolicy(provCtx(), { host_group_id: GID, mode: "yolo" })).error, /unknown mode/);
+});
+
+test("readiness exclusion: unresolvable pattern warns without failing", async () => {
+  const r = await prov.ensureReadinessExclusion(provCtx({ exclusions: [], detections: [] }), GID);
+  assert.equal(r.ok, true);
+  assert.equal(r.pattern_id_unresolved, true);
+  assert.match(r.warning, /could NOT be pre-installed/);
+});
+
+test("detach runs remove-host-group on the one policy", async () => {
+  const ctx = provCtx();
+  const r = await prov.detachPreventionPolicy(ctx, { prevention_policy_id: "p1", host_group_id: GID });
+  assert.equal(r.ok, true);
+  assert.deepEqual(ctx.calls[0], {
+    name: "falcon_perform_policy_action",
+    args: { policy_type: "prevention", action_name: "remove-host-group", ids: ["p1"], group_id: GID },
+  });
+  assert.equal((await prov.detachPreventionPolicy(provCtx(), { host_group_id: GID })).ok, false);
+});

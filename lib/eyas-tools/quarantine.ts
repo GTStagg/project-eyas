@@ -29,7 +29,7 @@ const LEVEL_RANK: Record<string, number> = {
 // IOA exclusion is recognised by this substring in its cl_regex.
 export const RTR_PREAMBLE_BASE64 = "UwBlAHQALQBMAG8AYwBhAHQAaQBvAG4AIAAnAEMAOgBcACcA";
 export const RTR_PREAMBLE_FULL_REGEX = `.*-EncodedCommand ${RTR_PREAMBLE_BASE64}.*`;
-const READINESS_IFN_REGEX = ".*\\\\powershell\\.exe(\\W.*)?";
+export const READINESS_IFN_REGEX = ".*\\\\powershell\\.exe(\\W.*)?";
 
 // parse.ts is server-only; loading it lazily keeps this module (and the
 // tool list) importable from plain test scripts.
@@ -43,7 +43,7 @@ const str = (v: unknown): string | null => (typeof v === "string" ? v : null);
 /** Host-group ids a record is scoped to. Policies and ML exclusions use
  *  `groups: [{id, …}]`; v2 IOA exclusions (what eyas-mcp reads) use
  *  `host_groups`, as ids or objects. */
-function groupIdsOf(rec: Obj): string[] {
+export function groupIdsOf(rec: Obj): string[] {
   const out: string[] = [];
   for (const key of ["groups", "host_groups"]) {
     const list = rec[key];
@@ -362,7 +362,47 @@ export async function adoptQuarantineHostGroup(ctx: EyasToolContext, input: Obj)
 
 // ---- IR readiness -----------------------------------------------------------
 
-const EXCLUSION_NAME = "Project Eyas IR — RTR runscript preamble";
+export const READINESS_EXCLUSION_NAME = "Project Eyas IR — RTR runscript preamble";
+const EXCLUSION_NAME = READINESS_EXCLUSION_NAME;
+export const READINESS_EXCLUSION_COMMENT_PROVISIONED =
+  "Suppresses PShellMimikatz / PowerShell-encoded-command detections triggered by Project Eyas's IR workflow when " +
+  "RTR invokes runscript -CloudFile=<name>. Pre-installed at tenant-provisioning time so the exclusion has time " +
+  "to propagate to all sensors before any IR engagement fires.";
+
+export type PatternCandidate = { id: string; name: unknown; compositeId: unknown };
+
+/** A pattern_id from the most recent PShellMimikatz detection, so the
+ *  readiness exclusion can be created concretely. Null when none has fired;
+ *  `error` when the lookup itself failed. */
+export async function findPatternCandidate(
+  ctx: EyasToolContext,
+): Promise<{ candidate: PatternCandidate | null; error?: string }> {
+  const det = await ctx.searchNative("falcon_search_detections", {
+    filter: "product:'epp'+display_name:'PShellMimikatz'",
+    limit: 1,
+    sort: "created_timestamp.desc",
+  });
+  if (!det.ok) return { candidate: null, error: det.error };
+  if (det.scope_pending || det.items.length === 0) return { candidate: null };
+  const rec = det.items[0];
+  let pid = rec.pattern_id;
+  let pname = rec.display_name ?? rec.pattern_disposition ?? null;
+  if (!pid) {
+    for (const b of Array.isArray(rec.behaviors) ? rec.behaviors : []) {
+      if (isObj(b) && b.pattern_id) {
+        pid = b.pattern_id;
+        pname = b.display_name ?? pname;
+        break;
+      }
+    }
+  }
+  if (!pid) return { candidate: null };
+  return { candidate: { id: String(pid), name: pname, compositeId: rec.composite_id ?? null } };
+}
+
+export async function candidatePatternId(ctx: EyasToolContext): Promise<string | null> {
+  return (await findPatternCandidate(ctx)).candidate?.id ?? null;
+}
 
 export async function diagnoseIrReadiness(ctx: EyasToolContext, groupIdOverride?: string): Promise<Obj> {
   const quarantineGroupId = groupIdOverride ?? (await activeQuarantineGroupId()) ?? "";
@@ -441,31 +481,13 @@ export async function diagnoseIrReadiness(ctx: EyasToolContext, groupIdOverride?
 
   // 3. A pattern_id from the most recent PShellMimikatz detection, so the
   //    create-exclusion call can be concrete. Non-fatal.
-  const det = await ctx.searchNative("falcon_search_detections", {
-    filter: "product:'epp'+display_name:'PShellMimikatz'",
-    limit: 1,
-    sort: "created_timestamp.desc",
-  });
-  if (det.ok && !det.scope_pending && det.items.length > 0) {
-    const rec = det.items[0];
-    let pid = rec.pattern_id;
-    let pname = rec.display_name ?? rec.pattern_disposition ?? null;
-    if (!pid) {
-      for (const b of Array.isArray(rec.behaviors) ? rec.behaviors : []) {
-        if (isObj(b) && b.pattern_id) {
-          pid = b.pattern_id;
-          pname = b.display_name ?? pname;
-          break;
-        }
-      }
-    }
-    if (pid) {
-      checks.candidate_pattern_id = String(pid);
-      checks.candidate_pattern_name = pname;
-      checks.candidate_pattern_source_composite_id = rec.composite_id ?? null;
-    }
-  } else if (!det.ok) {
-    checks.candidate_pattern_id_lookup_error = det.error;
+  const pc = await findPatternCandidate(ctx);
+  if (pc.candidate) {
+    checks.candidate_pattern_id = pc.candidate.id;
+    checks.candidate_pattern_name = pc.candidate.name;
+    checks.candidate_pattern_source_composite_id = pc.candidate.compositeId;
+  } else if (pc.error) {
+    checks.candidate_pattern_id_lookup_error = pc.error;
   }
 
   // 4. Remediation.

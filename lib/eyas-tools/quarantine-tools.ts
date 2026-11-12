@@ -6,6 +6,7 @@ import {
   diagnoseIrReadiness,
   diagnoseQuarantineSetup,
 } from "./quarantine";
+import { detachPreventionPolicy, provisionQuarantinePolicy } from "./quarantine-provision";
 
 // Agent-facing tools for IR quarantine setup and readiness. Descriptions are
 // carried over from the former sidecar tools, with the group id now read from
@@ -91,5 +92,55 @@ export const QUARANTINE_TOOLS: EyasTool[] = [
     ].join("\n"),
     input_schema: { type: "object", properties: {} },
     run: async (_input, ctx) => jsonResult(await diagnoseIrReadiness(ctx)),
+  },
+  {
+    name: "extras_provision_quarantine_policy",
+    description: [
+      "Provision IR quarantine prevention policies for the named host group. WRITE — approval-gated; one approval covers the whole chain below.",
+      "",
+      "Per platform (Windows / macOS / Linux):",
+      '  - mode="adopt": adopt the existing policy bound to this group (rename to canonical, push AGGRESSIVE sliders), or attach a fresh canonical policy if none exists. Use for migration cases A and B.',
+      '  - mode="create_dedicated": always create a brand-new dedicated policy bound only to this group, leave any existing shared policy alone. Use for migration case C.',
+      "",
+      "Pushes EVERY slider on the policy (detection + prevention pairs and detection-only sliders) to AGGRESSIVE, AND enables EVERY boolean behavioral toggle (script monitoring, encoded-command, volume-shadow-copy protection, etc.). Operates on setting shape, not a hard-coded list, so the policy schema can evolve without code changes.",
+      "",
+      "Then moves each IR policy to the top of its platform's precedence (a quarantined host keeps its other groups; the IR policy wins by precedence), and installs the IR-readiness IOA exclusion scoped to the group if it is missing and a PShellMimikatz pattern_id can be resolved (otherwise the result carries a warning).",
+      "",
+      "Args:",
+      "    host_group_id: The IR quarantine host group id.",
+      '    mode: "adopt" (Cases A / B) or "create_dedicated" (Case C). Use ``extras_diagnose_quarantine_setup`` first to determine which.',
+    ].join("\n"),
+    input_schema: {
+      type: "object",
+      properties: {
+        host_group_id: { title: "Host Group Id", type: "string" },
+        mode: { default: "adopt", title: "Mode", type: "string" },
+      },
+      required: ["host_group_id"],
+    },
+    run: async (input, ctx) => jsonResult(await provisionQuarantinePolicy(ctx, input)),
+  },
+  {
+    name: "extras_detach_prevention_policy_from_host_group",
+    description: [
+      "Detach a prevention policy from a host group. WRITE — approval-gated.",
+      "",
+      'Runs the prevention-policy action "remove-host-group". The policy itself is NOT deleted — it stays attached to whatever other host groups it was bound to. This is the inverse of the "add-host-group" action used during provisioning.',
+      "",
+      "Use case: an operator-created legacy policy is attached to multiple groups including the IR Quarantine or Shadow-AI Banned groups, and the operator wants to detach it from those specific groups so the new dedicated app-managed policies are the only ones applying via precedence.",
+      "",
+      "Args:",
+      "    prevention_policy_id: The Prevention Policy id.",
+      "    host_group_id: The Host Group id to detach from.",
+    ].join("\n"),
+    input_schema: {
+      type: "object",
+      properties: {
+        prevention_policy_id: { title: "Prevention Policy Id", type: "string" },
+        host_group_id: { title: "Host Group Id", type: "string" },
+      },
+      required: ["prevention_policy_id", "host_group_id"],
+    },
+    run: async (input, ctx) => jsonResult(await detachPreventionPolicy(ctx, input)),
   },
 ];
