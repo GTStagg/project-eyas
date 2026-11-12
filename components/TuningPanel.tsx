@@ -148,9 +148,9 @@ export default function TuningPanel() {
     fetch("/api/health", { cache: "no-store" })
       .then((r) => r.json())
       .then((j) => {
-        const caps = j?.falconExtras?.capabilities ?? {};
+        const caps = j?.falconMcp?.capabilities ?? {};
         // Hide only on confirmed scope denial (=== false). Missing/undefined
-        // — sidecar disabled, probe failed — defaults to show.
+        // — probe failed — defaults to show.
         if (caps.mlExclusions === false && caps.ioaExclusions === false) {
           setExclusionsAvailable(false);
         }

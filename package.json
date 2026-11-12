@@ -32,6 +32,7 @@
     "test:process-tree": "node ./scripts/test-process-tree.mjs",
     "test:shadow-ai": "node ./scripts/test-shadow-ai.mjs",
     "test:shadow-ai-prevention": "node ./scripts/test-shadow-ai-prevention.mjs",
+    "test:exclusions": "node ./scripts/test-exclusions.mjs",
     "test:prompt-cache": "node ./scripts/test-prompt-cache.mjs",
     "test:native-dispatch": "node ./scripts/test-native-dispatch.mjs",
     "test:release-watcher": "node ./scripts/test-release-watcher.mjs",
