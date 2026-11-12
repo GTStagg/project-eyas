@@ -112,20 +112,30 @@ else
   fail "server.js missing — bundle won't launch"
 fi
 
-# 7b. Gateway deployment lock actually baked into the COMPILED bundle.
-# make-dist.sh overwrites build-flags.ts (gatewayOnly=true + forcedGatewayUrl)
-# before `npm run build`, then restores the dev defaults. The compiled JS is
-# the only place the lock survives — a build that skipped/reverted the bake
-# (or a hand-tampered bundle) would still carry build-info.json claiming
-# standalone but with no forced URL in the compiled chunks. We assert BOTH:
-# the metadata claims gatewayOnly, AND the forced URL is physically present in
-# the compiled output (string literals survive minification, so this can't be
-# faked by the metadata alone).
+# 7b. Gateway deployment lock, when the build asked for one.
+# The lock is opt-in: make-dist.sh bakes it only when ANTHROPIC_GATEWAY_BASE_URL
+# is set, overwriting build-flags.ts (gatewayOnly=true + forcedGatewayUrl)
+# before `npm run build`. A default build is unlocked and accepts a direct
+# Anthropic API key or a gateway entered on first run — that passes here.
+# Set REQUIRE_GATEWAY_LOCK=1 when you ship gateway-locked bundles and want an
+# unlocked one to fail.
+#
+# When build-info.json claims a lock, the compiled JS is the only place it
+# survives — a build that skipped/reverted the bake (or a hand-tampered
+# bundle) would carry metadata claiming a lock with no forced URL in the
+# compiled chunks. So we assert the forced URL is physically present in the
+# compiled output (string literals survive minification).
 if [ -f "$WORK_DIR/${BUNDLE_NAME}/build-info.json" ]; then
   LOCK_ON=$(node -e "process.stdout.write(String(require('$WORK_DIR/${BUNDLE_NAME}/build-info.json').deploymentLock?.gatewayOnly === true))" 2>/dev/null || echo "false")
   FORCED_URL=$(node -e "process.stdout.write(String(require('$WORK_DIR/${BUNDLE_NAME}/build-info.json').deploymentLock?.forcedGatewayUrl || ''))" 2>/dev/null || echo "")
   if [ "$LOCK_ON" != "true" ]; then
-    fail "build-info.json deploymentLock.gatewayOnly is not true — bundle is NOT gateway-locked"
+    if [ -n "$FORCED_URL" ]; then
+      fail "build-info.json has forcedGatewayUrl but gatewayOnly is not true — inconsistent deployment lock"
+    elif [ "${REQUIRE_GATEWAY_LOCK:-0}" = "1" ]; then
+      fail "bundle is NOT gateway-locked (REQUIRE_GATEWAY_LOCK=1) — rebuild with ANTHROPIC_GATEWAY_BASE_URL set"
+    else
+      ok "no gateway lock (default build; set ANTHROPIC_GATEWAY_BASE_URL to bake one)"
+    fi
   elif [ -z "$FORCED_URL" ]; then
     fail "build-info.json deploymentLock.forcedGatewayUrl is empty — gateway lock has no target URL"
   else
