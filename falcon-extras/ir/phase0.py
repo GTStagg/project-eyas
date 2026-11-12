@@ -101,7 +101,7 @@ def phase0_detection_scope(device_id: str) -> dict[str, Any]:
         "newest_open_iso": timestamps[-1] if timestamps else None,
         "note": (
             "These are the IR scope detections — pass `composite_ids` "
-            "verbatim to Phase 4's extras_update_detection_status close call."
+            "verbatim to Phase 4's falcon_update_detections close call (as `ids`)."
             + (
                 " HARD_CAP hit — tenant has 5000+ open detections on this "
                 "host; bulk-close out-of-band before running IR."

@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+### Changed
+- **More of the add-on moved onto eyas-mcp.** Host-group and group-member
+  listings, the contained-host list and identity detections now come straight
+  from eyas-mcp's native searches; recording a detection verdict and running a
+  Fusion workflow use eyas-mcp's native write tools (still approval-gated).
+  Six add-on tools are gone; the add-on is down to 50.
+- Verdicts are now recorded as the `true_positive` / `false_positive` tag with
+  `status='closed'` on the native detection update, the same tag the Falcon
+  console writes.
+
+### Fixed
+- The posture snapshot's contained-host count is no longer capped at 200.
+- The approval card for a Fusion workflow run showed "(unspecified)" for the
+  workflow; it now shows the definition id and the input.
+
 ### Security
 - **Removed `drizzle-kit`**, a dev-only tool that pulled in an old esbuild
   (GHSA-67mh-4wv8-2f99). Migrations were already hand-written SQL run by Eyas's

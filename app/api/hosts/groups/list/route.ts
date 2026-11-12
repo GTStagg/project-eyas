@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { withFalconExtrasClient } from "@/lib/mcp/falcon-extras-client";
+import { withFalconMcpClient } from "@/lib/mcp/falcon-client";
+import { nativeSidecarPayload } from "@/lib/mcp/native-payload";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -13,30 +14,20 @@ type GroupSummary = {
 
 export async function GET() {
   try {
-    const items = await withFalconExtrasClient<GroupSummary[]>(async (client) => {
-      const r = await client.callTool({
-        name: "extras_host_group_list",
-        arguments: { limit: 500 },
+    const items = await withFalconMcpClient<GroupSummary[]>(async (client) => {
+      const payload = await nativeSidecarPayload(client, "falcon_search_host_groups", {
+        limit: 500,
+        sort: "name.asc",
       });
-      const text = (r.content as Array<{ type: string; text?: string }>)
-        .map((c) => (c.type === "text" && c.text ? c.text : ""))
-        .join("\n");
-      try {
-        const payload = JSON.parse(text);
-        if (payload?.ok && Array.isArray(payload.items)) {
-          return (payload.items as GroupSummary[])
-            .map((g) => ({
-              id: g.id,
-              name: g.name,
-              group_type: g.group_type,
-              description: g.description,
-            }))
-            .sort((a, b) => a.name.localeCompare(b.name));
-        }
-      } catch {
-        // fall through
-      }
-      return [];
+      if (payload.ok !== true || !Array.isArray(payload.items)) return [];
+      return (payload.items as GroupSummary[])
+        .map((g) => ({
+          id: g.id,
+          name: g.name,
+          group_type: g.group_type,
+          description: g.description,
+        }))
+        .sort((a, b) => (a.name ?? "").localeCompare(b.name ?? ""));
     });
     return NextResponse.json({ ok: true, items });
   } catch (err) {

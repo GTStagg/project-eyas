@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { withFalconMcpClient } from "@/lib/mcp/falcon-client";
-import { withFalconExtrasClient } from "@/lib/mcp/falcon-extras-client";
+import { fetchContainedAids } from "@/lib/hosts/contained";
 import { detectFalconError, parseConcatenatedJson } from "@/lib/mcp/parse";
 import { rankDetections, type RankInput, type QueueRow } from "@/lib/queue/rank";
 import { clusterCampaigns, type Campaign } from "@/lib/queue/campaigns";
@@ -24,7 +24,6 @@ const WINDOW_DAYS = 14;
 const ENDPOINT_LIMIT = 200;
 const TOP_N = 6;
 
-type ContainedHost = { device_id?: string };
 
 export async function GET() {
   const cutoff = new Date(
@@ -95,26 +94,3 @@ async function fetchOpenEndpointDetections(cutoffIso: string): Promise<Detection
   });
 }
 
-async function fetchContainedAids(): Promise<Set<string>> {
-  const aids = await withFalconExtrasClient(async (client) => {
-    try {
-      const result = await client.callTool({
-        name: "extras_host_list_contained",
-        arguments: { limit: 200 },
-      });
-      const text = (result.content as Array<{ type: string; text?: string }>)
-        .map((c) => (c.type === "text" && c.text ? c.text : ""))
-        .join("\n");
-      const payload = JSON.parse(text);
-      if (payload && payload.ok && Array.isArray(payload.items)) {
-        return (payload.items as ContainedHost[])
-          .map((h) => h.device_id)
-          .filter((x): x is string => Boolean(x));
-      }
-      return [];
-    } catch {
-      return [];
-    }
-  });
-  return new Set(aids ?? []);
-}

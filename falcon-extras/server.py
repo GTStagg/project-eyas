@@ -21,7 +21,6 @@ from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 
-from falcon_helpers import swallow_exc
 from ir_playbook import render_ir_playbook
 from data_protection_playbook import render_data_protection_playbook
 
@@ -85,50 +84,6 @@ def about() -> str:
 
 
 @mcp.tool()
-def extras_update_detection_status(
-    composite_ids: list[str],
-    status: str | None = None,
-    verdict: str | None = None,
-    comment: str | None = None,
-) -> dict[str, Any]:
-    """Update one or more detection (alert) lifecycle statuses and/or record a
-    verdict. Closes the triage loop on the agentic Triage Queue: when the
-    agent reaches a verdict, this updates the row in Falcon so it leaves
-    `new`/`reopened` and stops resurfacing in the queue.
-
-    WRITE ACTION — gated by the operator-approval registry. The Queue UI
-    fires a separate server-side `in_progress` claim on click that bypasses
-    this tool; only verdict transitions (true_positive / false_positive /
-    closed / reopened) reach the agent loop and the gate.
-
-    Wraps FalconPy `Alerts.update_alerts_v3`. The v3 Alerts API only accepts
-    `new` / `in_progress` / `reopened` / `closed` for the lifecycle status.
-    The TP/FP verdict is a separate concept recorded via the literal verdict
-    tag (`true_positive` / `false_positive`) — the same tag the Falcon console
-    writes when an operator sets a verdict on a v3 alert — pass `verdict` to
-    set it, NOT `status`. When `verdict` is set without an
-    explicit `status`, status is forced to `closed` so the row leaves the
-    queue.
-
-    Args:
-        composite_ids: List of `composite_id` strings from
-            `falcon_search_detections`. Composite ids look like
-            `<cid>:ind:<aid>:<sha256>`.
-        status: Target lifecycle state — one of `new`, `in_progress`,
-            `reopened`, `closed`. Optional if `verdict` is supplied
-            (defaults to `closed` in that case).
-        verdict: Optional TP/FP verdict — `true_positive` or
-            `false_positive`. Records the literal verdict tag (matches the
-            console).
-        comment: Optional free-text comment appended to the detection
-            (visible in Falcon Console). Useful to document reasoning when
-            recording a verdict.
-    """
-    from host_actions import update_detection_status as _impl
-    return _impl(composite_ids, status, verdict, comment)
-
-
-@mcp.tool()
 def extras_close_all_open_detections_on_host(
     device_id: str,
     verdict: str,
@@ -145,7 +100,7 @@ def extras_close_all_open_detections_on_host(
     A correlation alert that also names OTHER hosts is not closed by default;
     it's listed in `skipped_multi_host` (count + composite_ids). Tell the
     operator about those and let them choose: close specific ones by id with
-    extras_update_detection_status, or rerun this with
+    falcon_update_detections, or rerun this with
     `include_multi_host=true` to close them all (they then leave every named
     host's queue).
 
@@ -339,24 +294,6 @@ def extras_ir_close_untouched_originals(
     """
     from ir.close_remediated import close_untouched_originals as _impl
     return _impl(device_id, before_iso, verdict, comment)
-
-
-@mcp.tool()
-def extras_host_list_contained(limit: int = 100) -> dict[str, Any]:
-    """List hosts currently in network containment (or with a containment
-    state change pending). Read-only. Pairs with falcon_contain_hosts /
-    falcon_lift_host_containment so the agent can answer "which hosts are
-    contained right now?" without the operator having to remember.
-
-    Returns hostname + AID + platform + last_seen + status. Status values
-    surface FalconPy's raw labels: 'contained', 'containment_pending',
-    'lift_containment_pending'.
-
-    Args:
-        limit: Max hosts to return (1-5000). Default 100.
-    """
-    from host_actions import host_list_contained as _impl
-    return _impl(limit)
 
 
 @mcp.tool()
@@ -1068,43 +1005,6 @@ def extras_classify_patch_coverage(
 
 
 @mcp.tool()
-def extras_host_group_list(
-    filter: str | None = None, limit: int = 50
-) -> dict[str, Any]:
-    """List Falcon Host Groups in the tenant. Read-only.
-
-    Returns each group's id, name, description, group_type (static |
-    dynamic), assignment_rule (FQL filter that defines membership for
-    dynamic groups), created/modified timestamps + actors. Member counts
-    are NOT included here — call extras_host_group_members per group when
-    you need them.
-
-    Args:
-        filter: Optional FQL filter on group fields. Wildcard/contains on
-            name: ``name:'*quarantine*'`` (asterisk in value — NOT ``name:~``).
-            Other examples: ``group_type:'static'``, ``created_by:'user@example.com'``.
-        limit: Max groups to return (1-5000). Default 50.
-    """
-    from host_groups import host_group_list as _impl
-    return _impl(filter, limit)
-
-
-@mcp.tool()
-def extras_host_group_members(group_id: str, limit: int = 50) -> dict[str, Any]:
-    """List the hosts that are members of a Falcon Host Group. Read-only.
-
-    Returns hostname, platform, OS version, last-seen, AID for up to `limit`
-    members. Use this to size a group ahead of a staged rollout.
-
-    Args:
-        group_id: The host group id (returned by extras_host_group_list).
-        limit: Max members to return (1-5000). Default 50.
-    """
-    from host_groups import host_group_members as _impl
-    return _impl(group_id, limit)
-
-
-@mcp.tool()
 def extras_host_group_add_members(
     group_id: str, device_ids: list[str]
 ) -> dict[str, Any]:
@@ -1117,7 +1017,7 @@ def extras_host_group_add_members(
 
     Args:
         group_id: The host group id (must be static or staticByID). From
-            extras_host_group_list.
+            falcon_search_host_groups.
         device_ids: List of Falcon device (AID) IDs to add. Cap 500 per call.
     """
     from host_groups import host_group_add_members as _impl
@@ -1146,38 +1046,6 @@ def extras_host_group_remove_members(
 # ---------------------------------------------------------------------------
 
 
-@mcp.tool()
-def extras_workflows_execute(
-    definition_id: str,
-    payload: dict[str, Any] | None = None,
-    key: str | None = None,
-) -> dict[str, Any]:
-    """Execute an on-demand Fusion workflow. WRITE ACTION — requires explicit
-    user approval in the UI before execution. The approval prompt surfaces
-    the full resolved payload so the operator can verify trigger inputs
-    before they fire.
-
-    Payload shape is per-workflow: it must match the workflow's expected
-    on-demand trigger inputs. Discover available workflows + their schemas
-    via falcon_search_workflow_definitions; the trigger contract lives on
-    each definition. If the workflow has no on-demand trigger, execute will
-    fail upstream — list the triggers first via falcon_list_workflow_triggers
-    if uncertain.
-
-    The response contains the new execution_id; read its outputs with
-    falcon_get_workflow_execution_results.
-
-    Args:
-        definition_id: The workflow definition id (preferred over name; ids
-            are unambiguous when multiple workflows share a name).
-        payload: On-demand trigger input dict. Defaults to {}.
-        key: Optional dedup key. Falcon suppresses duplicate executions sharing
-            the same key within its dedup window. Omit for a fresh UUID.
-    """
-    from workflows import workflows_execute as _impl
-    return _impl(definition_id, payload, key)
-
-
 # ---------------------------------------------------------------------------
 # Identity Protection (scope pending on this tenant — staged build)
 # ---------------------------------------------------------------------------
@@ -1192,40 +1060,6 @@ def extras_workflows_execute(
 
 # IDP GraphQL query for at-risk entities. Limited to 25 — IDP entity counts
 # can be in the millions on large tenants and the GraphQL API caps page sizes.
-
-
-@mcp.tool()
-def extras_identity_detections(
-    hours: int = 168,
-    limit: int = 50,
-    include_policy_matches: bool = False,
-    include_closed: bool = False,
-) -> dict[str, Any]:
-    """List recent Identity Protection detections via the Alerts API
-    (filter `product:'idp'`). Read-only.
-
-    Returns each alert's composite_id, severity_name, display_name,
-    created_timestamp, status, and the user_name / source_account_name /
-    destination_account_name fields specific to identity detections
-    (Pass-the-Hash, Golden Ticket, Kerberoasting, suspicious LDAP, etc.).
-
-    By default filters to **open** detections (new / in_progress / reopened)
-    and **excludes "Policy rule match" enforcement events** — those are
-    sensor-side enforcement firings, not attack-pattern detections, and
-    drown out real threats in lab tenants. Set the include_* flags to true
-    to bring them back.
-
-    Args:
-        hours: How far back to search (default 168 = last 7 days).
-        limit: Max detections to return (1-500). Default 50.
-        include_policy_matches: When True, includes "Policy rule match"
-            rows. Default False — filters them by checking that `tactic`
-            is non-empty (policy-match rows have no tactic).
-        include_closed: When True, includes closed/resolved detections.
-            Default False — restricts to status in {new, reopened, in_progress}.
-    """
-    from identity import identity_detections as _impl
-    return _impl(hours, limit, include_policy_matches, include_closed)
 
 
 @mcp.tool()

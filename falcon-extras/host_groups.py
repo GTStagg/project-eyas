@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from typing import Any
 from falcon_helpers import (
-    _check_response,
     _get_host_group_client,
     _is_permission_error,
     _scope_denied_payload,
@@ -17,20 +16,6 @@ from falcon_helpers import (
 )
 from falcon_helpers import swallow_exc
 
-
-
-def _project_host_group(g: dict[str, Any]) -> dict[str, Any]:
-    return {
-        "id": g.get("id"),
-        "name": g.get("name"),
-        "description": g.get("description"),
-        "group_type": g.get("group_type"),
-        "assignment_rule": g.get("assignment_rule"),
-        "created_by": g.get("created_by"),
-        "created_timestamp": g.get("created_timestamp"),
-        "modified_by": g.get("modified_by"),
-        "modified_timestamp": g.get("modified_timestamp"),
-    }
 
 
 def _host_group_action(
@@ -105,97 +90,6 @@ def _host_group_action(
         return swallow_exc(exc)
 
 
-def host_group_list(
-    filter: str | None = None, limit: int = 50
-) -> dict[str, Any]:
-    """List Falcon Host Groups in the tenant. Read-only.
-
-    Returns each group's id, name, description, group_type (static |
-    dynamic), assignment_rule (FQL filter that defines membership for
-    dynamic groups), created/modified timestamps + actors. Member counts
-    are NOT included here — call extras_host_group_members per group when
-    you need them.
-
-    Args:
-        filter: Optional FQL filter on group fields (name, group_type,
-            created_by, modified_timestamp).
-        limit: Max groups to return (1-5000). Default 50.
-    """
-    try:
-        client = _get_host_group_client()
-        capped = min(max(limit, 1), 5000)
-        # Combined endpoint uses '.' separator on sort, NOT '|' — distinct
-        # from FalconPy's docstring which references the pipe form. The
-        # FQL-style endpoints use pipe; the combined endpoints use dot.
-        # See trace: query_combined_host_groups rejects 'modified_timestamp|desc'
-        # with 400 but accepts 'modified_timestamp.desc'.
-        params: dict[str, Any] = {"limit": capped, "sort": "modified_timestamp.desc"}
-        if filter:
-            params["filter"] = filter
-        r = client.query_combined_host_groups(parameters=params)
-        if _is_permission_error(r):
-            return _scope_denied_payload(r, "Host Groups")
-        err = _upstream_error(r)
-        if err:
-            return {"ok": False, "error": err}
-        body = r.get("body", {}) if isinstance(r, dict) else {}
-        raw = body.get("resources") or []
-        items = [_project_host_group(g) for g in raw]
-        meta = body.get("meta") or {}
-        total = (meta.get("pagination") or {}).get("total")
-        return {
-            "ok": True,
-            "items": items,
-            "count": len(items),
-            "total": total if total is not None else len(items),
-        }
-    except Exception as exc:
-        return swallow_exc(exc)
-
-
-def host_group_members(group_id: str, limit: int = 50) -> dict[str, Any]:
-    """List the hosts that are members of a Falcon Host Group. Read-only.
-
-    Returns hostname, platform, OS version, last-seen, AID for up to `limit`
-    members. Use this to size a group ahead of a staged rollout.
-
-    Args:
-        group_id: The host group id (returned by extras_host_group_list).
-        limit: Max members to return (1-5000). Default 50.
-    """
-    try:
-        if not group_id or not isinstance(group_id, str):
-            return {"ok": False, "error": "group_id required"}
-        client = _get_host_group_client()
-        capped = min(max(limit, 1), 5000)
-        # Combined endpoint quirk: dot separator on sort, not pipe. See
-        # extras_host_group_list for the discovery trace.
-        r = client.query_combined_group_members(
-            parameters={"id": group_id, "limit": capped, "sort": "hostname.asc"}
-        )
-        if _is_permission_error(r):
-            return _scope_denied_payload(r, "Host Groups")
-        err = _upstream_error(r)
-        if err:
-            return {"ok": False, "error": err}
-        body = r.get("body", {}) if isinstance(r, dict) else {}
-        raw = body.get("resources") or []
-        items = [
-            {
-                "device_id": h.get("device_id"),
-                "hostname": h.get("hostname"),
-                "platform_name": h.get("platform_name"),
-                "os_version": h.get("os_version"),
-                "last_seen": h.get("last_seen"),
-                "tags": h.get("tags"),
-            }
-            for h in raw
-        ]
-        return {"ok": True, "group_id": group_id, "items": items, "count": len(items)}
-    except Exception as exc:
-        return swallow_exc(exc)
-
-
 def host_group_add_members(
     group_id: str, device_ids: list[str]
 ) -> dict[str, Any]:
@@ -208,7 +102,7 @@ def host_group_add_members(
 
     Args:
         group_id: The host group id (must be static or staticByID). From
-            extras_host_group_list.
+            falcon_search_host_groups.
         device_ids: List of Falcon device (AID) IDs to add. Cap 500 per call.
     """
     return _host_group_action("add-hosts", group_id, device_ids)

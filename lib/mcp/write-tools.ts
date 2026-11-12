@@ -64,23 +64,24 @@ export const REQUIRES_APPROVAL: ReadonlySet<string> = new Set<string>([
   "falcon_create_correlation_rule",
   "falcon_update_correlation_rule",
   "falcon_delete_correlation_rules",
-  // Native detections / host_groups / exclusions / policies writes (falcon-mcp
-  // 0.12.0). All 13 are gated here regardless of whether the agent can see them.
-  // They split at the bridge (NATIVE_WRITE_SUPPRESS in lib/mcp/tool-bridge.ts):
-  //   - 8 are SUPPRESSED and never reach the agent — each has a richer FalconPy
-  //     twin (extras_update_detection_status / extras_*_exclusion / extras_*_host
-  //     _group / extras_*_policy) whose pre-write or in-sidecar value-add can't be
-  //     re-injected onto a native path; gating is the fail-closed backstop.
-  //   - 5 are ADOPTED and exposed to the agent as the primary write path
-  //     (falcon_delete_exclusions / falcon_update_host_group /
-  //     falcon_delete_host_groups / falcon_update_policy /
-  //     falcon_perform_policy_action) — no twin or only a thin by-id twin, so
-  //     they're exposed-and-gated like UPSTREAM_WRITES.
+  // Native detections / host_groups / exclusions / policies writes. All are
+  // gated here whether or not the agent can see them. They split at the bridge
+  // (NATIVE_WRITE_SUPPRESS in lib/mcp/tool-bridge.ts):
+  //   - SUPPRESSED ones never reach the agent: Eyas has its own tool for each,
+  //     with a check that runs before the write; gating is the fail-closed
+  //     backstop.
+  //   - ADOPTED ones are exposed to the agent as the primary write path:
+  //     falcon_update_detections (verdict = the true_positive / false_positive
+  //     tag on add_tags), falcon_delete_exclusions, falcon_update_host_group,
+  //     falcon_delete_host_groups, falcon_update_policy,
+  //     falcon_perform_policy_action.
+  //   The Queue's `in_progress` claim calls falcon_update_detections
+  //   server-side from /api/queue/claim and bypasses this gate by design —
+  //   it's bookkeeping, not a verdict.
   // /audit-write-tools asserts every suppressed native write is gated AND
   // suppressed, every adopted native write is gated AND NOT suppressed, and the
   // two sets stay disjoint (its NATIVE_WRITES / NATIVE_ADOPTED lists are the
-  // authoritative accounting — see also the 0.16.0 grouping-tag + 0.17.0
-  // Fusion/AgentWorks writes below).
+  // authoritative accounting).
   "falcon_update_detections",
   "falcon_create_exclusion",
   "falcon_update_exclusion",
@@ -103,15 +104,13 @@ export const REQUIRES_APPROVAL: ReadonlySet<string> = new Set<string>([
   // /agent-toolbox annotated-but-ungated drift banner. Grouping tags can drive
   // dynamic host-group → policy assignment, so this changes security posture.
   "falcon_manage_host_grouping_tags",
-  // Fusion SOAR + AgentWorks writes (falcon-mcp 0.17.0). Gated regardless of
-  // their suppress/adopt disposition at the bridge:
-  //   - falcon_execute_workflow → KEEP suppressed (NATIVE_WRITE_SUPPRESS): the
-  //     twin extras_workflows_execute resolves the on-demand trigger and projects
-  //     the execution record — pre-write value-add a native path can't re-inject.
-  //   - falcon_invoke_agentworks_agent → ADOPTED (NOT suppressed): invokes a
-  //     Charlotte AI agent; no sidecar twin, so native is the primary path.
-  //     User-approved adopt — the approval gate keeps it human-in-the-loop even
-  //     though agent-invocation is autonomous-AI-adjacent.
+  // Fusion SOAR + AgentWorks writes. Both ADOPTED (exposed, gated):
+  //   - falcon_execute_workflow starts a Fusion workflow with the trigger
+  //     parameters verbatim; what it does depends on the workflow, so every run
+  //     pauses for approval. Results are read with the native
+  //     falcon_get_workflow_execution_results (not gated).
+  //   - falcon_invoke_agentworks_agent invokes a Charlotte AI agent. User-
+  //     approved adopt; the gate keeps it human-in-the-loop.
   "falcon_execute_workflow",
   "falcon_invoke_agentworks_agent",
   // Data Security native writes (falcon-mcp 0.20.0 #576 — the dataprotection
@@ -138,13 +137,6 @@ export const REQUIRES_APPROVAL: ReadonlySet<string> = new Set<string>([
   "extras_create_data_protection_content_pattern",
   "extras_create_data_protection_classification",
   "extras_create_data_protection_policy",
-  // falcon-extras (FalconPy-backed sidecar) — host containment
-  // falcon-extras — detection lifecycle. Verdict transitions (true_positive,
-  // false_positive, closed, ignored, reopened) come through the agent loop
-  // and gate here. The `in_progress` claim fires server-side on Queue button
-  // click via /api/queue/claim and bypasses this gate by design — it's
-  // bookkeeping, not a verdict.
-  "extras_update_detection_status",
   // One-shot bulk close — every open detection on a host. Single approval
   // covers the whole bulk close (200-500+ detections in one card). Used
   // both as the IR rescue lane (operator says "host is clean, just close
@@ -162,9 +154,6 @@ export const REQUIRES_APPROVAL: ReadonlySet<string> = new Set<string>([
   // falcon-extras — host group membership (static groups only)
   "extras_host_group_add_members",
   "extras_host_group_remove_members",
-  // falcon-extras — Fusion workflow on-demand execution. Its results are read
-  // with the native falcon_get_workflow_execution_results (not gated).
-  "extras_workflows_execute",
   // falcon-extras — RTR-driven patching. Only the executor is gated; the
   // catalog/resolver tools are read-only.
   "extras_rtr_run_patch",
@@ -258,13 +247,9 @@ export const EXTRAS_READ_ONLY: ReadonlySet<string> = new Set<string>([
   "extras_diagnose_quarantine_setup",
   "extras_diagnose_shadow_ai_banned_setup",
   "extras_fleet_shadow_ai_egress",
-  "extras_host_group_list",
-  "extras_host_group_members",
-  "extras_host_list_contained",
   "extras_host_process_tree",
   "extras_host_rat_install_scan",
   "extras_host_shadow_ai_scan",
-  "extras_identity_detections",
   "extras_identity_ir_workflow_playbook",
   "extras_ir_campaign_scope",
   "extras_ir_phase0_actionable_check",

@@ -22,14 +22,10 @@
     "extras_diagnose_shadow_ai_banned_setup",
     "extras_fleet_shadow_ai_egress",
     { "name": "extras_host_group_add_members", "required_params": ["group_id", "device_ids"] },
-    "extras_host_group_list",
-    "extras_host_group_members",
     { "name": "extras_host_group_remove_members", "required_params": ["group_id", "device_ids"] },
-    "extras_host_list_contained",
     "extras_host_process_tree",
     "extras_host_rat_install_scan",
     "extras_host_shadow_ai_scan",
-    "extras_identity_detections",
     "extras_identity_ir_workflow_playbook",
     "extras_ir_campaign_scope",
     { "name": "extras_ir_close_remediated", "required_params": ["device_id", "remediated"] },
@@ -55,8 +51,6 @@
     "extras_shadow_ai_adopt_prevention",
     "extras_shadow_ai_check_prevention_binding",
     "extras_shadow_ai_prevention_status",
-    "extras_shadow_ai_workflow_playbook",
-    { "name": "extras_update_detection_status", "required_params": ["composite_ids"] },
-    "extras_workflows_execute"
+    "extras_shadow_ai_workflow_playbook"
   ]
 }

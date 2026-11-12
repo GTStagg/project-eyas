@@ -4,9 +4,8 @@
 //
 // Only a small set of tools get summarised today — the IR Phase 0 prefetch
 // triple (which lands as the first three bubbles in any IR engagement) and
-// the engagement bookends (`extras_ir_close_remediated`, the rescue-lane
-// close, and `extras_update_detection_status` since it fires repeatedly
-// during Phase 4). Everything else falls through and renders unchanged.
+// the engagement bookends (`extras_ir_close_remediated` and the rescue-lane
+// close). Everything else falls through and renders unchanged.
 
 function parseJson(content: string): Record<string, unknown> | null {
   try {
@@ -154,22 +153,6 @@ export function summarizeToolResult(
     if (verdict) parts.push(`verdict: ${verdict}`);
     const batchErrors = asArray(p.batch_errors).length;
     if (batchErrors > 0) parts.push(`${batchErrors} batch error${batchErrors === 1 ? "" : "s"}`);
-    return parts.join(" · ");
-  }
-
-  if (toolName === "extras_update_detection_status") {
-    const updated = asNumber(p.updated) ?? 0;
-    const requested = asNumber(p.requested) ?? 0;
-    const status = typeof p.status === "string" ? p.status : undefined;
-    const verdict = verdictLabel(p.verdict);
-    const parts: string[] = [];
-    if (requested === 0) {
-      parts.push("no detections requested");
-    } else {
-      parts.push(`updated ${updated} of ${requested}`);
-    }
-    if (status) parts.push(`status: ${status}`);
-    if (verdict) parts.push(`verdict: ${verdict}`);
     return parts.join(" · ");
   }
 

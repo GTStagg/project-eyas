@@ -768,7 +768,7 @@ const PROJECTIONS: Record<string, Projection> = {
   // falcon_search_workflow_executions mirrors the sidecar's _project_execution
   // (falcon-extras/workflows.py): a full execution record carries per-step
   // results + trigger payload + internal state that tips the MCP token cap on
-  // busy tenants. The KEEP twin extras_workflows_execute owns the WRITE path;
+  // busy tenants. Runs start through the native falcon_execute_workflow;
   // this native read auto-exposes and is token-bound here. Workflow scope is
   // granted on our tenants. The other two Fusion reads
   // (falcon_search_workflow_definitions, falcon_get_workflow_execution_results)
@@ -843,7 +843,8 @@ const PROJECTIONS: Record<string, Projection> = {
   }),
   // Triggers' `fields` is the full input schema (~2.3 KB each; 50 = 464 KB).
   // The listing only needs to say what each trigger is and which fields it
-  // takes; extras_workflows_execute resolves the trigger itself.
+  // takes. falcon_execute_workflow takes the parameters from the
+  // definition's trigger.parameters, not from this listing.
   falcon_list_workflow_triggers: (t) => ({
     id: undef(t.id),
     name: undef(t.name),

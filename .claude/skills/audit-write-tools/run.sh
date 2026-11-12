@@ -40,7 +40,7 @@ read_into GATED < <(
 read_into SIDECAR_WRITE_CANDIDATES < <(
   grep -oE '^def extras_[a-z0-9_]+' "$SIDECAR" \
     | sed 's/^def //' \
-    | grep -E '^(extras_(create|delete|update|add|remove|close|save)_|extras_host_(contain|lift_containment|group_(add|remove)_members)|extras_workflows_execute|extras_rtr_run_(patch|cleanup|falcon_script)|extras_update_detection_status|extras_rtr_check_patch_status)' \
+    | grep -E '^(extras_(create|delete|update|add|remove|close|save)_|extras_host_(contain|lift_containment|group_(add|remove)_members)|extras_rtr_run_(patch|cleanup|falcon_script)|extras_rtr_check_patch_status)' \
     | sort -u
 )
 
@@ -77,27 +77,24 @@ UPSTREAM_WRITES=(
   "falcon_delete_correlation_rules"
 )
 
-# Native detections / host_groups / exclusions / policies writes (falcon-mcp
-# 0.12.0), split into two categories by the 0.6.7 reconciliation:
+# Native write tools, split into two categories:
 #
-# NATIVE_WRITES (below) = the 8 SUPPRESSED. Unlike UPSTREAM_WRITES above
-# (exposed + gated), these are hidden at the bridge (NATIVE_WRITE_SUPPRESS in
-# tool-bridge.ts) so they never reach the agent — each has a richer FalconPy
-# twin whose pre-write / in-sidecar value-add can't be re-injected onto a native
-# path (verdict-tag canonicalization, zero-width pre-flight, canonical naming +
-# auto-save, disable-before-delete), or is fleet-wide with no curated path
+# NATIVE_WRITES (below) = SUPPRESSED. Unlike UPSTREAM_WRITES above (exposed +
+# gated), these are hidden at the bridge (NATIVE_WRITE_SUPPRESS in
+# tool-bridge.ts) so they never reach the agent — Eyas has its own tool for
+# each with a check that runs before the write (zero-width pre-flight,
+# canonical naming + auto-save, dynamic-group refusal, disable-before-delete,
+# monitor-first defaults), or the write is fleet-wide with no curated path
 # (set_policy_precedence). Invariant: each must be BOTH suppressed AND gated.
 #
-# NATIVE_ADOPTED (further below) = the 5 ADOPTED. These have no twin or only a
-# thin by-id twin, so native is the agent's primary write path — exposed + gated
-# like UPSTREAM_WRITES. Invariant: each must be gated AND NOT suppressed.
+# NATIVE_ADOPTED (further below) = ADOPTED. Native is the agent's primary
+# write path — exposed + gated like UPSTREAM_WRITES. Invariant: each must be
+# gated AND NOT suppressed.
 #
-# The two lists must stay DISJOINT and together cover all 13 native 0.12.0
-# writes. If a future 0.12.x adds or renames a native write, re-run the offline
-# list_tools() dump and classify it into one list — the drift guard below flags
-# any suppress-set entry missing from NATIVE_WRITES.
+# The two lists must stay DISJOINT. When eyas-mcp adds or renames a native
+# write, classify it into one list — the drift guard below flags any
+# suppress-set entry missing from NATIVE_WRITES.
 NATIVE_WRITES=(
-  "falcon_update_detections"
   "falcon_create_exclusion"
   "falcon_update_exclusion"
   "falcon_create_host_group"
@@ -105,9 +102,6 @@ NATIVE_WRITES=(
   "falcon_create_policy"
   "falcon_delete_policies"
   "falcon_set_policy_precedence"
-  # falcon-mcp 0.17.0 Fusion SOAR — KEEP: twin extras_workflows_execute resolves
-  # the on-demand trigger before executing; native takes a bare definition id.
-  "falcon_execute_workflow"
   # falcon-mcp 0.20.0 Data Security (#576) — KEEP: the create twins
   # (extras_create_data_protection_*) apply monitor-first defaults pre-write.
   "falcon_create_data_security_entity"
@@ -117,6 +111,10 @@ NATIVE_WRITES=(
 # gated via REQUIRES_APPROVAL. No twin, or only a thin by-id twin, so there's no
 # curated behavior to regress by letting the agent call native directly.
 NATIVE_ADOPTED=(
+  # Detection lifecycle + verdict tags (replaced extras_update_detection_status).
+  "falcon_update_detections"
+  # Fusion workflow runs (replaced extras_workflows_execute).
+  "falcon_execute_workflow"
   "falcon_delete_exclusions"
   "falcon_update_host_group"
   "falcon_delete_host_groups"

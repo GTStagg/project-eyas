@@ -11,9 +11,9 @@ Failure modes this catches:
 
 2. **A `runAgentLoop` callsite passes `requiresApproval: () => false`.** That custom function REPLACES the registry check entirely (see `feedback_never_disable_approvals`). Copying this from a read-only route into a write-capable surface neutralizes every gate at once. The IR route had this bug 2026-05-02 and ran a `host-delete-folder` without approval.
 
-3. **A native falcon-mcp write becomes reachable ungated, or an adopted one loses its gate.** falcon-mcp 0.12.0 added 13 native detections / host_groups / exclusions / policies write tools. The 0.6.7 reconciliation split them into two categories:
-   - **8 SUPPRESSED** (`NATIVE_WRITES` in `run.sh`) — each has a richer FalconPy twin whose pre-write / in-sidecar value-add can't be re-injected onto a native path (verdict-tag canonicalization, zero-width pre-flight, canonical naming + auto-save, disable-before-delete; `falcon_set_policy_precedence` is fleet-wide with no twin). Hidden at the bridge (`NATIVE_WRITE_SUPPRESS` in `lib/mcp/tool-bridge.ts`) AND listed in `REQUIRES_APPROVAL` as a fail-closed backstop. Invariant: in BOTH sets.
-   - **5 ADOPTED** (`NATIVE_ADOPTED` in `run.sh`: `falcon_delete_exclusions`, `falcon_update_host_group`, `falcon_delete_host_groups`, `falcon_update_policy`, `falcon_perform_policy_action`) — no twin or only a thin by-id twin, so native is the agent's primary write path: exposed (NOT suppressed) AND gated. Invariant: gated AND NOT suppressed.
+3. **A native write becomes reachable ungated, or an adopted one loses its gate.** Native writes split into two categories:
+   - **SUPPRESSED** (`NATIVE_WRITES` in `run.sh`) — Eyas has its own tool with a check that runs before the write (zero-width pre-flight, canonical naming + auto-save, dynamic-group refusal, disable-before-delete, monitor-first defaults; `falcon_set_policy_precedence` is fleet-wide with no Eyas tool). Hidden at the bridge (`NATIVE_WRITE_SUPPRESS` in `lib/mcp/tool-bridge.ts`) AND listed in `REQUIRES_APPROVAL` as a fail-closed backstop. Invariant: in BOTH sets.
+   - **ADOPTED** (`NATIVE_ADOPTED` in `run.sh`, e.g. `falcon_update_detections`, `falcon_execute_workflow`, `falcon_delete_exclusions`, `falcon_update_policy`, `falcon_contain_hosts`) — native is the agent's primary write path: exposed (NOT suppressed) AND gated. Invariant: gated AND NOT suppressed.
 
    The skill enforces both invariants, asserts the two lists are disjoint, and flags drift in either direction.
 

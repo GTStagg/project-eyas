@@ -50,68 +50,43 @@ const LONG_RUNNING_TOOL_TIMEOUT_MS: Record<string, number> = {
   falcon_wait_for_rtr_sessions: 660_000,
 };
 
-// Native write tools from falcon-mcp's detections / host_groups / exclusions /
-// policies modules (added in 0.12.0). All 13 are approval-gated via
-// REQUIRES_APPROVAL (lib/mcp/write-tools.ts); they split here on whether the
-// agent sees the NATIVE tool or its curated FalconPy twin instead.
+// Native write tools that stay hidden from the agent. Every one is still
+// approval-gated via REQUIRES_APPROVAL (lib/mcp/write-tools.ts); this set only
+// decides whether the agent sees the NATIVE tool or Eyas's own tool instead.
+// Each entry below has an Eyas tool whose check runs BEFORE the write, and a
+// native tool offers no pre-write hook (only suppress / approval-gate /
+// post-result), so exposing the native would skip that check:
+//   - falcon_create_exclusion: extras_create_ioa_exclusion adds the
+//     single-quote reject-don't-escape guard and the /tuning primer wiring.
+//   - falcon_create_host_group / falcon_create_policy: the provisioning flows
+//     add canonical naming, set_runtime_group_id and the {ok,id} auto-save.
+//   - falcon_perform_host_group_action: the extras add/remove-members tools
+//     refuse dynamic groups and take explicit device ids (eyas-mcp request
+//     pending), and the IR and Shadow-AI playbooks call them by name.
+//   - falcon_delete_policies: Falcon refuses to delete an enabled policy;
+//     the extras delete disables first.
+//   - falcon_create_data_security_entity: the extras_create_data_protection_*
+//     tools apply monitor-first defaults before the write.
+//   - falcon_update_exclusion / falcon_set_policy_precedence: no Eyas tool, but
+//     held back (a regex update would skip the create-time guard; precedence
+//     is fleet-wide).
+// The agent biases hard toward falcon_* names over extras_* regardless of
+// prompt steering, so suppression is the only reliable way to route to Eyas's
+// tool.
 //
-// 9 stay SUPPRESSED (below) — each has a richer twin whose value-add runs
-// BEFORE the write or as an in-sidecar side effect, and a native tool has only
-// three interception points (suppress / binary approval-gate / post-result) —
-// NO pre-write hook, NO in-sidecar hook — so the twin's behavior cannot be
-// re-injected onto the native path. Adopting the native would silently regress:
-//   - falcon_update_detections in 0.13.0+ is no longer thin: it has status
-//     (incl. "closed" = force-close), append_comment, assign_to_*, and
-//     add_tags/remove_tags/remove_tags_by_prefix (the literal
-//     true_positive/false_positive verdict tag rides on add_tags). As of 0.16.1
-//     (#513) it ALSO auto-chunks >1000 composite_ids and fails loud — so the
-//     twin's old >1000-id ground (the 17-of-152 silent-truncation close-bug
-//     class) is upstream now too. The twin extras_update_detection_status is
-//     KEPT on the ONE remaining ground: impl reuse — the IR-ledger closer
-//     (extras_ir_close_remediated) and extras_close_all_open_detections_on_host
-//     build on it.
-//   - falcon_create_exclusion as of 0.16.1 (#512) now runs its own IOA
-//     zero-width-assertion pre-flight (a _find_zero_width_assertion port of the
-//     sidecar's), but still lacks the single-quote reject-don't-escape guard and
-//     the /tuning primer-handoff wiring extras_create_ioa_exclusion owns.
-//   - falcon_create_host_group / falcon_create_policy lack the canonical-naming
-//     + set_runtime_group_id + {ok,id} auto-save the extras provisioning flows do.
-//   - falcon_perform_host_group_action lacks the dynamic-group pre-flight; IR and
-//     Shadow-AI playbooks call the extras add/remove-members twins by name.
-//   - falcon_delete_policies lacks disable-before-delete (Falcon rejects deleting
-//     an enabled policy).
-//   - falcon_execute_workflow (Fusion SOAR, 0.17.0) — the twin
-//     extras_workflows_execute resolves the definition's on-demand trigger and
-//     projects the execution record; the native takes a raw definition id with
-//     no trigger resolution.
-//   - falcon_create_data_security_entity (0.20.0) — the
-//     extras_create_data_protection_* twins apply monitor-first defaults
-//     before the write; the native takes an opaque entity body.
-//   - falcon_update_exclusion / falcon_set_policy_precedence have no twin but were
-//     held back (regex-update would be unguarded while create stays guarded;
-//     precedence is fleet-wide blast radius).
-// The agent also biases hard toward falcon_* names over extras_* regardless of
-// prompt steering, so suppression is the only reliable way to route to a twin.
-//
-// The ADOPTED native writes (exposed, NOT in this set) have no twin or only a
-// thin by-id twin, so native is the primary path with nothing to regress: the
-// original 0.12.0 five (falcon_delete_exclusions, falcon_update_host_group,
-// falcon_delete_host_groups, falcon_update_policy, falcon_perform_policy_action)
-// plus falcon_manage_host_grouping_tags (0.16.0), falcon_invoke_agentworks_agent
-// (0.17.0, Charlotte AI — user-approved adopt, human-gated), and
-// falcon_update_data_security_entity (0.20.0 — no twin; user-approved adopt), and
-// falcon_contain_hosts / falcon_lift_host_containment (eyas-mcp — replaced the
-// sidecar twins after a live contain + lift confirmed the result shape; IR
-// ground truth reads succeeded_ids via containResultConfirms). They remain in
-// REQUIRES_APPROVAL (exposed-and-gated, like UPSTREAM_WRITES). NATIVE_ADOPTED in
-// /audit-write-tools is the authoritative list.
+// Every other native write is ADOPTED: exposed to the agent and gated. That
+// includes falcon_update_detections (verdicts are the true_positive /
+// false_positive tags on add_tags; it chunks >1000 ids itself) and
+// falcon_execute_workflow (takes the definition id and trigger parameters
+// verbatim), which replaced extras_update_detection_status and
+// extras_workflows_execute. NATIVE_ADOPTED in /audit-write-tools is the
+// authoritative list.
 //
 // /audit-write-tools asserts every suppressed native write is gated AND
 // suppressed, every adopted native write is gated AND NOT suppressed, and the two
 // sets stay disjoint. Do NOT move a name between categories without updating that
 // skill's invariant lists.
 export const NATIVE_WRITE_SUPPRESS: ReadonlySet<string> = new Set<string>([
-  "falcon_update_detections",
   "falcon_create_exclusion",
   "falcon_update_exclusion",
   "falcon_create_host_group",
@@ -119,11 +94,6 @@ export const NATIVE_WRITE_SUPPRESS: ReadonlySet<string> = new Set<string>([
   "falcon_create_policy",
   "falcon_delete_policies",
   "falcon_set_policy_precedence",
-  // Fusion SOAR (0.17.0) — KEEP: twin extras_workflows_execute resolves the
-  // on-demand trigger before executing; native takes a bare definition id.
-  "falcon_execute_workflow",
-  // Data Security (0.20.0 #576) — KEEP: the create twins
-  // (extras_create_data_protection_*) apply monitor-first defaults pre-write.
   "falcon_create_data_security_entity",
 ]);
 
