@@ -4,11 +4,11 @@ import { useMemo, useState } from "react";
 import { Search, X, ChevronRight, ShieldCheck, Eye, Server, Boxes, AlertTriangle } from "lucide-react";
 import type { CatalogTool, CatalogResource } from "@/lib/mcp/catalog";
 
-type FilterKey = "all" | "falcon-mcp" | "extension" | "read" | "gated";
+type FilterKey = "all" | "eyas-mcp" | "extension" | "read" | "gated";
 
 const FILTERS: { key: FilterKey; label: string }[] = [
   { key: "all", label: "All" },
-  { key: "falcon-mcp", label: "eyas-mcp" },
+  { key: "eyas-mcp", label: "eyas-mcp" },
   { key: "extension", label: "Extension" },
   { key: "read", label: "Read-only" },
   { key: "gated", label: "Approval-gated" },
@@ -16,8 +16,8 @@ const FILTERS: { key: FilterKey; label: string }[] = [
 
 function matchesFilter(t: CatalogTool, filter: FilterKey): boolean {
   switch (filter) {
-    case "falcon-mcp":
-      return t.provider === "falcon-mcp";
+    case "eyas-mcp":
+      return t.provider === "eyas-mcp";
     case "extension":
       return t.provider === "extension";
     case "read":
@@ -40,7 +40,7 @@ function ProviderBadge({ provider }: { provider: CatalogTool["provider"] }) {
       }`}
     >
       {isExt ? <Boxes className="h-2.5 w-2.5" strokeWidth={2} /> : <Server className="h-2.5 w-2.5" strokeWidth={2} />}
-      {isExt ? "extension" : "falcon-mcp"}
+      {isExt ? "extension" : "eyas-mcp"}
     </span>
   );
 }
@@ -160,7 +160,7 @@ export default function ToolboxBrowser({
       )
       .sort((a, b) => a.name.localeCompare(b.name));
     return {
-      falcon: matched.filter((t) => t.provider === "falcon-mcp"),
+      falcon: matched.filter((t) => t.provider === "eyas-mcp"),
       extension: matched.filter((t) => t.provider === "extension"),
       visibleCount: matched.length,
     };
@@ -168,7 +168,7 @@ export default function ToolboxBrowser({
 
   return (
     <div className="space-y-5">
-      {/* Approval-gate drift. A native falcon-mcp tool advertises a write
+      {/* Approval-gate drift. A native eyas-mcp tool advertises a write
           (readOnlyHint:false) but isn't in REQUIRES_APPROVAL — the agent loop
           still gates it via the annotation backstop, but the registry is the
           authoritative source and needs the entry. Empty in the healthy state.
@@ -254,8 +254,8 @@ export default function ToolboxBrowser({
         </div>
       ) : (
         <div className="space-y-5">
-          <ToolSection title="falcon-mcp" tools={falcon} />
-          <ToolSection title="Extension (FalconPy)" tools={extension} />
+          <ToolSection title="eyas-mcp" tools={falcon} />
+          <ToolSection title="Eyas extensions" tools={extension} />
         </div>
       )}
 
@@ -286,7 +286,7 @@ export default function ToolboxBrowser({
           </summary>
           <div className="border-t border-neutral-800 px-4 py-3">
             <p className="text-[13px] leading-relaxed text-neutral-400">
-              These native falcon-mcp write tools are deliberately routed to richer
+              These native eyas-mcp write tools are deliberately routed to richer
               equivalents so their pre-write safety checks aren&apos;t lost — IOA
               regex validation, canonical host-group naming, disable-before-delete,
               and canonical verdict tagging. The agent calls the curated version

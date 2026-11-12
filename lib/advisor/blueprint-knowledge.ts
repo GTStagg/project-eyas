@@ -3,7 +3,7 @@ import "server-only";
 // Grounding corpus for the /blueprint developer advisor.
 //
 // This is the DIFFERENTIATED content: developer.crowdstrike.com documents the
-// platform primitives (APIs, SDKs, scopes, falcon-mcp, Foundry) — it cannot
+// platform primitives (APIs, SDKs, scopes, Foundry) — it cannot
 // teach the composition patterns that make an agentic SOC actually work. That
 // knowledge lives in this reference implementation. So the advisor grounds on
 // the brief below (curated from docs/AI-SPECIALIST.md, docs/FALCON-MCP-VS-
@@ -18,7 +18,7 @@ import "server-only";
  *  purpose: it's the load-bearing "how the pieces compose" knowledge, not a
  *  doc dump. Everything here is a pattern a developer would replicate. */
 export const REFERENCE_ARCHITECTURE_BRIEF = `
-# Reference architecture: an agentic SOC on falcon-mcp + FalconPy + Claude
+# Reference architecture: an agentic SOC on eyas-mcp + Claude
 
 This console (codename Eyas) is a self-hosted, human-in-the-loop operator
 console that drives CrowdStrike Falcon through Claude. It is a *reference
@@ -27,12 +27,12 @@ shape in their own org. What follows is the architecture, not a feature list.
 
 ## The defining choice: in-process MCP client + a manual tool-use loop
 
-We run falcon-mcp as an **in-process MCP client** inside the Next.js server and
+We run eyas-mcp through an **in-process MCP client** inside the Next.js server and
 pair it with a **manual Anthropic tool-use loop** — deliberately NOT Anthropic's
 native MCP connector. Four reasons a builder should weigh:
 - **Data residency** — tenant data flows through your own server, not a
   third-party connector egress.
-- **Network exposure** — falcon-mcp stays on a private bridge, never
+- **Network exposure** — eyas-mcp stays on a private bridge, never
   internet-facing. Only the app process reaches it.
 - **Per-tool approval gating** — a manual loop can pause before any write and
   require a human click. A native connector executes tools opaquely.
@@ -41,41 +41,44 @@ native MCP connector. Four reasons a builder should weigh:
 The tradeoff: you write and maintain the loop (~a few hundred lines) instead of
 getting it free. For a security console the control is worth it.
 
-## Composition: two MCP servers, one loop
+## Composition: one MCP server plus the app's own tools, one loop
 
-- **falcon-mcp** (CrowdStrike's official server) supplies the READ surface —
-  detections, hosts, vulnerabilities, intel, recon, IOCs, NGSIEM query
-  execution, etc. Roughly 50 read tools.
-- **A FalconPy sidecar** (a small Python MCP server over stdio, ~50 tools)
-  fills the gaps falcon-mcp doesn't yet cover: host containment, RTR
-  remediation, Data-Protection/DLP writes, custom-IOA authoring, prevention-
-  policy provisioning, Discover accounts/assets, a richer Identity surface,
-  Threat Graph, Fusion SOAR Workflows, MalQuery, and higher-order orchestration
-  (IR playbooks, delivery-vector classification).
-- Both servers merge into ONE tool bridge and the SAME agent loop — the model
-  sees a single flat tool catalog and cannot tell which server backs a tool.
-  Adding a sidecar is how you extend coverage WITHOUT forking upstream.
+- **eyas-mcp** (an independent MCP server derived from CrowdStrike's
+  MIT-licensed falcon-mcp) supplies the generic Falcon surface — detections,
+  hosts, vulnerabilities, intel, recon, IOCs, NGSIEM, containment, RTR, host
+  groups, policies, exclusions, workflows and more. About 200 tools reach the
+  agent.
+- **The app's own tools** carry what is specific to this console — IR and
+  Shadow-AI playbooks, the patch / cleanup script library, provisioning, the
+  remediation-ledger closers, classifiers. They run in-process in the app and
+  make every Falcon call through eyas-mcp's tools. A small Python sidecar that
+  once filled gaps is being retired as those capabilities land upstream.
+- Everything merges into ONE tool bridge and the SAME agent loop — the model
+  sees a single flat tool catalog and cannot tell what backs a tool. Generic
+  Falcon operations go into the MCP server; product-specific logic stays in
+  the app as its own tools.
 
 ## The three interception points (and the one you don't get)
 
-For a *native* falcon-mcp tool, an in-process integration has exactly three
+For a *native* MCP-server tool, an in-process integration has exactly three
 seams: (1) hide it from the model at the bridge, (2) a binary approval gate
 (allow/deny, no input transform), (3) post-result processing. There is **no
 pre-write hook and no in-sidecar hook** on a native tool. This single fact
 drives the reconciliation policy below — any value-add that must run *before* a
 write (canonical naming, regex pre-flight, disable-before-delete) cannot be
-grafted onto a native tool, so it lives in a FalconPy twin instead.
+grafted onto a native tool, so it lives in the app's own tool, which validates
+first and then calls the native tool.
 
-## Reconciliation policy on every falcon-mcp version bump
+## Reconciliation policy on every MCP-server version bump
 
 - **Reads → expose them.** Token-bound each with a projection that drops heavy
   blobs so the model's context stays cheap and focused.
 - **Writes → land conservatively: suppress + approval-gate ALL of them first**,
   then adopt a native write as the primary path ONLY when it has no richer
-  twin (nothing to lose). Otherwise keep it routed to the FalconPy twin. Never
-  regress a behavior the twin performs before the write. "Use falcon-mcp as
-  much as possible; the sidecar fills gaps" — applied to reads; writes stay on
-  the curated path until the native demonstrably matches.
+  twin (nothing to lose). Otherwise keep it routed to the app's twin. Never
+  regress a behavior the twin performs before the write. Missing generic
+  capabilities are requested in the MCP server rather than patched around in
+  the app.
 
 ## The interaction pattern: deterministic enrichment + agentic synthesis
 
@@ -105,16 +108,21 @@ the primary gate (never trust a server's annotations to be *less* restrictive).
 ## Security posture a builder should copy
 
 Server-only credentials (no secrets in the browser, no client-side calls to
-Anthropic or falcon-mcp). falcon-mcp on a private network, never exposed.
+Anthropic or eyas-mcp). eyas-mcp on a private network, never exposed.
 Per-tool approval on writes + an ownable audit trail. Credentials encrypted at
 rest with column encryption; the DB file is the single source of truth at
 runtime.
 
 ## Gotchas worth warning a builder about
 
-- **Spawn a fresh MCP client per call — don't pool.** falcon-mcp processes
-  JSON-RPC serially per connection; a shared client serializes all concurrent
-  callers and blows the timeout. Parallelism comes from multiple clients.
+- **Spawn a fresh MCP client per call — don't pool by default.** A stdio
+  server that runs blocking handlers serializes JSON-RPC per connection, so a
+  shared client serializes all concurrent callers and blows the timeout.
+  Parallelism comes from multiple clients; share one only where the server is
+  known to handle concurrent requests.
+- **Keep the tool catalog byte-stable between requests.** Prompt caching only
+  reuses an identical prefix; sort tools and resources so a server that lists
+  them in a different order doesn't force a full re-cache every turn.
 - **Upstream API errors can arrive as *successful* tool results** (isError:
   false with the error nested in the payload). Detect and promote them, or the
   model reads a failure as "zero results."

@@ -299,7 +299,7 @@ export default function ScopeChecklist({
           <TierBlock title="Core endpoint security (recommended for everyone)" rows={SCOPES.core} capStates={capStates} />
           <TierBlock title="Asset inventory (grant to light up /discover)" rows={SCOPES.discover} capStates={capStates} />
           <TierBlock title="Case management (new — grant to light up /cases)" rows={SCOPES.cases} capStates={capStates} />
-          <TierBlock title="Quarantine · Correlation Rules · Data Protection (falcon-mcp 0.11.0 surfaces)" rows={SCOPES.falcon011} capStates={capStates} />
+          <TierBlock title="Quarantine · Correlation Rules · Data Protection" rows={SCOPES.falcon011} capStates={capStates} />
           <TierBlock title="Threat intelligence + hunting" rows={SCOPES.intel} capStates={capStates} />
           <TierBlock
             title="Identity Protection (only if your tenant has IDP licensed + AD sensors deployed)"
@@ -307,7 +307,7 @@ export default function ScopeChecklist({
             capStates={capStates}
           />
           <TierBlock
-            title="AI agent activity — Guardian / AIDR (falcon-mcp 0.19.0)"
+            title="AI agent activity — Guardian / AIDR"
             rows={SCOPES.aidr}
             capStates={capStates}
           />
@@ -333,7 +333,7 @@ export default function ScopeChecklist({
               FALCON_MCP_MODULES tokens (the Modules field above)
             </div>
             <p className="text-[11px] leading-snug text-neutral-500">
-              The Modules field uses falcon-mcp module names, not console scope
+              The Modules field uses eyas-mcp module names, not console scope
               labels. Two gotchas:{" "}
               <span className="text-neutral-300">no underscores</span> (use{" "}
               <span className="font-mono">customioa</span>, not{" "}

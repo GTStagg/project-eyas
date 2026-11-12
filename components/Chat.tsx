@@ -280,7 +280,7 @@ export default function Chat() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `falcon-mcp-chat-${sessionId.slice(0, 8)}-${new Date().toISOString().slice(0, 10)}.md`;
+    a.download = `eyas-chat-${sessionId.slice(0, 8)}-${new Date().toISOString().slice(0, 10)}.md`;
     document.body.appendChild(a);
     a.click();
     a.remove();
