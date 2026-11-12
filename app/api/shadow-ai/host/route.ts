@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
-import { withFalconExtrasClient } from "@/lib/mcp/falcon-extras-client";
+import { withFalconMcpClient } from "@/lib/mcp/falcon-client";
+import { makeEyasToolContext } from "@/lib/mcp/tool-bridge";
+import { hostShadowAiScan } from "@/lib/eyas-tools/shadow-ai/hunt";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -21,26 +23,10 @@ export async function POST(request: Request) {
   const hours = Number.isFinite(body.hours_back) ? Number(body.hours_back) : 72;
 
   try {
-    const payload = await withFalconExtrasClient(async (client) => {
-      const result = await client.callTool({
-        name: "extras_host_shadow_ai_scan",
-        arguments: { device_id: aid, hours_back: hours },
-      });
-      const text = (result.content as Array<{ type: string; text?: string }>)
-        .map((c) => (c.type === "text" && c.text ? c.text : ""))
-        .join("\n");
-      try {
-        return JSON.parse(text);
-      } catch {
-        return { ok: false, error: "sidecar returned non-JSON" };
-      }
-    });
-    if (payload === null) {
-      return NextResponse.json(
-        { ok: false, error: "falcon-extras sidecar is disabled" },
-        { status: 503 },
-      );
-    }
+    // extras_host_shadow_ai_scan, run in-process (lib/eyas-tools/shadow-ai).
+    const payload = await withFalconMcpClient((client) =>
+      hostShadowAiScan(makeEyasToolContext(client), { device_id: aid, hours_back: hours }),
+    );
     return NextResponse.json(payload);
   } catch (err) {
     return NextResponse.json(

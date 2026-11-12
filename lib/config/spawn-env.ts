@@ -59,13 +59,9 @@ export function childProcessEnv(): Record<string, string> {
   setOrStrip("FALCON_QUARANTINE_GROUP_ID", cfg.irQuarantineGroupId);
   setOrStrip("FALCON_SHADOW_AI_BANNED_GROUP_ID", cfg.shadowAiBannedGroupId);
 
-  // Comma-separated tool ids (lowercased + sorted by the store). The
-  // sidecar's shadow_ai/catalog.py reads this on each invocation and
-  // demotes matching entries to verdict=sanctioned.
-  setOrStrip(
-    "FALCON_SHADOW_AI_SANCTIONED",
-    cfg.shadowAiSanctionedTools.length ? cfg.shadowAiSanctionedTools.join(",") : undefined,
-  );
+  // The Shadow-AI sanction list is read in-process (lib/eyas-tools/shadow-ai);
+  // no child process needs it, so never pass it on.
+  setOrStrip("FALCON_SHADOW_AI_SANCTIONED", undefined);
 
   // Saved patch profiles are read in-process (extras_list_patch_profiles in
   // lib/eyas-tools); no child process needs them, so never pass them on.

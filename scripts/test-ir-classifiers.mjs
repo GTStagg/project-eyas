@@ -227,8 +227,8 @@ test("retrospective boundary timestamp at since ts classifies as real", () => {
 // ===========================================================================
 // detectionIsShadowAiIocAudit
 //
-// The catalog comes from lib/eyas-tools/ai-egress-catalog.json (the same
-// patterns as the sidecar's shadow_ai/catalog.py).
+// The catalog comes from lib/eyas-tools/ai-egress-catalog.json (shared with
+// the Shadow-AI hunting catalog).
 // ===========================================================================
 
 test("shadow ai audit claude ai", () => {

@@ -80,6 +80,14 @@
   look up a missing parent, and nodes carry the sensor's raw signing fields
   and the image hash. Process start times are ISO timestamps. The add-on is
   down to 16 tools.
+- **Shadow-AI host and fleet hunts moved into Eyas.** The per-host scan (AI
+  apps, MCP servers and agent frameworks, AI egress, local model servers)
+  and the fleet-wide egress search now run in the console on eyas-mcp's
+  NGSIEM search, with the same catalog, cleanup plans, verdicts and
+  sanctioned-tool handling. The host scan's three searches run at the same
+  time instead of one after another, with a longer time limit each, so a
+  busy host is less likely to come back partial. The add-on's own CQL checker
+  is gone; eyas-mcp checks every query. The add-on is down to 14 tools.
 - Verdicts are now recorded as the `true_positive` / `false_positive` tag with
   `status='closed'` on the native detection update, the same tag the Falcon
   console writes.

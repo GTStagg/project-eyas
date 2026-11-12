@@ -6,6 +6,7 @@ import { QUARANTINE_TOOLS } from "./quarantine-tools";
 import { TEARDOWN_TOOLS } from "./teardown-tools";
 import { IR_TOOLS } from "./ir-tools";
 import { IR_HOST_TOOLS } from "./ir-host-tools";
+import { SHADOW_AI_TOOLS } from "./shadow-ai-tools";
 
 export type { EyasTool, EyasToolContext, EyasToolResult } from "./types";
 
@@ -19,6 +20,7 @@ export const EYAS_TOOLS: readonly EyasTool[] = [
   ...TEARDOWN_TOOLS,
   ...IR_TOOLS,
   ...IR_HOST_TOOLS,
+  ...SHADOW_AI_TOOLS,
 ];
 
 export const EYAS_TOOL_MAP: ReadonlyMap<string, EyasTool> = new Map(
