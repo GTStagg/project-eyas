@@ -3,33 +3,30 @@
 // Patch / cleanup scripts (below) and the on-request bulk close of a host's
 // detections (close_host_detections → falcon_close_host_detections).
 //
-// The sidecar is Eyas's content layer: extras_rtr_run_patch / _run_cleanup
-// validate the agent's script id + params against the manifest and render the
-// script, and extras_rtr_check_patch_status validates its ids. None of them
-// call RTR any more. On a live run they return a `dispatch` envelope instead,
-// and the tool bridge hands it here to carry out with eyas-mcp:
+// Eyas validates and renders; a live run is carried out here with eyas-mcp:
 //
 //   rtr_script → falcon_create_rtr_script (one-off private upload)
 //              → falcon_run_rtr_script_on_hosts (`runscript -CloudFile=`)
 //              → falcon_delete_rtr_scripts (always, even when the run failed)
 //   rtr_status → falcon_check_rtr_admin_command_status
 //
+// The in-process RTR tools (lib/eyas-tools/rtr-tools.ts) build the envelope
+// and call runDispatch directly. The sidecar's bulk close still returns a
+// `dispatch` envelope that the tool bridge hands here (DISPATCH_TOOLS).
+//
 // The result keeps the shape the sidecar used to return (results[] with
 // device_id / ok / stdout / stderr / exit_code / error / cloud_request_id /
-// complete), so prompts, the IR ledger and the UI read it unchanged. The
-// envelope itself never reaches the agent, and the agent never supplies
-// script bytes: only a sidecar result can carry one, and only for the tools in
-// DISPATCH_TOOLS, which are approval-gated (runs) or read-only (status).
+// complete), so prompts, the IR ledger and the UI read it unchanged. An
+// envelope never reaches the agent, and the agent never supplies script
+// bytes: only Eyas's library renders them, for approval-gated runs.
 //
 // Pure apart from the injected `callNative`, so it is unit-tested with a fake
 // (scripts/test-native-dispatch.mjs).
 
 type Obj = Record<string, unknown>;
 
+// Sidecar tools whose result may carry a dispatch envelope for the bridge.
 export const DISPATCH_TOOLS: ReadonlySet<string> = new Set([
-  "extras_rtr_run_patch",
-  "extras_rtr_run_cleanup",
-  "extras_rtr_check_patch_status",
   "extras_close_all_open_detections_on_host",
 ]);
 

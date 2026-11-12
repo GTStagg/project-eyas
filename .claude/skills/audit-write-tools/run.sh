@@ -38,8 +38,8 @@ read_into GATED < <(
 
 # Eyas's in-process tools (lib/eyas-tools): same extras_* naming, no sidecar def.
 read_into EYAS_TOOL_NAMES < <(
-  grep -rhoE 'name: "extras_[a-z0-9_]+"' lib/eyas-tools 2>/dev/null \
-    | sed -E 's/name: "([a-z0-9_]+)"/\1/' \
+  grep -rhoE '(name: |tool[(])"extras_[a-z0-9_]+"' lib/eyas-tools 2>/dev/null \
+    | sed -E 's/.*"(extras_[a-z0-9_]+)"/\1/' \
     | sort -u
 )
 
@@ -275,8 +275,8 @@ done
 echo
 echo "${BOLD}Allowlist freshness${NC}"
 for a in "${ALLOWLIST[@]}"; do
-  if grep -q "^def $a\b" "$SIDECAR"; then
-    echo "  ${GREEN}✓${NC} $a ${DIM}(present in sidecar)${NC}"
+  if grep -q "^def $a\b" "$SIDECAR" || printf '%s\n' "${EYAS_TOOL_NAMES[@]}" | grep -qx "$a"; then
+    echo "  ${GREEN}✓${NC} $a ${DIM}(present)${NC}"
   else
     echo "  ${RED}✗${NC} $a ${RED}(stale — remove from ALLOWLIST in run.sh)${NC}"
     fail=1

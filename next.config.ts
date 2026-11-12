@@ -4,6 +4,8 @@ const nextConfig: NextConfig = {
   output: "standalone",
   // Files Next.js's import tracer can't see, opted into the standalone bundle:
   //  - Migration .sql files are read via fs at boot.
+  //  - The RTR script library (manifests + scripts) is read via fs when a
+  //    patch or cleanup tool renders a script.
   //  - pdfjs (via pdf-parse) loads its worker at runtime by resolving a sibling
   //    path string, which the tracer can't follow — so `pdf.worker.mjs` is left
   //    out and the first PDF ingest fails with "Setting up fake worker failed".
@@ -11,6 +13,8 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     "/": [
       "./lib/db/migrations/**/*.sql",
+      "./lib/eyas-tools/rtr/*/manifest.json",
+      "./lib/eyas-tools/rtr/*/scripts/**/*",
       "./node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs",
     ],
   },

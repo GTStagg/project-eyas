@@ -23,8 +23,9 @@ export type EyasTool = {
   description: string;
   input_schema: Anthropic.Tool["input_schema"];
   /** Hand the result to the agent as-is, skipping the bridge's projection and
-   *  12 KB cap. Only for results whose full text is the point — the
-   *  playbooks, which are the agent's instruction set (the IR one is ~70 KB). */
+   *  12 KB cap. Only for Eyas's own content whose full text is the point —
+   *  the playbooks (the agent's instruction set; the IR one is ~70 KB) and the
+   *  script catalog listings. */
   rawResult?: boolean;
   run: (input: Record<string, unknown>, ctx: EyasToolContext) => Promise<EyasToolResult>;
 };

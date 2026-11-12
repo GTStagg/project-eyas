@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { withFalconMcpClient } from "@/lib/mcp/falcon-client";
-import { withFalconExtrasClient } from "@/lib/mcp/falcon-extras-client";
 import { detectFalconError, parseConcatenatedJson } from "@/lib/mcp/parse";
+import { classifyPatchCoverage } from "@/lib/eyas-tools/rtr-tools";
 import AppShell from "@/components/AppShell";
 import VulnerabilitiesTable, {
   type Vulnerability,
@@ -413,26 +413,17 @@ async function attachCapabilityGap(rows: Vulnerability[]): Promise<Vulnerability
     if (distinct.size === 0) return rows;
 
     const triples = [...distinct.values()];
-    const eligible = await withFalconExtrasClient(async (client) => {
-      const result = await client.callTool({
-        name: "extras_classify_patch_coverage",
-        arguments: { remediations: triples },
+    // Classified against Eyas's own patch catalog; no Falcon call.
+    const parsed = classifyPatchCoverage(triples) as {
+      ok?: boolean;
+      results?: Array<{ generic_installer_eligible?: boolean }>;
+    };
+    const eligible = new Set<string>();
+    if (parsed.ok && Array.isArray(parsed.results)) {
+      parsed.results.forEach((res, i) => {
+        if (res.generic_installer_eligible && triples[i]) eligible.add(gapTripleKey(triples[i]));
       });
-      const text = (result.content as Array<{ type: string; text?: string }>)
-        .map((c) => (c.type === "text" && c.text ? c.text : ""))
-        .join("\n");
-      const parsed = JSON.parse(text) as {
-        ok?: boolean;
-        results?: Array<{ generic_installer_eligible?: boolean }>;
-      };
-      const set = new Set<string>();
-      if (parsed.ok && Array.isArray(parsed.results)) {
-        parsed.results.forEach((res, i) => {
-          if (res.generic_installer_eligible && triples[i]) set.add(gapTripleKey(triples[i]));
-        });
-      }
-      return set;
-    });
+    }
 
     if (eligible.size === 0) return rows;
     return rows.map((r) => {

@@ -121,13 +121,12 @@ async function persistCreatedHostGroupId(event: {
 
 // Auto-persist a patch profile the agent just saved. extras_save_patch_profile
 // returns the validated profile object (NOT script bytes — params re-checked
-// against the win-app-install manifest regex in the sidecar) but does not write
+// against the win-app-install manifest regex) but does not write
 // to settings itself; this hook appends it to the active environment's
 // per-tenant catalog while the loop holds the in-flight lock (the /config
 // endpoints refuse during isBusy()). Append semantics — distinct from the
-// host-group hook's single-id replace. Same-turn caveat: the saved profile only
-// becomes visible to extras_list_patch_profiles on a LATER turn, since the
-// sidecar reads its spawn-time env snapshot.
+// host-group hook's single-id replace. extras_list_patch_profiles reads the
+// config store when called, so the profile is visible later in the same turn.
 function extractSavedProfile(content: unknown): PatchProfile | null {
   const textCandidates: string[] = [];
   if (typeof content === "string") {
@@ -258,7 +257,7 @@ function buildSystemPrompt(resources: FalconResource[]): string {
     "- **Generic Windows installer (capability gap).** When no app-specific script matches a Windows remediation but you know the vendor's HTTPS download URL, resolve `script_id: 'win-app-install'` with params `{ url, kind: 'msi'|'exe', product, sha256?, silent_args? }`. This is NOT freehand: the script bytes are baked server-side; only your parameters pass the manifest regex (any shell metacharacter, quote, or whitespace in the URL fails validation and the call is rejected). `extras_rtr_resolve_patch_plan`'s no-match response sets `generic_installer_available: true` with the exact param hint when this applies.",
     "- **Strongly prefer pinning `sha256`** (the installer's SHA-256). When supplied, the host verifies the download against it and ABORTS before install on mismatch — that is the real integrity gate. The resolve/dry-run result reports `hash_pinned: true|false`. If you omit the hash, the install proceeds on HTTPS + operator approval alone and the host prints an `UNVERIFIED (no hash pin)` banner — say plainly in your dry-run summary that the install is UNVERIFIED so the operator approves consciously.",
     "- The generic installer is Windows-only; `kind: 'msi'` ignores `silent_args` (it always uses safe silent flags), so `silent_args` applies to `kind: 'exe'` only. If a remediation is non-Windows, or you do not have a trustworthy vendor URL, do NOT invent one — say no script matches and stop.",
-    "- **Saved patch profiles.** A consumer can persist a working installer parameter-set for reuse: `extras_save_patch_profile(name, product, url, kind, sha256?, silent_args?)` (approval-gated — saving establishes a trusted reusable source) and `extras_list_patch_profiles()` to recall them. Flow: list profiles → pick one → `extras_rtr_resolve_patch_plan(script_id: 'win-app-install', params: <profile fields>)` → `extras_rtr_run_patch` dry-run, then live. A profile saved earlier in the SAME turn is not yet visible to a same-turn list — save, then list on a later step.",
+    "- **Saved patch profiles.** A consumer can persist a working installer parameter-set for reuse: `extras_save_patch_profile(name, product, url, kind, sha256?, silent_args?)` (approval-gated — saving establishes a trusted reusable source) and `extras_list_patch_profiles()` to recall them. Flow: list profiles → pick one → `extras_rtr_resolve_patch_plan(script_id: 'win-app-install', params: <profile fields>)` → `extras_rtr_run_patch` dry-run, then live.",
     "- After `run_patch` returns: if any per-host result has `complete: false` and a non-null `cloud_request_id`, call `extras_rtr_check_patch_status` with those ids before reporting. Long scripts (Windows Update install, etc.) routinely exceed the synchronous timeout.",
     "- VERIFY THE FIX. After execution completes successfully, re-run `falcon_search_vulnerabilities` against the same host(s) and the affected CVE(s). Report 'verified — CVE no longer present in Spotlight' if the patched CVEs are gone, or flag if they're still open (the patch may have failed silently, or Spotlight has not re-scanned yet — Spotlight scan cadence can lag patching by hours). The verification step is what makes the loop trustworthy; do not skip it.",
     "",

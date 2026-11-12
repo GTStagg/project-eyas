@@ -51,13 +51,10 @@ const scriptResult = (over = {}) => ({
   ...over,
 });
 
-test("only the Eyas tools that hand off to eyas-mcp dispatch", () => {
-  assert.deepEqual([...DISPATCH_TOOLS].sort(), [
-    "extras_close_all_open_detections_on_host",
-    "extras_rtr_check_patch_status",
-    "extras_rtr_run_cleanup",
-    "extras_rtr_run_patch",
-  ]);
+test("only the remaining sidecar tool hands the bridge a dispatch envelope", () => {
+  // The RTR tools run in-process (lib/eyas-tools/rtr-tools.ts) and call
+  // runDispatch themselves.
+  assert.deepEqual([...DISPATCH_TOOLS].sort(), ["extras_close_all_open_detections_on_host"]);
   assert.equal(dispatchOf({ ok: true }), null);
 });
 

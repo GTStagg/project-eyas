@@ -119,7 +119,7 @@ A Python MCP server in `falcon-extras/` we wrote on top of FalconPy. It holds Ey
 
 The sidecar follows two conventions worth calling out for a peer reviewer:
 
-- **Render-time security.** For RTR script execution, the agent supplies an `id` plus validated parameters; it never supplies script bytes. `falcon-extras/patching/library.py::_render_params_block` builds the PowerShell parameter hash at render time, with single-quote-doubling escape on every string value and an ASCII coerce backstop. The agent cannot inject script logic.
+- **Render-time security.** For RTR script execution, the agent supplies an `id` plus validated parameters; it never supplies script bytes. `lib/eyas-tools/rtr/library.ts::renderParamsBlock` builds the PowerShell parameter hash at render time, with single-quote-doubling escape on every string value and an ASCII coerce backstop. The agent cannot inject script logic.
 - **Staged-build pattern for pending scopes.** `_check_response(resp, surface)` recognizes 401/403 envelopes and returns a `scope_pending: true` payload instead of raising. Surfaces ship before scope is granted and light up automatically when applied — useful for shipping demo capability against tenants whose API client is still being scoped.
 
 ### 3. The bridge
@@ -195,7 +195,7 @@ For the reviewer who wants to dig in after the demo:
 - `lib/mcp/tool-bridge.ts` + `lib/mcp/projections.ts` + `lib/mcp/write-tools.ts` — the bridge that merges eyas-mcp + falcon-extras tool lists (and hides native tools the sidecar still does better), the projection layer that bounds tokens per tool, and the write-tool registry that gates approvals.
 - `lib/intel/attribution.ts` + `app/api/intel/route.ts` — the deterministic-enrichment-plus-agentic-synthesis pattern at its clearest. ~700 lines combined.
 - `falcon-extras/server.py` — the FalconPy sidecar, including `_check_response(resp, surface)` (the response guard that catches scope-denied and upstream errors uniformly), `_run_ngsiem_search` (the canonical NGSIEM helper), and the staged-build-pattern envelope for pending scopes.
-- `falcon-extras/patching/library.py` + `falcon-extras/patching/manifest.json` — the render-time-security model for RTR script execution. The agent supplies an id + params; never bytes.
+- `lib/eyas-tools/rtr/library.ts` + `lib/eyas-tools/rtr/patching/manifest.json` — the render-time-security model for RTR script execution. The agent supplies an id + params; never bytes.
 - `falcon-extras/process_tree/classifier.py` — the deterministic delivery-vector classifier. Pure-function, fully unit-testable on canned ancestry lists. Most-specific-anchor-wins.
 - `CLAUDE.md` — load-bearing implementation gotchas accumulated from real bugs. Not a marketing doc; an engineering memory.
 

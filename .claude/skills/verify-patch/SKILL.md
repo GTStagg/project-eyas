@@ -1,6 +1,6 @@
 ---
 name: verify-patch
-description: Use after writing or editing a falcon-extras patching script + manifest entry. Runs the canonical render + spotlight-match + non-ASCII smoke test for one or more script ids. Trigger phrases: "verify the script", "smoke-test the patch", "does the new manifest entry render", "check spotlight matching".
+description: Use after writing or editing a patching script + manifest entry (lib/eyas-tools/rtr/patching). Runs the canonical render + spotlight-match + non-ASCII smoke test for one or more script ids. Trigger phrases: "verify the script", "smoke-test the patch", "does the new manifest entry render", "check spotlight matching".
 ---
 
 # verify-patch
@@ -19,17 +19,17 @@ From the repo root, invoke the verifier:
 bash .claude/skills/verify-patch/run.sh <script_id> [<script_id> ...]
 ```
 
-The script renders each plan via `library.resolve_plan`, prints body length / runtime / reboot risk / non-ASCII byte count, and confirms the spotlight pattern matches the demo cases bundled in the script.
+The script (`scripts/rtr-library-cli.mjs verify`) renders each plan via `resolvePlan` in `lib/eyas-tools/rtr/library.ts`, prints body length / runtime / reboot risk / non-ASCII byte count, and confirms the spotlight pattern matches the demo cases bundled in the script.
 
 ## Pass criteria
 
-- `resolve_plan` returns without exception
+- `resolvePlan` returns without exception
 - `non-ascii=0` on every rendered body (RTR strips non-ASCII bytes — they break the host parser)
 - For entries with a `spotlight_match`, the canonical demo `(vendor, product)` pair routes back to the same id (regression-tests first-declared-wins ordering)
 
 ## Fail handling
 
 - **`unknown script id`** → manifest entry missing or typo'd; re-check `manifest.json`.
-- **`non-ascii > 0`** → `_ascii_coerce` is the backstop, but source files should be clean. `grep -nP '[^\x00-\x7F]' <file>` to find offenders.
-- **Wrong id resolved by `match_remediation`** → another manifest entry's pattern is shadowing yours. Move the new entry earlier in the manifest, or tighten the colliding pattern.
-- **`TypeError: resolve_plan() takes ...`** → API drifted; re-read `library.py` to find the current call signature.
+- **`non-ascii > 0`** → `asciiCoerce` is the backstop, but source files should be clean. `grep -nP '[^\x00-\x7F]' <file>` to find offenders.
+- **Wrong id resolved by `matchRemediation`** → another manifest entry's pattern is shadowing yours. Move the new entry earlier in the manifest, or tighten the colliding pattern.
+- **A TypeScript error from the CLI** → the library API drifted; re-read `lib/eyas-tools/rtr/library.ts`.

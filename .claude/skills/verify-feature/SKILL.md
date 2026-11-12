@@ -77,7 +77,8 @@ The pattern that worked for the falconscript validator diagnosis:
 
 This bypasses MCP entirely and gives you ground truth. Use when:
 - You added/changed a tool in `falcon-extras/server.py`.
-- You changed `falcon-extras/falcon_scripts.py`, `patching/`, or `cleanup/`.
+- You changed `falcon-extras/falcon_scripts.py`.
+- You changed the RTR script library (`lib/eyas-tools/rtr/`): run `/verify-patch` and `node scripts/test-rtr-library.mjs` instead.
 - You suspect an agent's reported failure is a hallucination (the falconscript validator was discovered this way).
 
 For an end-to-end MCP probe (validates the tool definition surfaces, not just the Python), spin up the dev server, fire `/api/health?force=1`, and inspect the `falconExtras.tools` array.
