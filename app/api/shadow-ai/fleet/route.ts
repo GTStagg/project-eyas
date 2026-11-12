@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { withFalconMcpClient } from "@/lib/mcp/falcon-client";
-import { withFalconExtrasClient } from "@/lib/mcp/falcon-extras-client";
+import { makeEyasToolContext } from "@/lib/mcp/tool-bridge";
+import { fleetShadowAiEgress } from "@/lib/eyas-tools/shadow-ai/hunt";
 import { detectFalconError, parseConcatenatedJson } from "@/lib/mcp/parse";
 
 export const runtime = "nodejs";
@@ -59,28 +60,12 @@ export async function GET(request: Request) {
     // load — that blows past Spotlight's 60s MCP timeout on large tenants
     // and discards 95% of the records. The egress-scan output is bounded
     // by the NGSIEM query, so the enrichment is always cheap and bounded.
-    const egressPayload = await withFalconExtrasClient(async (client): Promise<SidecarPayload | null> => {
-      const result = await client.callTool({
-        name: "extras_fleet_shadow_ai_egress",
-        arguments: { hours_back: hours, limit: 5000 },
-      });
-      const text = (result.content as Array<{ type: string; text?: string }>)
-        .map((c) => (c.type === "text" && c.text ? c.text : ""))
-        .join("\n");
-      try {
-        return JSON.parse(text) as SidecarPayload;
-      } catch {
-        return { ok: false, error: "sidecar returned non-JSON" };
-      }
-    });
+    // extras_fleet_shadow_ai_egress, run in-process (lib/eyas-tools/shadow-ai).
+    const egressPayload = (await withFalconMcpClient((client) =>
+      fleetShadowAiEgress(makeEyasToolContext(client), { hours_back: hours, limit: 5000 }),
+    )) as SidecarPayload;
 
-    if (egressPayload === null) {
-      return NextResponse.json(
-        { ok: false, error: "falcon-extras sidecar is disabled" },
-        { status: 503 },
-      );
-    }
-    if (egressPayload.ok === false) {
+    if (egressPayload.ok === false || egressPayload.scope_pending) {
       if (egressPayload.scope_pending) {
         return NextResponse.json({
           ok: true,
@@ -90,7 +75,7 @@ export async function GET(request: Request) {
         });
       }
       return NextResponse.json(
-        { ok: false, error: egressPayload.error ?? "sidecar error" },
+        { ok: false, error: egressPayload.error ?? "egress search failed" },
         { status: 502 },
       );
     }

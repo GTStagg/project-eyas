@@ -30,6 +30,7 @@
     "test:ir-ledger-matcher": "node ./scripts/test-ir-ledger-matcher.mjs",
     "test:ir-scope": "node ./scripts/test-ir-scope.mjs",
     "test:process-tree": "node ./scripts/test-process-tree.mjs",
+    "test:shadow-ai": "node ./scripts/test-shadow-ai.mjs",
     "test:prompt-cache": "node ./scripts/test-prompt-cache.mjs",
     "test:native-dispatch": "node ./scripts/test-native-dispatch.mjs",
     "test:release-watcher": "node ./scripts/test-release-watcher.mjs",

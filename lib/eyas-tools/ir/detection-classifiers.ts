@@ -31,8 +31,8 @@ const isObj = (v: unknown): v is Obj => !!v && typeof v === "object" && !Array.i
 const asList = (v: unknown): unknown[] => (Array.isArray(v) ? v : []);
 const lower = (v: unknown): string => (typeof v === "string" ? v.toLowerCase() : "");
 
-// Shared with the sidecar's Shadow-AI tools (shadow_ai/catalog.py); a sidecar
-// test keeps the two in sync. Each pattern must match the whole domain.
+// Shared with the Shadow-AI hunting catalog (lib/eyas-tools/shadow-ai/catalog.ts).
+// Each pattern must match the whole domain.
 const AI_EGRESS_RX: RegExp[] = (egressCatalog as Array<{ pattern: string }>).map(
   (row) => new RegExp(`^(?:${row.pattern})$`, "i"),
 );
