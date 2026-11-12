@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
-import { withFalconExtrasClient } from "@/lib/mcp/falcon-extras-client";
+import { withFalconMcpClient } from "@/lib/mcp/falcon-client";
+import { makeEyasToolContext } from "@/lib/mcp/tool-bridge";
+import { hostProcessTree } from "@/lib/eyas-tools/ir/process-tree";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// Read-only sidecar passthrough: reconstructs ProcessRollup2 ancestry +
-// descendants around a detection pivot and returns the delivery_vector
+// Read-only: runs extras_host_process_tree in-process (eyas-mcp's
+// falcon_get_process_tree + Eyas's classifier). Reconstructs ProcessRollup2
+// ancestry + descendants around a detection pivot and returns the delivery_vector
 // classifier verdict. Surfaces in the detection drawer below the Command
 // line block — the verdict is the headline ("Delivery vector: phishing
 // document — OUTLOOK.EXE → WINWORD.EXE opened Q1-Invoice.docm"), the
@@ -61,30 +64,16 @@ export async function GET(request: Request) {
   }
 
   try {
-    const result = await withFalconExtrasClient<ProcessTreeResponse>(
-      async (client) => {
-        const args: Record<string, unknown> = {
-          device_id: deviceId,
-          pivot_ts_iso: pivotTsIso,
-          window_minutes: Number.isFinite(windowMinutes) ? windowMinutes : 10,
-        };
-        if (pivotPid !== undefined) args.pivot_pid = pivotPid;
-        if (pivotImage) args.pivot_image = pivotImage;
-
-        const r = await client.callTool({
-          name: "extras_host_process_tree",
-          arguments: args,
-        });
-        const text = (r.content as Array<{ type: string; text?: string }>)
-          .map((c) => (c.type === "text" && c.text ? c.text : ""))
-          .join("\n");
-        try {
-          return JSON.parse(text) as ProcessTreeResponse;
-        } catch {
-          return { ok: false, error: "Sidecar returned non-JSON payload" };
-        }
-      },
-    );
+    const result = await withFalconMcpClient<ProcessTreeResponse>(async (client) => {
+      const args: Record<string, unknown> = {
+        device_id: deviceId,
+        pivot_ts_iso: pivotTsIso,
+        window_minutes: Number.isFinite(windowMinutes) ? windowMinutes : 10,
+      };
+      if (pivotPid !== undefined) args.pivot_pid = pivotPid;
+      if (pivotImage) args.pivot_image = pivotImage;
+      return (await hostProcessTree(makeEyasToolContext(client), args)) as ProcessTreeResponse;
+    });
 
     return NextResponse.json(result, {
       status: result?.ok ? 200 : 502,

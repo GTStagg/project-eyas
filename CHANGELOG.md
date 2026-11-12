@@ -64,6 +64,16 @@
   and Phase 3 results now list their counts before the per-detection list, so
   a long list no longer cuts the counts off what the agent sees. The add-on
   is down to 19 tools.
+- **Process tree, campaign scope and remote-access-tool scan moved into
+  Eyas.** The detection drawer's process tree, the IR Phase 0 campaign scope
+  and the remote-access-tool install scan now run in the console on
+  eyas-mcp's process-tree walk and NGSIEM search, with Eyas's own
+  delivery-vector classifier and clustering on top. A parent missing from the
+  search window is now looked up over the previous 7 days (was ±60 minutes),
+  the campaign scope's walks also re-centre on a long-running process and
+  look up a missing parent, and nodes carry the sensor's raw signing fields
+  and the image hash. Process start times are ISO timestamps. The add-on is
+  down to 16 tools.
 - Verdicts are now recorded as the `true_positive` / `false_positive` tag with
   `status='closed'` on the native detection update, the same tag the Falcon
   console writes.

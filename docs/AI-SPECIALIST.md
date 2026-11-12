@@ -113,9 +113,9 @@ A Python MCP server in `falcon-extras/` we wrote on top of FalconPy. It holds Ey
 
 - **Agentic patching** (read + write) — Spotlight remediation manifest and the RTR script library: ~30 patching scripts in a manifest schema with parameter validation. Eyas renders the script; eyas-mcp uploads it as a one-off private script, runs it with `runscript -CloudFile=` and deletes it.
 - **Agentic IR** — the five-phase playbook, campaign scoping, the cleanup catalog (host-quarantine-file, host-delete-folder, host-kill-process, host-remove-ifeo-hijack, etc.), ledger-driven closure, and an operator decision step for original detections the workflow never touched.
-- **Process-tree reconstruction** — `extras_host_process_tree` walks NGSIEM `ProcessRollup2` events, builds the ancestry chain via `ParentProcessId`, and runs Eyas's deterministic classifier, which returns a delivery-vector verdict (`phishing_doc` / `c2_agent` / `lateral_winrm` / `ifeo_hijack` / etc.) with confidence + rationale. (The MCP server has its own process-tree tool with a generic heuristic; Eyas keeps this one because IR branches on its verdicts.)
+- **Process-tree reconstruction** — `extras_host_process_tree` takes the ancestry chain from eyas-mcp's NGSIEM `ProcessRollup2` walk and runs Eyas's deterministic classifier over it, which returns a delivery-vector verdict (`phishing_doc` / `c2_agent` / `lateral_winrm` / `ifeo_hijack` / etc.) with confidence + rationale. (The MCP server has its own process-tree tool with a generic heuristic; Eyas keeps this one because IR branches on its verdicts.)
 - **Provisioning and setup** — canonical-named host groups, prevention policies, IOA rules and exclusions for IR quarantine and Shadow-AI, monitor-first data-protection creates, and tenant teardown.
-- `extras_host_rat_install_scan` (17-product image-name regex catalog), Shadow-AI hunting, and the CQL linter that guards Eyas's own internal NGSIEM searches (the agent's searches use eyas-mcp's bounded `falcon_search_ngsiem`).
+- `extras_host_rat_install_scan` (17-product image-name regex catalog, one bounded `falcon_search_ngsiem` call), Shadow-AI hunting, and the CQL linter that guards Eyas's own internal NGSIEM searches (the agent's searches use eyas-mcp's bounded `falcon_search_ngsiem`).
 
 The sidecar follows two conventions worth calling out for a peer reviewer:
 
@@ -196,7 +196,7 @@ For the reviewer who wants to dig in after the demo:
 - `lib/intel/attribution.ts` + `app/api/intel/route.ts` — the deterministic-enrichment-plus-agentic-synthesis pattern at its clearest. ~700 lines combined.
 - `falcon-extras/server.py` — the FalconPy sidecar, including `_check_response(resp, surface)` (the response guard that catches scope-denied and upstream errors uniformly), `_run_ngsiem_search` (the canonical NGSIEM helper), and the staged-build-pattern envelope for pending scopes.
 - `lib/eyas-tools/rtr/library.ts` + `lib/eyas-tools/rtr/patching/manifest.json` — the render-time-security model for RTR script execution. The agent supplies an id + params; never bytes.
-- `falcon-extras/process_tree/classifier.py` — the deterministic delivery-vector classifier. Pure-function, fully unit-testable on canned ancestry lists. Most-specific-anchor-wins.
+- `lib/eyas-tools/process-tree/classifier.ts` — the deterministic delivery-vector classifier. Pure-function, fully unit-testable on canned ancestry lists. Most-specific-anchor-wins.
 - `CLAUDE.md` — load-bearing implementation gotchas accumulated from real bugs. Not a marketing doc; an engineering memory.
 
 ---

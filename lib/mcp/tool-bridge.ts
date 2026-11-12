@@ -102,23 +102,15 @@ export const NATIVE_WRITE_SUPPRESS: ReadonlySet<string> = new Set<string>([
   "falcon_create_data_security_entity",
 ]);
 
-// eyas-mcp's sidecar port baked most of the falcon-extras sidecar into the
-// native server as falcon_* READ tools. Each duplicates an extras_* tool that
-// routes, playbooks, projections and prompts still call by name, so exposing
-// both would let the agent bypass the curated path (it biases toward falcon_*).
-// Hidden until its family is migrated one at a time — compare shapes, move
-// callers + projections to the native name, expose it, retire the twin — then
-// delete the entry here. Native → current twin:
-// Native reads deliberately KEPT hidden after a parity check: the sidecar twin
-// carries curated behavior the native tool doesn't, and exposing both would
-// let the agent (which biases toward falcon_*) take the poorer path.
-//   - falcon_get_process_tree → KEEP extras_host_process_tree. Same ancestry
-//     (verified live, XDR us-2), but the native delivery_vector is a generic
-//     heuristic ("user_executed_file") while the twin runs Eyas's curated
-//     classifier ("user_executed_dropper", phishing_doc, lateral_winrm, …) —
-//     the vocabulary the IR playbook's Phase 2 branches on — plus per-node
-//     verdict / signed annotations the detection drawer renders. Migrates once
-//     eyas-mcp ships the same classifier.
+// Native reads kept hidden from the agent because an Eyas tool wraps them with
+// curated behavior, and the agent (which biases toward falcon_*) would
+// otherwise take the poorer path. Eyas's own tools still call them.
+//   - falcon_get_process_tree → extras_host_process_tree and
+//     extras_ir_campaign_scope (lib/eyas-tools/ir/) walk the tree on it, then
+//     run Eyas's classifier ("user_executed_dropper", phishing_doc,
+//     lateral_winrm, …) — the vocabulary the IR playbook's Phase 2 branches
+//     on — plus the per-node verdicts the detection drawer renders. The
+//     native delivery_vector is a generic heuristic.
 export const NATIVE_READ_KEEP: ReadonlySet<string> = new Set<string>([
   "falcon_get_process_tree",
 ]);

@@ -5,6 +5,7 @@ import { HOST_GROUP_TOOLS } from "./host-group-tools";
 import { QUARANTINE_TOOLS } from "./quarantine-tools";
 import { TEARDOWN_TOOLS } from "./teardown-tools";
 import { IR_TOOLS } from "./ir-tools";
+import { IR_HOST_TOOLS } from "./ir-host-tools";
 
 export type { EyasTool, EyasToolContext, EyasToolResult } from "./types";
 
@@ -17,6 +18,7 @@ export const EYAS_TOOLS: readonly EyasTool[] = [
   ...QUARANTINE_TOOLS,
   ...TEARDOWN_TOOLS,
   ...IR_TOOLS,
+  ...IR_HOST_TOOLS,
 ];
 
 export const EYAS_TOOL_MAP: ReadonlyMap<string, EyasTool> = new Map(
