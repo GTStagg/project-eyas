@@ -29,8 +29,8 @@ By surface (USD)                 spend     %    calls   ⌀ iter   cache hit %
   TOTAL                         $61.66 100.0  1,237
 
 By model
-  claude-sonnet-4-6             $58.21  94.4
-  claude-opus-4-7                $3.45   5.6
+  claude-sonnet-5-5             $58.21  94.4
+  claude-opus-5-5                $3.45   5.6
 
 Cost shape (USD)
   output                  $7.40 12.0%   ← writing answers

@@ -39,7 +39,7 @@ services:
       - falcon-mcp
     environment:
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
-      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-sonnet-4-6}
+      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-sonnet-5-5}
       FALCON_MCP_URL: ${FALCON_MCP_URL:-http://falcon-mcp:8000/mcp}
       FALCON_MCP_API_KEY: ${FALCON_MCP_API_KEY}
       # Extra host names allowed to reach first-run /register (reverse proxy).
