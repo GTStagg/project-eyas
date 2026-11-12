@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type Anthropic from "@anthropic-ai/sdk";
 import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { buildToolBridge, makeCallNative, type FalconResource } from "@/lib/mcp/tool-bridge";
+import { buildToolBridge, makeEyasToolContext, type FalconResource } from "@/lib/mcp/tool-bridge";
 import { EYAS_TOOL_MAP } from "@/lib/eyas-tools";
 import { parseConcatenatedJson } from "@/lib/mcp/parse";
 import {
@@ -467,7 +467,7 @@ async function callPrefetchTool(
   const tool = EYAS_TOOL_MAP.get(name);
   if (!tool) return callExtrasTool(extras, name, args);
   try {
-    return await tool.run(args, { callNative: makeCallNative(mcp) });
+    return await tool.run(args, makeEyasToolContext(mcp));
   } catch (err) {
     return { content: err instanceof Error ? err.message : String(err), isError: true };
   }

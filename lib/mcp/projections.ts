@@ -33,6 +33,14 @@ const trunc = (v: unknown, max: number): unknown => {
   if (v === "") return undefined;
   return v.length > max ? v.slice(0, max) + "…" : v;
 };
+
+// Host-group scope as names (id fallback). Accepts objects or bare ids.
+const scopeNames = (v: unknown): unknown[] | undefined =>
+  Array.isArray(v)
+    ? v
+        .map((g) => (g && typeof g === "object" ? ((g as Record<string, unknown>).name ?? (g as Record<string, unknown>).id) : g))
+        .filter((x) => x !== undefined && x !== null && x !== "")
+    : undefined;
 const get = (o: Record<string, unknown>, path: string): unknown => {
   let cur: unknown = o;
   for (const part of path.split(".")) {
@@ -619,11 +627,15 @@ const PROJECTIONS: Record<string, Projection> = {
     value_hash: undef(e.value_hash),
     excluded_from: undef(e.excluded_from),
     applied_globally: undef(e.applied_globally),
-    // groups[] scopes the exclusion to host groups; surface names (id fallback)
-    // rather than the full group objects.
-    groups: Array.isArray(e.groups)
-      ? (e.groups as Array<Record<string, unknown>>).map((g) => g.name ?? g.id).filter(Boolean)
-      : undefined,
+    // groups[] (ML) / host_groups[] (v2 IOA) scope the exclusion to host
+    // groups; surface names (id fallback) rather than the full group objects.
+    groups: scopeNames(e.groups),
+    host_groups: scopeNames(e.host_groups),
+    // IOA exclusion matchers — what the exclusion actually suppresses.
+    pattern_id: undef(e.pattern_id),
+    pattern_name: undef(e.pattern_name),
+    ifn_regex: trunc(e.ifn_regex, 240),
+    cl_regex: trunc(e.cl_regex, 240),
     created_by: undef(e.created_by),
     created_on: undef(e.created_on),
     last_modified: undef(e.last_modified),

@@ -13,8 +13,21 @@ import type { CallNative } from "@/lib/mcp/native-dispatch";
 
 export type EyasToolResult = { content: string; isError: boolean };
 
+/** A native search shaped like the former sidecar payloads
+ *  (lib/mcp/native-shape.ts): rows plus pagination.total, a scope denial, or
+ *  an error. */
+export type NativeSearchResult =
+  | { ok: true; items: Record<string, unknown>[]; total?: number; scope_pending?: false }
+  | { ok: true; scope_pending: true; items: []; total?: undefined }
+  | { ok: false; error: string };
+
+export type SearchNative = (name: string, args: Record<string, unknown>) => Promise<NativeSearchResult>;
+
 export type EyasToolContext = {
+  /** One eyas-mcp call; resolves to its first JSON object or an error. */
   callNative: CallNative;
+  /** One eyas-mcp search call; resolves to all its rows. */
+  searchNative: SearchNative;
 };
 
 export type EyasTool = {

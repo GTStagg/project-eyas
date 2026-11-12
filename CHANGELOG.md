@@ -32,6 +32,13 @@
   names, with every render checked against the former add-on's output. A
   patch profile saved earlier in a chat turn is now visible to a later step of
   the same turn. The add-on is down to 36 tools.
+- **Host-group membership and IR quarantine setup run inside Eyas.** Adding
+  and removing hosts from static groups uses eyas-mcp's membership action with
+  explicit host ids (it refuses dynamic groups itself). Diagnosing, creating
+  and adopting the IR quarantine group and the IR-readiness check now read
+  the group from the active environment when called, so a group created or
+  adopted earlier in a chat turn is seen straight away. The add-on is down to
+  30 tools.
 - Verdicts are now recorded as the `true_positive` / `false_positive` tag with
   `status='closed'` on the native detection update, the same tag the Falcon
   console writes.

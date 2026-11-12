@@ -6,6 +6,8 @@ import { detectFalconError, parseToolResultObjects } from "./parse";
 import { EXTRAS_READ_ONLY, REQUIRES_APPROVAL } from "./write-tools";
 import { DISPATCH_TOOLS, dispatchOf, runDispatch, type CallNative } from "./native-dispatch";
 import { EYAS_TOOLS, EYAS_TOOL_MAP } from "@/lib/eyas-tools";
+import type { EyasToolContext, NativeSearchResult } from "@/lib/eyas-tools/types";
+import { shapeNativePayload } from "./native-shape";
 
 export type FalconResource = {
   uri: string;
@@ -60,10 +62,11 @@ const LONG_RUNNING_TOOL_TIMEOUT_MS: Record<string, number> = {
 //   - falcon_create_exclusion: extras_create_ioa_exclusion adds the
 //     single-quote reject-don't-escape guard and the /tuning primer wiring.
 //   - falcon_create_host_group / falcon_create_policy: the provisioning flows
-//     add canonical naming, set_runtime_group_id and the {ok,id} auto-save.
-//   - falcon_perform_host_group_action: the extras add/remove-members tools
-//     refuse dynamic groups and take explicit device ids (eyas-mcp request
-//     pending), and the IR and Shadow-AI playbooks call them by name.
+//     add canonical naming and the {ok,id} auto-save.
+//   - falcon_perform_host_group_action: Eyas's extras_host_group_add_members /
+//     _remove_members (lib/eyas-tools/host-group-tools.ts) call it with
+//     explicit device ids; the IR and Shadow-AI playbooks, the IR release
+//     guard, ground truth and run analysis all key on those names.
 //   - falcon_delete_policies: Falcon refuses to delete an enabled policy;
 //     the extras delete disables first.
 //   - falcon_create_data_security_entity: the extras_create_data_protection_*
@@ -221,6 +224,32 @@ export function makeCallNative(client: Client): CallNative {
   };
 }
 
+/** The context an in-process Eyas tool runs with: native calls on `client`. */
+export function makeEyasToolContext(client: Client): EyasToolContext {
+  return {
+    callNative: makeCallNative(client),
+    searchNative: async (name, args) => {
+      try {
+        const r = await client.callTool({ name, arguments: args });
+        const text = (r.content as Array<{ type: string; text?: string }>)
+          .map((c) => (c.type === "text" && typeof c.text === "string" ? c.text : ""))
+          .join("\n");
+        const p = shapeNativePayload(text);
+        if (p.scope_pending === true) return { ok: true, scope_pending: true, items: [] };
+        if (p.ok !== true) return { ok: false, error: String(p.error ?? `${name} failed`) };
+        if (r.isError) return { ok: false, error: text.trim() || `${name} failed` };
+        return {
+          ok: true,
+          items: (Array.isArray(p.items) ? p.items : []) as Record<string, unknown>[],
+          total: typeof p.total === "number" ? p.total : undefined,
+        } satisfies NativeSearchResult;
+      } catch (e) {
+        return { ok: false, error: e instanceof Error ? e.message : String(e) };
+      }
+    },
+  };
+}
+
 export async function buildToolBridge(
   client: Client,
   extras?: Client | null,
@@ -333,7 +362,8 @@ export async function buildToolBridge(
     });
   }
 
-  const callNative = makeCallNative(client);
+  const eyasCtx = makeEyasToolContext(client);
+  const callNative = eyasCtx.callNative;
 
   const invoke: ToolBridge["invoke"] = async (name, input) => {
     if (name === READ_RESOURCE_TOOL_NAME) {
@@ -352,7 +382,7 @@ export async function buildToolBridge(
     const eyasTool = EYAS_TOOL_MAP.get(name);
     if (eyasTool && !toolToClient.has(name)) {
       try {
-        const r = await eyasTool.run(input, { callNative });
+        const r = await eyasTool.run(input, eyasCtx);
         if (eyasTool.rawResult) return r;
         return { content: projectToolResult(name, r.content) || r.content, isError: r.isError };
       } catch (e) {
