@@ -213,7 +213,8 @@ export const REQUIRES_APPROVAL: ReadonlySet<string> = new Set<string>([
   "extras_create_shadow_ai_banned_host_group",
   "extras_adopt_shadow_ai_banned_host_group",
   "extras_provision_shadow_ai_banned_policy",
-  // falcon-extras — tenant teardown. Single high-level wipe of every
+  // Tenant teardown (in-process Eyas tool, lib/eyas-tools/teardown.ts).
+  // Single high-level wipe of every
   // canonical Project Eyas-managed object (host groups, prevention
   // policies, custom IOA rule groups, IR-readiness exclusion). Used
   // during demo cycles + dev resets. Dry-run path is read-only but the

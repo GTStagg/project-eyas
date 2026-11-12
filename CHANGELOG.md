@@ -46,11 +46,19 @@
   first rather than resending a full order built from a partial list, so it
   can no longer reorder or drop unrelated policies. Detaching a policy from a
   group moved too. The add-on is down to 28 tools.
+- **Tenant teardown runs inside Eyas.** The teardown and the single policy
+  and rule-group deletes now use eyas-mcp's tools. The approval card says
+  whether a teardown is a dry run or will delete objects. The add-on is down
+  to 25 tools.
 - Verdicts are now recorded as the `true_positive` / `false_positive` tag with
   `status='closed'` on the native detection update, the same tag the Falcon
   console writes.
 
 ### Fixed
+- **Teardown removes the IR-readiness exclusion.** It looked for the text
+  "IR-readiness" in the exclusion's comment, which the setup never writes, so
+  the exclusion was left behind on every teardown. It is now matched by the
+  RTR command-line marker the setup and the readiness check use.
 - **Rendered patch and cleanup scripts keep every `?`.** The script
   renderer deleted every `?` along with the non-ASCII characters it meant to
   strip. That broke `rc=$?` exit-code checks in the Linux and macOS patch
