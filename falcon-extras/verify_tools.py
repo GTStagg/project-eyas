@@ -160,7 +160,7 @@ def _lazy_impl_imports() -> list[str]:
     """Root module names imported *inside* server.py's tool bodies.
 
     Every tool wrapper delegates to a cluster module via a function-body
-    import (``from ir.provision_quarantine import diagnose_quarantine_setup
+    import (``from exclusions import list_ml_exclusions
     as _impl``). Those imports don't execute on ``import server`` — only when
     the tool fires — so a missing/flattened cluster package sails past the
     registration check above and only ModuleNotFoundErrors at runtime

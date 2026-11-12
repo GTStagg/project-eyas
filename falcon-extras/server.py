@@ -20,8 +20,8 @@ from typing import Any
 from mcp.server.fastmcp import FastMCP
 
 
-# All cluster-specific imports (FalconPy clients, shadow_ai catalog, patching
-# library, etc.) live in the per-cluster impl modules now. Each @mcp.tool()
+# All cluster-specific imports (FalconPy clients etc.) live in the per-cluster
+# impl modules now. Each @mcp.tool()
 # wrapper below pulls what it needs lazily inside the function body.
 
 LARGE_BATCH_THRESHOLD = 25
@@ -52,7 +52,7 @@ def about() -> str:
     """
     payload = {
         "name": "falcon-extras",
-        "purpose": "Eyas's remaining add-on tools (Shadow-AI, exclusions, data-protection setup) while they move into the console itself.",
+        "purpose": "Eyas's remaining add-on tools (exclusions, data-protection setup) while they move into the console itself.",
         "python": f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
         "falconpy": _pkg_version("crowdstrike-falconpy"),
         "mcp_sdk": _pkg_version("mcp"),
@@ -77,217 +77,6 @@ def about() -> str:
         "member_cid_set": bool(os.environ.get("FALCON_MEMBER_CID")),
     }
     return json.dumps(payload)
-
-
-@mcp.tool()
-def extras_diagnose_shadow_ai_banned_setup(host_group_id: str | None = None) -> dict[str, Any]:
-    """Read-only diagnostic for the Shadow-AI Banned setup state on this tenant.
-
-    Mirrors ``extras_diagnose_quarantine_setup``. Detects:
-
-      - ``no_group_id`` — no banned group configured.
-      - ``group_missing`` — configured group id doesn't exist.
-      - ``A_no_policy`` — group has no dedicated prevention policy attached.
-      - ``B_dedicated_single_group`` — group has a single-attachment policy.
-        Recommendation: adopt + standardize.
-      - ``C_shared_policy`` — group's policy is also attached to other groups.
-        Recommendation: create dedicated.
-      - ``ready`` — all platform policies are app-managed AND the
-        Shadow-AI Custom IOA rule group is attached.
-
-    Args:
-        host_group_id: Defaults to ``FALCON_SHADOW_AI_BANNED_GROUP_ID`` from
-            the active environment.
-    """
-    from shadow_ai.provision_banned import diagnose_shadow_ai_banned_setup as _impl
-    return _impl(host_group_id=host_group_id)
-
-
-@mcp.tool()
-def extras_create_shadow_ai_banned_host_group(
-    name: str = "Project Eyas - Shadow-AI Banned",
-    description: str | None = None,
-) -> dict[str, Any]:
-    """Create a new STATIC host group for Shadow-AI banning. WRITE — approval-gated.
-
-    Creates an empty host group with canonical naming. Returns
-    ``{ok, id, name, group_type}``. After creation, save the new id to
-    the active environment's ``shadowAiBannedGroupId`` field via
-    ``POST /api/environments/active/shadow-ai-banned-group``.
-
-    Args:
-        name: Group name (default: canonical "Project Eyas - Shadow-AI Banned").
-        description: Optional override for the group description.
-    """
-    from shadow_ai.provision_banned import create_shadow_ai_banned_host_group as _impl
-    return _impl(name=name, description=description)
-
-
-@mcp.tool()
-def extras_adopt_shadow_ai_banned_host_group(
-    name: str = "Project Eyas - Shadow-AI Banned",
-) -> dict[str, Any]:
-    """Adopt an EXISTING host group as the Shadow-AI banned group. WRITE —
-    approval-gated.
-
-    Looks up a host group by exact name and returns ``{ok, id, name,
-    group_type}``. The chat auto-save hook persists the returned ``id``
-    as the active environment's ``shadowAiBannedGroupId``. Use this when
-    the group already exists in the tenant (e.g. carried over from a
-    previous install) and Project Eyas just needs to know its id.
-
-    Returns ``ok: false`` if zero or more than one group matches the name.
-
-    Args:
-        name: Exact group name (default: canonical "Project Eyas - Shadow-AI Banned").
-    """
-    from shadow_ai.provision_banned import adopt_shadow_ai_banned_host_group as _impl
-    return _impl(name=name)
-
-
-@mcp.tool()
-def extras_provision_shadow_ai_banned_policy(
-    host_group_id: str,
-    mode: str = "adopt",
-) -> dict[str, Any]:
-    """Provision Shadow-AI Banned prevention policies for the named host group.
-    WRITE — approval-gated.
-
-    Per platform (Windows / macOS / Linux): create or adopt a prevention
-    policy bound to this group, push AGGRESSIVE sliders + enabled
-    toggles, set per-platform precedence above standard policies but
-    below IR Quarantine (so IR still wins when both apply).
-
-    The Shadow-AI Custom IOA rule group itself is created/refreshed via
-    a SEPARATE approval-gated tool — ``extras_shadow_ai_adopt_prevention``
-    — which this tool returns as ``follow_up_tool_calls[]`` (one per
-    provisioned policy). The operator runs each follow-up to attach the
-    rule group; that's where the actual rule corpus authoring happens.
-
-    Args:
-        host_group_id: The Shadow-AI Banned host group id.
-        mode: "adopt" (Cases A / B) or "create_dedicated" (Case C). Use
-            ``extras_diagnose_shadow_ai_banned_setup`` first to determine
-            which case applies.
-    """
-    from shadow_ai.provision_banned import provision_shadow_ai_banned_policy as _impl
-    return _impl(host_group_id=host_group_id, mode=mode)
-
-
-# ---------------------------------------------------------------------------
-# Host groups (read-only v1)
-# ---------------------------------------------------------------------------
-
-
-# ---------------------------------------------------------------------------
-# Fusion Workflows (read-only v1)
-# ---------------------------------------------------------------------------
-
-
-# ---------------------------------------------------------------------------
-# Identity Protection (scope pending on this tenant — staged build)
-# ---------------------------------------------------------------------------
-#
-# IMPORTANT: As of this build, the API client lacks Identity Protection
-# scope. All tools below will return scope_pending=true via the shared
-# _is_permission_error guard. The page is intentionally built so the agent
-# can render a clean "scope pending" decision document — when a key with
-# `Identity Protection Entities:read` (and friends) is applied, no code
-# changes are needed; the surface lights up automatically.
-
-
-# IDP GraphQL query for at-risk entities. Limited to 25 — IDP entity counts
-# can be in the millions on large tenants and the GraphQL API caps page sizes.
-
-
-# ---------------------------------------------------------------------------
-# Shadow-AI prevention bundle (Custom IOA rule group + policy attachment).
-#
-# Operator workflow:
-#   1. Operator creates a host group "AI-Banned" in Falcon Console
-#      (or via extras_create_host_group). Notes the id and exports it
-#      as FALCON_SHADOW_AI_BANNED_GROUP_ID.
-#   2. Operator creates / picks a Prevention Policy bound to that host
-#      group (Falcon Console → Prevention Policies). Notes the policy id.
-#   3. Operator runs `extras_shadow_ai_adopt_prevention(prevention_
-#      policy_id=..., comment=..., mode='detect')` once to seed the rule
-#      group in detect-only. Verifies in Falcon Console that the rules
-#      enumerate correctly.
-#   4. Flips to mode='block' (re-runs the same call). The adoption tool
-#      is idempotent: rule group is reused by name, only missing rules
-#      are added, the policy attachment short-circuits if already set.
-#   5. From `/shadow-ai`, the operator hits "Ban+Clean" on a flagged
-#      host. That moves the host into AI-Banned (host-group write,
-#      already gated) and fires the per-product uninstall scripts.
-#      Prevention rules start enforcing on next sensor heartbeat.
-#
-# The disposition_override / `mode` knob exists because shipping a
-# brand-new IOA rule group at disposition=block is operationally risky
-# on a fresh tenant — a malformed regex on a high-volume image (e.g.
-# `python.exe`) would block legitimate Python work fleetwide. The detect
-# pass surfaces every match in the detection feed first.
-# ---------------------------------------------------------------------------
-
-
-@mcp.tool()
-def extras_shadow_ai_prevention_status() -> dict[str, Any]:
-    """Report Shadow-AI prevention deployment state. READ-ONLY.
-
-    Returns the corpus the adoption tool would author, plus the live
-    state of the rule group (if it exists): id, enabled flag, rule
-    count, names of currently-installed rules vs missing rules. Does
-    NOT read prevention-policy bindings (separate API; cheap to add if
-    needed).
-    """
-    from shadow_ai.tools import shadow_ai_prevention_status as _impl
-    return _impl()
-
-
-@mcp.tool()
-def extras_shadow_ai_adopt_prevention(
-    prevention_policy_id: str,
-    comment: str,
-    mode: str = "block",
-    dry_run: bool = False,
-    platform: str = "windows",
-) -> dict[str, Any]:
-    """Author the Shadow-AI Custom IOA rule bundle and bind it to a
-    Prevention Policy. WRITE ACTION — requires explicit user approval.
-
-    Per-platform: Falcon Custom IOA rule groups are platform-scoped and
-    can't bind across platforms. Each platform has its own canonical
-    rule group + corpus:
-      - windows → 'Project Eyas - Shadow-AI Block'
-      - mac → 'Project Eyas - Shadow-AI Block (mac)'
-      - linux → 'Project Eyas - Shadow-AI Block (linux)'
-
-    The provisioning tool ``extras_provision_shadow_ai_banned_policy``
-    returns one ``follow_up_tool_calls[]`` entry per platform; pass the
-    matching ``platform`` here.
-
-    Idempotent + self-healing: looking up the per-platform rule group by
-    name reuses an existing one; missing corpus rules are created, and
-    every managed rule is CONVERGED to enabled=True + the chosen
-    disposition (Custom IOA rules are created disabled by Falcon, so this
-    is what actually turns enforcement on). Re-running with a different
-    `mode` re-dispositions the existing rules; a previously-broken
-    (disabled) ruleset is repaired in place. Each rule's live match
-    patterns are preserved.
-
-    Args:
-        prevention_policy_id: The Prevention Policy id to bind the rule
-            group to. Must be the same platform as the rule group.
-        comment: Required free-text reason. Recorded in Falcon Console's
-            change ledger for audit.
-        mode: 'block' (disposition 30, "Block Execution" — prevents the
-            process; the default) or 'detect' (disposition 20, detection
-            only).
-        dry_run: When true, returns the create/converge plan without writes.
-        platform: 'windows' / 'mac' / 'linux'. Default 'windows' for
-            backward compat.
-    """
-    from shadow_ai.tools import shadow_ai_adopt_prevention as _impl
-    return _impl(prevention_policy_id, comment, mode, dry_run, platform)
 
 
 # ---------------------------------------------------------------------------
@@ -536,26 +325,6 @@ def extras_create_data_protection_policy(
         enable_content_inspection, enable_context_inspection,
         enable_network_inspection, inspection_depth, min_confidence_level,
     )
-
-
-@mcp.tool()
-def extras_shadow_ai_check_prevention_binding() -> dict[str, Any]:
-    """Diagnose whether the Shadow-AI Custom IOA rule group is actually
-    enforcing on hosts moved into the AI-Banned host group. READ-ONLY.
-
-    Checks the chain operators routinely miss: env var → host group →
-    prevention policy attachment → IOA rule group binding → rule group
-    enabled. Returns ``ready`` only when every step checks out, and
-    ``missing_steps[]`` with operator-facing remediation pointers
-    otherwise. ``extras_shadow_ai_adopt_prevention`` only binds to ONE
-    prevention-policy id passed in by the operator and doesn't verify
-    that policy is the one actually attached to the AI-Banned host group;
-    this tool walks the live state and tells the operator exactly what
-    to fix in console (FalconPy doesn't expose policy↔host-group
-    attachment as a write — that's a console step).
-    """
-    from shadow_ai.tools import shadow_ai_check_prevention_binding as _impl
-    return _impl()
 
 
 if __name__ == "__main__":

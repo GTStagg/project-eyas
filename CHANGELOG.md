@@ -88,6 +88,16 @@
   time instead of one after another, with a longer time limit each, so a
   busy host is less likely to come back partial. The add-on's own CQL checker
   is gone; eyas-mcp checks every query. The add-on is down to 14 tools.
+- **Shadow-AI setup and prevention moved into Eyas.** The banned host group's
+  check, create and adopt, the prevention-policy provisioning, the rule-group
+  status, the enforcement-chain audit and the rule-bundle adoption now run in
+  the console on eyas-mcp, with the same rule corpus, cases and results. The
+  banned policy is now placed directly below the IR Quarantine policy without
+  rewriting the rest of the platform's order. Adoption enables and
+  re-dispositions rules in one call and leaves each rule's other fields as
+  they are in Falcon. A group created or adopted earlier in a chat turn is
+  seen straight away. The add-on is down to 7 tools (exclusions and Data
+  Protection creates).
 - Verdicts are now recorded as the `true_positive` / `false_positive` tag with
   `status='closed'` on the native detection update, the same tag the Falcon
   console writes.

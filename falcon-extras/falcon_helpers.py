@@ -1,8 +1,8 @@
 """Shared FalconPy plumbing — service-class builders + response guards +
 cross-cutting constants used by every sidecar tool.
 
-Lifted out of ``server.py`` so per-feature modules under ``ir/``,
-``shadow_ai/``, etc. can build FalconPy clients and inspect responses
+Lifted out of ``server.py`` so the feature modules (``exclusions.py``,
+``data_protection.py``) can build FalconPy clients and inspect responses
 without circling back through the MCP server module. Anything that's
 both (a) tool-feature-agnostic and (b) FalconPy-bound belongs here.
 """
@@ -10,20 +10,14 @@ both (a) tool-feature-agnostic and (b) FalconPy-bound belongs here.
 from __future__ import annotations
 
 import os
-import re
 import sys
 import traceback
 from typing import Any
 
 from falconpy import (
-    Alerts,
     DataProtectionConfiguration,
-    HostGroup,
-    Hosts,
     IOAExclusions,
     MLExclusions,
-    NGSIEM,
-    PreventionPolicy,
 )
 
 
@@ -55,100 +49,12 @@ def _falcon_kwargs() -> dict[str, Any]:
     return kwargs
 
 
-# ---------------------------------------------------------------------------
-# Per-tenant host-group id resolution (override-aware).
-#
-# The sidecar receives the configured IR-quarantine / Shadow-AI-banned host
-# group ids as SPAWN-TIME env vars (FALCON_QUARANTINE_GROUP_ID /
-# FALCON_SHADOW_AI_BANNED_GROUP_ID). The parent runs ONE sidecar per chat turn
-# (lib/chat/stream-agent.ts wraps the whole turn in a single
-# withFalconExtrasClient), so os.environ is frozen for the process lifetime.
-#
-# When the agent CREATES or ADOPTS a group mid-turn, the Next.js side persists
-# the new id to the DB — but this already-running sidecar keeps its stale
-# (empty) env. A same-turn diagnose / provision / playbook call that resolved
-# the id purely from os.environ would then wrongly report the group as
-# unconfigured. That is the exact foot-gun that made adopt -> re-diagnose
-# return no_group_id and sent operators to paste ids into /config by hand.
-#
-# Fix: create/adopt record the resolved id in a process-local override here;
-# every env fallback resolves through resolve_group_id(), which prefers an
-# explicit arg, then the same-process override, then the spawn-time env. The
-# override lives only for this sidecar's lifetime — the next turn spawns a
-# fresh process whose env already carries the now-persisted id.
-# ---------------------------------------------------------------------------
-
-GROUP_KIND_ENV_VARS: dict[str, str] = {
-    "quarantine": "FALCON_QUARANTINE_GROUP_ID",
-    "shadow_ai_banned": "FALCON_SHADOW_AI_BANNED_GROUP_ID",
-}
-
-_RUNTIME_GROUP_OVERRIDES: dict[str, str] = {}
-
-
-def set_runtime_group_id(kind: str, group_id: str | None) -> None:
-    """Record a host-group id created/adopted earlier in THIS sidecar process
-    so sibling tools in the same turn resolve it without waiting for the next
-    spawn. No-op on empty/blank ids. Raises on an unknown ``kind`` (programmer
-    error, not runtime input)."""
-    if kind not in GROUP_KIND_ENV_VARS:
-        raise ValueError(f"unknown group kind {kind!r}")
-    if isinstance(group_id, str) and group_id.strip():
-        _RUNTIME_GROUP_OVERRIDES[kind] = group_id.strip()
-
-
-def resolve_group_id(kind: str, explicit: str | None = None) -> str | None:
-    """Resolve a per-tenant host-group id with precedence:
-    explicit arg > same-process runtime override > spawn-time env var.
-    Returns None when none is set."""
-    if kind not in GROUP_KIND_ENV_VARS:
-        raise ValueError(f"unknown group kind {kind!r}")
-    if isinstance(explicit, str) and explicit.strip():
-        return explicit.strip()
-    override = _RUNTIME_GROUP_OVERRIDES.get(kind)
-    if override:
-        return override
-    env = (os.environ.get(GROUP_KIND_ENV_VARS[kind]) or "").strip()
-    return env or None
-
-
-def _get_client() -> Hosts:
-    return Hosts(**_falcon_kwargs())
-
-
-def _get_host_group_client(timeout: int | None = None) -> HostGroup:
-    # `timeout` bounds a single hung request (passed straight to requests).
-    # host_group_membership_for_device fans out one probe per group across a
-    # thread pool and needs a straggler bound so one stuck connection can't
-    # hold a worker until the MCP transport kills the whole call. Default None
-    # preserves the unbounded behavior every other caller relies on.
-    if timeout is not None:
-        return HostGroup(timeout=timeout, **_falcon_kwargs())
-    return HostGroup(**_falcon_kwargs())
-
-
-def _get_alerts_client() -> Alerts:
-    return Alerts(**_falcon_kwargs())
-
-
-
-
-
-
 def _get_ml_exclusions_client() -> MLExclusions:
     return MLExclusions(**_falcon_kwargs())
 
 
 def _get_ioa_exclusions_client() -> IOAExclusions:
     return IOAExclusions(**_falcon_kwargs())
-
-
-def _get_prevention_client() -> PreventionPolicy:
-    return PreventionPolicy(**_falcon_kwargs())
-
-
-def _get_ngsiem_client() -> NGSIEM:
-    return NGSIEM(**_falcon_kwargs())
 
 
 def _get_data_protection_client() -> DataProtectionConfiguration:
@@ -173,25 +79,6 @@ def swallow_exc(exc: BaseException) -> dict[str, Any]:
     print(f"[sidecar:swallowed-exc] {type(exc).__name__}: {exc}", file=sys.stderr)
     traceback.print_exception(type(exc), exc, exc.__traceback__, file=sys.stderr)
     return {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
-
-
-_AID_RX = re.compile(r"\A[0-9a-fA-F]{32}\Z")
-
-
-def reject_unsafe_device_id(device_id: Any) -> dict[str, Any] | None:
-    """Guard a device_id before it is interpolated into a single-quoted FQL
-    literal (``device.device_id:'<id>'``). A Falcon Agent ID is always 32 hex
-    characters; anything else — in particular a value containing ``'`` or ``\\``
-    — is a typo or an FQL-injection attempt. Reject-don't-escape, same posture
-    as eyas-mcp's identity tools (strict user-name charset, AID as 32 hex). The IR
-    campaign-scope walker is reachable by the agent, so this is the sidecar-side
-    defense-in-depth behind the route's IR_PRIMER_RX hex capture.
-
-    Returns an error dict for the caller to return verbatim, or None when safe.
-    """
-    if not isinstance(device_id, str) or not _AID_RX.match(device_id):
-        return {"ok": False, "error": "device_id must be a 32-character hex Agent ID"}
-    return None
 
 
 def _scope_denied_payload(exc_or_status: Any, surface: str) -> dict[str, Any]:
