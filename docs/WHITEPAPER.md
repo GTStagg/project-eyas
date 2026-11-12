@@ -2,7 +2,7 @@
 
 **Unofficial**
 
-Eyas is an agentic web console for CrowdStrike Falcon, built on `eyas-mcp` (an independent Falcon MCP server derived from CrowdStrike's MIT-licensed `falcon-mcp`), the [FalconPy](https://falconpy.io) Python SDK, and the Anthropic Claude API. The name *eyas* is the falconry term for a young falcon being trained — Eyas is raised on the same craft as Falcon but is distinctly its own thing. Not a CrowdStrike product. Intended audiences: SOC analysts, IR analysts, and Falcon administrators evaluating an agent layer for their own tenant; CrowdStrike Sales Engineers using the codebase as a working reference for MCP server + FalconPy + Claude integration.
+Eyas is an agentic web console for CrowdStrike Falcon, built on `eyas-mcp` (an independent Falcon MCP server derived from CrowdStrike's MIT-licensed `falcon-mcp` and built on the [FalconPy](https://falconpy.io) Python SDK) and the Anthropic Claude API. The name *eyas* is the falconry term for a young falcon being trained — Eyas is raised on the same craft as Falcon but is distinctly its own thing. Not a CrowdStrike product. Intended audiences: SOC analysts, IR analysts, and Falcon administrators evaluating an agent layer for their own tenant; CrowdStrike Sales Engineers using the codebase as a working reference for MCP server + Claude integration.
 
 ---
 
@@ -12,7 +12,7 @@ The Falcon console is a comprehensive but click-driven UI. Common security workf
 
 Anthropic's Model Context Protocol (MCP) and an MCP server for Falcon (`eyas-mcp`) expose Falcon's API surface as a typed tool catalog that an LLM can drive directly. **Eyas** is a self-hosted Next.js application that wraps that catalog with a chat surface, deterministic dashboards, and curated agentic decision surfaces — turning natural-language prompts into auditable, gated tool calls against the operator's own tenant.
 
-This is an **unofficial reference implementation**, not a production replacement for the Falcon console. Quality is measured by useful, novel cross-module workflows surfaced — not by feature parity. The codebase doubles as a worked example for teams building their own agent layer on top of an MCP server + FalconPy.
+This is an **unofficial reference implementation**, not a production replacement for the Falcon console. Quality is measured by useful, novel cross-module workflows surfaced — not by feature parity. The codebase doubles as a worked example for teams building their own agent layer on top of an MCP server.
 
 ---
 
@@ -26,7 +26,7 @@ Single-operator security work, primarily:
 - **Threat-actor exposure.** `/intel` walks 90 days of detections and runs deterministic three-path attribution server-side: (1) Falcon-native `adversary_ids` resolved against the Intel actor catalog — ground truth, same signal the Console uses; (2) extracted hashes / domains / IPs joined against Falcon Intel indicators (corroboration); (3) detection-text alias matching against a curated CrowdStrike actor map — heuristic. Provenance rendered per evidence row so the operator can tell ground truth from heuristic. Agent only synthesizes; no per-detection LLM fan-out. Surfaces only actors with tenant evidence — no flat global catalog.
 - **Adversary-intel exposure.** `/recon` checks domain or email against the Falcon Adversary Intelligence Recon corpus — criminal marketplaces, dark-web forums, paste sites, Telegram, social media — via the Recon `preview_rule` data-lake search path.
 - **Hash lineage.** `/malquery` fans out MalQuery metadata + Falcon Intel + tenant detections across up to 25 hashes per run.
-- **Vulnerability posture and patching.** `/vulnerabilities` is a posture surface — three-card hero strip (Drop everything / ExPRT Critical / Actively exploited = CISA KEV count), per-row KEV + exploit-status chips, ExPRT-led grouping. The patching loop closes: the curated RTR script catalog (`falcon-extras/patching/`) covers Chrome, Firefox, Office Click-to-Run, 7-Zip, JRE removal, Windows Update via the WUA COM API, distro-agnostic Linux apt/dnf/yum, and macOS PKG installs. Plan → execute (dry-run, then live) → verify. Eyas renders each script from its library; `eyas-mcp` uploads, runs and deletes it.
+- **Vulnerability posture and patching.** `/vulnerabilities` is a posture surface — three-card hero strip (Drop everything / ExPRT Critical / Actively exploited = CISA KEV count), per-row KEV + exploit-status chips, ExPRT-led grouping. The patching loop closes: the curated RTR script catalog (`lib/eyas-tools/rtr/patching/`) covers Chrome, Firefox, Office Click-to-Run, 7-Zip, JRE removal, Windows Update via the WUA COM API, distro-agnostic Linux apt/dnf/yum, and macOS PKG installs. Plan → execute (dry-run, then live) → verify. Eyas renders each script from its library; `eyas-mcp` uploads, runs and deletes it.
 - **Agentic incident response.** Five-phase chat-resident workflow (Discovery → Quarantine → Remediation → Verification → Release/Hold) gated by per-tool approval. Phase 0 enrichment surfaces process-tree ancestry + delivery-vector verdict (`phishing_doc`, `c2_agent`, `lateral_winrm`, etc.), cmdline artifacts, registry persistence, and a thorough RAT-install scan. Cleanup catalog covers 14 primitives (kill-process, delete-file, quarantine-file, IFEO removal, AnyDesk uninstall, etc.) — all rendered server-side from a manifest schema; the agent supplies validated params, never script bytes. Before cleanup the workflow waits until a probe script actually runs on the quarantined host; at release it closes only what remediation matched and asks the operator before closing original detections it never touched.
 - **Operational autonomy.** Manifest-driven recurring jobs (patch digest, daily briefing, an eyas-mcp update check) deliver agentic markdown reports to a webhook on a configurable cadence.
 - **Write actions** (IOC, firewall rule groups, custom IOA, scheduled report launch, host containment, host group membership, Fusion workflow execute, RTR patching + cleanup, detection verdict transitions) — gated behind an explicit per-call approval card with a 5-minute timeout.
@@ -45,6 +45,7 @@ Single-operator security work, primarily:
 │  - Chat surface, dashboards, agentic surfaces             │
 │  - app/api/chat: streaming agent loop                     │
 │  - lib/mcp/: in-process MCP client + tool bridge          │
+│  - lib/eyas-tools/: Eyas's own tools (in-process)         │
 │  - lib/chat/: agent loop, write-tool approval gating      │
 │  - lib/scheduler/: manifest-driven recurring jobs         │
 │  - lib/queue/: ranking + campaign clustering + tuning     │
@@ -55,17 +56,6 @@ Single-operator security work, primarily:
 │ Claude Sonnet 4.6      │   │ HTTP :8000 / stdio child    │
 └────────────────────────┘   │ → CrowdStrike Falcon API    │
                              └─────────────────────────────┘
-                                         ▲
-                                         │ optional, opt-in
-                             ┌───────────┴─────────────────┐
-                             │ falcon-extras (stdio child) │
-                             │ Python + FalconPy           │
-                             │ containment, patching, IR,  │
-                             │ RTR introspection, Recon,   │
-                             │ MalQuery, Workflows, IDP,   │
-                             │ Threat Graph, NGSIEM ops,   │
-                             │ Prevention Policy posture   │
-                             └─────────────────────────────┘
 ```
 
 The defining design choice is an **in-process MCP client** (`@modelcontextprotocol/sdk`) running inside the Next.js server, paired with a **manual Anthropic tool-use loop**. Anthropic's hosted MCP connector was rejected for a security-admin tool because:
@@ -75,9 +65,9 @@ The defining design choice is an **in-process MCP client** (`@modelcontextprotoc
 - **Approval gating.** With the in-process loop, the confirm step is a single `if` between `tool_use` and execution — no equivalent hook on the connector path.
 - **Audit logging.** Every Falcon API call the agent makes is a function call we own, logged with per-tool duration into the chat trace.
 
-Trade-off: an agent loop we maintain ourselves in `lib/chat/agent-loop.ts`. The optional `falcon-extras/` Python sidecar demonstrates the architecture's other half — additional MCP servers plug into the same loop with no protocol-level differences. It uses [FalconPy](https://falconpy.io) to fill capability gaps the MCP server does not cover (host containment, RTR patching, agentic IR cleanup catalog, RTR introspection, Recon, MalQuery, Host Groups membership write, Workflows execute, Identity Protection, Threat Graph, NGSIEM operational endpoints, Prevention Policy posture, process-tree reconstruction, RAT-install scan).
+Trade-off: an agent loop we maintain ourselves in `lib/chat/agent-loop.ts`. Eyas's own tools (`lib/eyas-tools/`) run in-process beside the MCP client and are merged into the same tool list: the RTR patching and agentic IR cleanup script library, the IR and Shadow-AI playbooks, host-group membership writes, tenant provisioning, process-tree reconstruction and the RAT-install scan. They make no Falcon API calls of their own — every call goes through `eyas-mcp`'s native tools. (These capabilities were first built in a FalconPy sidecar; the generic ones — host containment, RTR introspection, Recon, MalQuery, Workflows, Identity Protection, Threat Graph, NGSIEM, Prevention Policy posture — have since moved into `eyas-mcp`, and the sidecar is gone.)
 
-A shared `_check_response(resp, surface)` guard sits between every wrapped FalconPy call and `body.resources` — it recognizes scope-pending 401/403 envelopes and returns a clean "scope pending" payload (the **staged-build pattern**: surfaces ship before scope is granted and light up automatically when applied), and surfaces non-2xx upstream errors instead of silently masking them as `count: 0`.
+A shared scope check (`lib/mcp/parse.ts::isScopeDenied`) recognizes eyas-mcp's structured 401/403 errors, and Eyas's tools return a clean "scope pending" payload (the **staged-build pattern**: surfaces ship before scope is granted and light up automatically when applied). Falcon API errors wrapped in a successful MCP result are surfaced as errors instead of silently masking them as `count: 0`.
 
 ---
 
@@ -85,7 +75,7 @@ A shared `_check_response(resp, surface)` guard sits between every wrapped Falco
 
 Two supported paths, both driven by the same code. Full guides:
 
-- **Docker / Linux server** — [`DEPLOYMENT.md`](./DEPLOYMENT.md). Compose builds and launches the Next.js app + `eyas-mcp` on a private bridge network; only `127.0.0.1:3000` is published to the host. The Dockerfile is a multi-stage build: a Node stage compiles the Next.js standalone output, a Python 3.12 alpine stage builds the FalconPy venv, and the runner image carries both — so `falcon-extras` is bundled by default. A reverse proxy terminates TLS and forwards real client IPs (used by per-client login throttling when `EYAS_TRUST_PROXY=true`).
+- **Docker / Linux server** — [`DEPLOYMENT.md`](./DEPLOYMENT.md). Compose builds and launches the Next.js app + `eyas-mcp` on a private bridge network; only `127.0.0.1:3000` is published to the host. The Dockerfile is a multi-stage build: a Node stage compiles the Next.js standalone output and the runner image is Node only — Eyas's own tools run in-process, and `eyas-mcp` runs in its own container. A reverse proxy terminates TLS and forwards real client IPs (used by per-client login throttling when `EYAS_TRUST_PROXY=true`).
 - **Standalone macOS** (no Docker) — [`STANDALONE.md`](./STANDALONE.md). Distributed as a zip from `./make-dist.sh`; `start.sh` spawns `eyas-mcp` as a stdio child rather than over HTTP. First launch lands at a `/register` wizard that collects integration credentials and writes them to `data/eyas.db` (mode 0600) — no `.env` editing required.
 
 Quickstart for either path: [`QUICKSTART.md`](../QUICKSTART.md).
@@ -139,7 +129,7 @@ When `SCHEDULER_ENABLED=true` and `OUTBOUND_WEBHOOK_URL` is configured, the `SCH
 
 - **Single-user only.** No multi-tenant or team-collaboration model.
 - **Sticky chat session.** `localStorage` + in-memory server map survives reloads — operators should reset between unrelated scenarios so referents from earlier turns don't leak into write-tool prompts. The approval gate still catches it.
-- **Build reproducibility.** The MCP server is pinned by git commit in `versions.json` and the sidecar's Python dependencies are hash-locked; every bundle is built offline-installable from those pins.
+- **Build reproducibility.** The MCP server is pinned by git commit in `versions.json`; every bundle is built offline-installable from that pin.
 - **Scope-shaped coverage.** Surfaces light up only when the API client has the corresponding scope. The staged-build pattern (`/identity`, `/prevention`, CAO Hunting) renders cleanly until scope lands; no code change required when granted.
 - **Sidebar capability-gating** hides surfaces whose backing scope isn't granted; the agent's tool surface follows the same gate — tools whose scope isn't granted return a structured scope-pending payload rather than a 403 trace. `FALCON_MCP_MODULES` remains as an `.env`-only escape hatch for narrowing the tool surface further.
 

@@ -62,11 +62,10 @@ function buildPrompt(): string {
 }
 
 export async function POST() {
-  return streamAgent(async ({ mcp, extras, emit, signal }) => {
+  return streamAgent(async ({ mcp, emit, signal }) => {
     await runAgentLoop({
       signal,
       mcp,
-      extrasMcp: extras,
       systemPrompt: buildPrompt(),
       initialMessages: [
         { role: "user", content: "Render the Fusion SOAR posture report." },

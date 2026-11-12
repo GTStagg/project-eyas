@@ -39,7 +39,7 @@ data to a language model. These are the destinations:
 
 | Destination | What is sent | When |
 |---|---|---|
-| CrowdStrike Falcon API (your region's `api.*.crowdstrike.com`) | API calls with your Falcon API client credentials | Every dashboard and tool call. The MCP server and the FalconPy sidecar run on the Eyas host (as child processes, or as containers on a private Docker network) and call the Falcon API directly. |
+| CrowdStrike Falcon API (your region's `api.*.crowdstrike.com`) | API calls with your Falcon API client credentials | Every dashboard and tool call. The MCP server runs on the Eyas host (as a child process, or as a container on a private Docker network) and calls the Falcon API directly. Eyas's own tools make their Falcon calls through it. |
 | Anthropic API, or the gateway you configure | Your prompts, the conversation so far, and **the results of every tool the agent calls**, including Falcon detections, host details, vulnerabilities and similar records, plus knowledge-base passages retrieved for the turn | Chat, agentic panels, triage, reports and scheduled reports. Deterministic dashboards that don't involve the agent send nothing to the model. |
 | CrowdStrike AIDR (optional, per environment) | The text of each chat prompt and each assistant reply | Only when AIDR is configured for the active environment |
 | Webhook URLs you configure (optional) | Generated reports and briefings | When you send a report, or when a scheduled job you've enabled delivers one |
@@ -71,14 +71,15 @@ Two fail-closed backstops cover tools missing from the registry:
 
 - **Native tools** that advertise `readOnlyHint: false` are gated, and the
   drift is logged.
-- **Sidecar tools** (`extras_*`) carry no annotations. Each one must be listed
-  either in `REQUIRES_APPROVAL` or in `EXTRAS_READ_ONLY`, the reviewed
-  read-only list. A sidecar tool in neither list is gated as a possible write.
-  `npm run test:tool-classification` fails CI if any registered sidecar tool
+- **Eyas's own tools** (`extras_*`, served in-process from `lib/eyas-tools/`)
+  carry no annotations. Each one must be listed either in `REQUIRES_APPROVAL`
+  or in `EXTRAS_READ_ONLY`, the reviewed read-only list. An Eyas tool in
+  neither list is gated as a possible write.
+  `npm run test:tool-classification` fails CI if any registered Eyas tool
   is unclassified.
 
 Sub-agents have no approval path. They never see gated tools, native writes
-flagged by annotation, or unclassified sidecar tools.
+flagged by annotation, or unclassified Eyas tools.
 
 ## Request and process isolation
 
@@ -94,8 +95,8 @@ flagged by annotation, or unclassified sidecar tools.
 - **Login throttling:** after five failures, each attempt waits 30 s,
   doubling to a 15-minute cap. See `docs/DEPLOYMENT.md` for
   `EYAS_TRUST_PROXY`.
-- **Child processes:** eyas-mcp and the FalconPy sidecar receive only the
-  active environment's Falcon credentials and settings. They never receive
+- **Child processes:** eyas-mcp receives only the
+  active environment's Falcon credentials and settings. It never receives
   `AUTH_SESSION_SECRET`, Anthropic or AIDR credentials, `SCHEDULER_TOKEN`,
   `GITHUB_TOKEN` or the webhook URL (`lib/config/spawn-env.ts`).
 - **Anthropic base URL:** must be https (http only for localhost), carry no
@@ -229,7 +230,7 @@ cannot leak into a later resume.
 - `/api/healthz` — public, no upstream calls. Suitable for orchestrator
   health probes and uptime monitors.
 - `/api/health` — authenticated. Returns the full diagnostics (Anthropic
-  probe, Falcon MCP probe, sidecar probe). `?force=1` triggers a fresh
+  probe, Falcon MCP probe, auth and AIDR probes). `?force=1` triggers a fresh
   fanout and is gated behind the same auth requirement.
 
 ## Dependency triage
@@ -242,8 +243,8 @@ npm audit --omit=dev     # production dependencies
 npm audit                # including dev tooling
 ```
 
-Python sidecar dependencies (`falcon-extras/requirements.txt`) were resolved
-into a fresh environment and checked against the OSV database on the same date.
+Eyas itself has no Python dependencies. The Python packages in a bundle are
+eyas-mcp's own, pinned with it in `versions.json`.
 
 ### Current state
 
@@ -251,8 +252,6 @@ into a fresh environment and checked against the OSV database on the same date.
 - **npm, dev-only:** `npm audit` reports **0 vulnerabilities**. The last
   dev-only advisory (esbuild GHSA-67mh-4wv8-2f99, through `drizzle-kit`) was
   cleared by removing `drizzle-kit`; migrations are hand-written SQL.
-- **Python:** the 34 packages resolved from `falcon-extras/requirements.txt`
-  have no known advisories.
 
 ### Changes made in this review
 
@@ -276,9 +275,9 @@ into a fresh environment and checked against the OSV database on the same date.
   (`overrides.next.postcss` in `package.json`). That clears the PostCSS
   source-map and stringify advisories without a Next.js major upgrade. The
   production build was verified with the override.
-- **`mcp` (Python sidecar) 1.27.0 → 1.30.0.** The sidecar speaks MCP over
-  stdio only, so the HTTP and WebSocket transport advisories against 1.27.0
-  weren't reachable.
+- **`mcp` (Python sidecar, since removed) 1.27.0 → 1.30.0.** The sidecar spoke
+  MCP over stdio only, so the HTTP and WebSocket transport advisories against
+  1.27.0 weren't reachable.
 
 New versions are chosen from releases at least two weeks old, to limit exposure
 to compromised fresh publishes. The four vendored tarballs in

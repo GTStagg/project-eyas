@@ -2,7 +2,7 @@
 
 Bring up **Eyas** — the agentic console for CrowdStrike Falcon — from source.
 
-- **Local dev server** (start here) — compile and run from a checkout, with hot reload. The app spawns the MCP server ([`eyas-mcp`](https://github.com/GTStagg/eyas-mcp)) and the `falcon-extras` Python sidecar itself, so there is nothing else to run.
+- **Local dev server** (start here) — compile and run from a checkout, with hot reload. The app spawns the MCP server ([`eyas-mcp`](https://github.com/GTStagg/eyas-mcp)) itself and runs Eyas's own tools in-process, so there is nothing else to run.
 - **Standalone macOS bundle** — once the dev server works, `./make-dist.sh` packages it for a Mac that has no developer tooling. See [`docs/STANDALONE.md`](./docs/STANDALONE.md).
 - **Docker Compose** — builds the app and `eyas-mcp` from source; see [step 8](#8-docker).
 
@@ -12,8 +12,7 @@ Bring up **Eyas** — the agentic console for CrowdStrike Falcon — from source
 
 - **macOS or Linux**, with **git**.
 - **Node 22+** (22, 24 and 26 are supported).
-- **Python 3.11+** (3.12 recommended) with a working `python3 -m venv`.
-- **[uv](https://docs.astral.sh/uv/)** — `brew install uv` (or `curl -LsSf https://astral.sh/uv/install.sh | sh`). The dev server uses `uvx` to build and run `eyas-mcp` at the commit pinned in `versions.json`.
+- **[uv](https://docs.astral.sh/uv/)** — `brew install uv` (or `curl -LsSf https://astral.sh/uv/install.sh | sh`). The dev server uses `uvx` to build and run `eyas-mcp` at the commit pinned in `versions.json`; uv provisions the Python it needs, so Eyas has no Python setup of its own.
 - **Network access to GitHub.** The MCP server ([`GTStagg/eyas-mcp`](https://github.com/GTStagg/eyas-mcp)) is fetched over HTTPS at the commit pinned in `versions.json`.
 - A **CrowdStrike Falcon API client** — see step 1.
 - An **Anthropic API key** from [console.anthropic.com](https://console.anthropic.com/), or an Anthropic-compatible gateway URL + token.
@@ -49,8 +48,6 @@ cd project-eyas
 
 ```bash
 npm ci
-python3 -m venv falcon-extras/.venv
-falcon-extras/.venv/bin/pip install -r falcon-extras/requirements.txt
 ```
 
 
@@ -83,11 +80,11 @@ The first Falcon call builds `eyas-mcp` from the pinned commit (about 30 seconds
 
 ## 5. First-run smoke test
 
-1. Open **/status** — the **Anthropic**, **CrowdStrike Falcon** and **Falcon operations add-on** rows should be green; *Live versions* shows the resolved MCP server version.
+1. Open **/status** — the **Anthropic** and **CrowdStrike Falcon** rows should be green; *Live versions* shows the resolved MCP server version.
 2. In chat, paste:
    > List the names of every tool you have available. One per line. Do not call any tool.
 
-   The trace shows a `ready` event with a `tool_count` in the mid-200s (the MCP server's tools plus the sidecar's 56, minus some the console hides), then the list.
+   The trace shows a `ready` event with a `tool_count` in the mid-200s (the MCP server's tools plus Eyas's own, minus some the console hides), then the list.
 3. Try a real query:
    > Show me the last 5 critical detections.
 
@@ -95,9 +92,9 @@ The first Falcon call builds `eyas-mcp` from the pinned commit (about 30 seconds
 
 ---
 
-## 6. The `falcon-extras` sidecar
+## 6. Eyas's own tools
 
-Always on. It holds Eyas's own content on top of the MCP server — the agentic patching and IR cleanup script library, the IR and Shadow-AI playbooks, process-tree delivery-vector classification, RAT-install scan, identity IR, tenant provisioning, host-group writes and Fusion workflow execute — and wraps some writes with safer defaults. Where a Falcon call itself belongs to `eyas-mcp` (running a rendered script, closing a host's detections), the sidecar validates and Eyas runs the call on `eyas-mcp`. The venv from step 2 is all it needs in dev; the standalone bundle builds it on first launch from bundled wheels.
+Eyas's own content on top of the MCP server runs in-process inside the app (`lib/eyas-tools/`) — the agentic patching and IR cleanup script library, the IR and Shadow-AI playbooks, process-tree delivery-vector classification, RAT-install scan, identity IR, tenant provisioning and host-group writes — and wraps some writes with safer defaults. Every Falcon call these tools make (running a rendered script, closing a host's detections) goes through `eyas-mcp`. Nothing extra to install.
 
 Write actions (containment, host-group changes, workflow execute, …) need the matching write scopes and always stop for your approval in the UI.
 
@@ -137,7 +134,5 @@ The app is published on `127.0.0.1:3000` only. Register from that address; see [
 1. Wait 60s and retry — the prompt cache will hit and the next call is far cheaper.
 2. Switch to a Haiku model on `/config` (Anthropic card → Model).
 3. Add credits in the Anthropic console to raise your tier.
-
-**The operations add-on row is red** — the sidecar venv is missing or broken; re-run the two `falcon-extras/.venv` lines from step 2.
 
 **Chat returns `sessionId required`** — the UI sets this automatically; you only see it when calling the API directly with `curl`. Add `"sessionId":"smoketest"` to the JSON body.

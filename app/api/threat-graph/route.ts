@@ -169,11 +169,10 @@ export async function POST(request: Request) {
     indicatorType = classified.type;
   }
 
-  return streamAgent(async ({ mcp, extras, emit, signal }) => {
+  return streamAgent(async ({ mcp, emit, signal }) => {
     await runAgentLoop({
       signal,
       mcp,
-      extrasMcp: extras,
       systemPrompt: buildPrompt(indicator, indicatorType),
       initialMessages: [
         {

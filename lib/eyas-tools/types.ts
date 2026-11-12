@@ -1,11 +1,10 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import type { CallNative } from "@/lib/mcp/native-dispatch";
 
-// Eyas's own agent tools, served in-process by the tool bridge instead of the
-// falcon-extras sidecar. They keep their `extras_*` names so IR records,
-// approval cards, tool summaries and primers keep working while the sidecar is
-// retired one family at a time. Any Falcon call a tool makes goes through
-// eyas-mcp's native tools via `ctx.callNative`.
+// Eyas's own agent tools, served in-process by the tool bridge. They keep the
+// `extras_*` names they had in the retired falcon-extras sidecar, so IR
+// records, approval cards, tool summaries and primers keep working. Any Falcon
+// call a tool makes goes through eyas-mcp's native tools via `ctx.callNative`.
 //
 // Every tool must be classified exactly once: in REQUIRES_APPROVAL (writes) or
 // EXTRAS_READ_ONLY (reads), both in lib/mcp/write-tools.ts. The bridge gates

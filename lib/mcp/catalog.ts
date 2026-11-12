@@ -1,7 +1,6 @@
 import "server-only";
 import type Anthropic from "@anthropic-ai/sdk";
 import { withFalconMcpClient } from "@/lib/mcp/falcon-client";
-import { withFalconExtrasClient } from "@/lib/mcp/falcon-extras-client";
 import { buildToolBridge, NATIVE_WRITE_SUPPRESS } from "@/lib/mcp/tool-bridge";
 import { requiresApproval } from "@/lib/mcp/write-tools";
 
@@ -10,7 +9,7 @@ import { requiresApproval } from "@/lib/mcp/write-tools";
 // post-suppression set the chat agent sees — no second copy of the suppression
 // rules. Tenant-independent: falcon-mcp loads every module's tools regardless of
 // granted scope (scope only gates call-time success), so this is a function of
-// the configured falcon-mcp version + sidecar, not the active environment.
+// the configured eyas-mcp version + Eyas's own tools, not the active environment.
 
 export type CatalogTool = {
   name: string;
@@ -45,7 +44,7 @@ export type ToolCatalog = {
   counts: ToolCatalogCounts;
   resources: CatalogResource[];
   /** The native falcon-mcp writes suppressed at the bridge (routed to richer
-   *  FalconPy twins). Surfaced for the "why are some native writes not shown?"
+   *  Eyas twins). Surfaced for the "why are some native writes not shown?"
    *  disclosure — kept single-source with the bridge via the shared export. */
   suppressedNativeWrites: string[];
   /** Native writes advertised via annotation (readOnlyHint:false) that are NOT
@@ -56,8 +55,8 @@ export type ToolCatalog = {
   builtAt: number;
 };
 
-// Sidecar tools are uniformly named `extras_*`; everything else (including the
-// synthetic `falcon_read_resource`) is served by the upstream falcon-mcp client.
+// Eyas's own tools are uniformly named `extras_*` (served in-process);
+// everything else (including the synthetic `falcon_read_resource`) is eyas-mcp.
 function classifyProvider(name: string): CatalogTool["provider"] {
   return name.startsWith("extras_") ? "extension" : "eyas-mcp";
 }
@@ -70,9 +69,7 @@ function paramNamesOf(schema: Anthropic.Tool["input_schema"]): string[] {
 async function buildCatalog(): Promise<ToolCatalog> {
   const suppressedNativeWrites = [...NATIVE_WRITE_SUPPRESS].sort();
   try {
-    const bridge = await withFalconMcpClient((client) =>
-      withFalconExtrasClient((extras) => buildToolBridge(client, extras)),
-    );
+    const bridge = await withFalconMcpClient((client) => buildToolBridge(client));
 
     const tools: CatalogTool[] = bridge.anthropicTools.map((t) => ({
       name: t.name,
@@ -80,7 +77,7 @@ async function buildCatalog(): Promise<ToolCatalog> {
       provider: classifyProvider(t.name),
       gated: requiresApproval(t.name),
       annotatedWrite:
-        bridge.annotatedNativeWrites.has(t.name) || bridge.unclassifiedSidecarTools.has(t.name),
+        bridge.annotatedNativeWrites.has(t.name) || bridge.unclassifiedEyasTools.has(t.name),
       paramNames: paramNamesOf(t.input_schema),
       schema: t.input_schema,
     }));
@@ -129,9 +126,9 @@ async function buildCatalog(): Promise<ToolCatalog> {
   }
 }
 
-// Building the catalog spawns two MCP processes (uvx falcon-mcp + Python
-// sidecar) — the same cost as a health probe — and the result only changes on a
-// falcon-mcp version bump or a scope grant. Cache it process-wide with an
+// Building the catalog spawns the eyas-mcp process — the same cost as a health
+// probe — and the result only changes on an eyas-mcp version bump or a scope
+// grant. Cache it process-wide with an
 // in-flight de-dup, pinned to globalThis so Next.js dev's per-route re-import
 // doesn't reset it. Mirrors lib/health.ts::getHealthReport.
 const CATALOG_TTL_MS = 5 * 60_000;
@@ -154,11 +151,10 @@ export async function getToolCatalog(opts?: { force?: boolean }): Promise<ToolCa
   if (catalogState.inflight) return catalogState.inflight;
   catalogState.inflight = buildCatalog()
     .then((catalog) => {
-      // Only cache a COMPLETE successful build. ok:true with zero native OR zero
-      // sidecar tools means one of the two MCP processes came up empty mid-build
-      // (partial failure) — don't pin that incomplete catalog for the full TTL;
-      // re-probe each request until both sources report tools.
-      if (catalog.ok && catalog.counts.eyasMcp > 0 && catalog.counts.extension > 0) {
+      // Only cache a COMPLETE successful build. ok:true with zero native tools
+      // means eyas-mcp came up empty mid-build — don't pin that incomplete
+      // catalog for the full TTL; re-probe each request until it reports tools.
+      if (catalog.ok && catalog.counts.eyasMcp > 0) {
         catalogState.cache = { at: Date.now(), catalog };
       }
       return catalog;

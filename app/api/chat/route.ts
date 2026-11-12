@@ -430,16 +430,16 @@ function detectIrPrimer(input: string): { aid: string } | null {
   return { aid: m[1].toLowerCase() };
 }
 
-/** Server-side invoke of a single MCP tool, returning the joined text content
- *  + isError flag. Mirrors what the agent loop's bridge.invoke() returns but
- *  doesn't require building the full bridge for two calls. */
-async function callExtrasTool(
-  extras: Client,
+/** Server-side invoke of a single eyas-mcp tool, returning the joined text
+ *  content + isError flag. Mirrors what the agent loop's bridge.invoke()
+ *  returns but doesn't require building the full bridge for two calls. */
+async function callMcpTool(
+  client: Client,
   name: string,
   args: Record<string, unknown>,
 ): Promise<{ content: string; isError: boolean }> {
   try {
-    const resp = await extras.callTool({ name, arguments: args });
+    const resp = await client.callTool({ name, arguments: args });
     const text = (resp.content as Array<{ type: string; text?: string }>)
       .map((c) => (c.type === "text" && typeof c.text === "string" ? c.text : ""))
       .filter(Boolean)
@@ -456,16 +456,15 @@ async function callExtrasTool(
   }
 }
 
-/** Run a prefetch tool: Eyas's in-process tool when one exists (playbooks, IR scope),
- *  otherwise the sidecar's. */
+/** Run a prefetch tool: Eyas's in-process tool (playbooks, IR scope), or an
+ *  eyas-mcp native of that name. */
 async function callPrefetchTool(
   mcp: Client,
-  extras: Client,
   name: string,
   args: Record<string, unknown>,
 ): Promise<{ content: string; isError: boolean }> {
   const tool = EYAS_TOOL_MAP.get(name);
-  if (!tool) return callExtrasTool(extras, name, args);
+  if (!tool) return callMcpTool(mcp, name, args);
   try {
     return await tool.run(args, makeEyasToolContext(mcp));
   } catch (err) {
@@ -474,7 +473,7 @@ async function callPrefetchTool(
 }
 
 /** Pull the two IR ground-truth host facts from a raw falcon_search_hosts
- *  result. Called server-side via callExtrasTool(mcp, …), so this sees the
+ *  result. Called server-side via callMcpTool(mcp, …), so this sees the
  *  FULL device body — product_type_desc survives here, unlike the slim agent
  *  projection (lib/mcp/projections.ts::hostProjection drops it). This is the
  *  code-side capture of what the playbook used to ask the agent to track in
@@ -506,7 +505,6 @@ function parseHostFacts(rawContent: string): {
  *  rather than three bubbles popping after the slowest completes. */
 async function prefetchIrContext(opts: {
   mcp: Client;
-  extras: Client;
   emit: Emit;
   aid: string;
   /** Optional operator-visible idempotency hint to prepend to the assistant's
@@ -521,7 +519,7 @@ async function prefetchIrContext(opts: {
   scope: { content: string; isError: boolean };
   actionable: { content: string; isError: boolean };
 }> {
-  const { mcp, extras, emit, aid, priorHint } = opts;
+  const { mcp, emit, aid, priorHint } = opts;
 
   const playbookId = `ir-prefetch-playbook-${Date.now()}`;
   const scopeId = `ir-prefetch-scope-${Date.now()}`;
@@ -559,7 +557,7 @@ async function prefetchIrContext(opts: {
     input: Record<string, unknown>,
   ): Promise<{ content: string; isError: boolean; durationMs: number; summary: string | undefined }> => {
     const t0 = Date.now();
-    const r = await callPrefetchTool(mcp, extras, name, input);
+    const r = await callPrefetchTool(mcp, name, input);
     const durationMs = Date.now() - t0;
     const summary = summarizeToolResult(name, r.content, r.isError);
     emit("tool_result", {
@@ -720,7 +718,7 @@ export async function POST(request: Request) {
     );
   }
 
-  return streamAgent(async ({ mcp, extras, emit, signal }) => {
+  return streamAgent(async ({ mcp, emit, signal }) => {
     // AIDR input gate. Runs before any LLM/tool work so a blocked prompt
     // never reaches Anthropic. Per-environment credential — when not set,
     // scanInput returns null and we proceed unguarded (banner in /chat
@@ -761,7 +759,7 @@ export async function POST(request: Request) {
       }
     }
 
-    const bridge = await buildToolBridge(mcp, extras);
+    const bridge = await buildToolBridge(mcp);
     const systemPrompt = buildSystemPrompt(bridge.resources);
 
     // Title capture: derive once from the first user message in this
@@ -788,7 +786,7 @@ export async function POST(request: Request) {
 
     const prefix: Anthropic.Beta.BetaMessageParam[] = [];
     let syntheticPrefetchCalls: ToolCallRecord[] = [];
-    if (enteringIrMode && extras && irPrimer) {
+    if (enteringIrMode && irPrimer) {
       // Idempotency check: if a prior IR run on this host is recent, surface
       // its summary up front so the operator sees "last run 47 min ago"
       // before Phase 0 starts. The agent gets the same hint inline via the
@@ -824,7 +822,6 @@ export async function POST(request: Request) {
 
       const prefetch = await prefetchIrContext({
         mcp,
-        extras,
         emit,
         aid: irPrimer.aid,
         priorHint,
@@ -839,7 +836,7 @@ export async function POST(request: Request) {
       const startedAt = Date.now();
       const recordPath = recordPathFor(irPrimer.aid, startedAt);
       // Capture the two agent-independent host facts (S1) before kickoff:
-      // containment status and host role. Reuses the generic callExtrasTool
+      // containment status and host role. Reuses the generic callMcpTool
       // against the falcon `mcp` client (not the bridge), so the full device
       // body — including product_type_desc — is visible. Best-effort: any
       // failure leaves both null (unknown), which the card renders honestly
@@ -849,7 +846,7 @@ export async function POST(request: Request) {
       let containedAtStart: boolean | null = null;
       let hostRole: string | null = null;
       try {
-        const facts = await callExtrasTool(mcp, "falcon_search_hosts", {
+        const facts = await callMcpTool(mcp, "falcon_search_hosts", {
           filter: `device_id:'${irPrimer.aid}'`,
           limit: 1,
         });
@@ -1119,7 +1116,6 @@ export async function POST(request: Request) {
             if (scope.ids.length > 0) args.prior_composite_ids = scope.ids;
             const res = await callPrefetchTool(
               mcp,
-              extras,
               "extras_ir_phase3_verification_scope",
               args,
             );
@@ -1254,7 +1250,6 @@ export async function POST(request: Request) {
     const result = await runAgentLoop({
       signal,
       mcp,
-      extrasMcp: extras,
       systemPrompt,
       initialMessages,
       emit: wrappedEmit,

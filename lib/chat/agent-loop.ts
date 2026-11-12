@@ -16,9 +16,6 @@ export type Emit = (event: string, data: unknown) => void;
 
 export type RunAgentOptions = {
   mcp: Client;
-  /** Optional second MCP client (e.g. falcon-extras). Tools merged into the
-   *  same Claude tool list; bridge dispatches by name. */
-  extrasMcp?: Client | null;
   systemPrompt: string;
   initialMessages: Anthropic.Beta.BetaMessageParam[];
   emit: Emit;
@@ -152,7 +149,6 @@ export function maybeFenceToolResult(toolName: string, content: string): string 
 export async function runAgentLoop(opts: RunAgentOptions): Promise<RunAgentResult> {
   const {
     mcp,
-    extrasMcp,
     systemPrompt,
     initialMessages,
     emit,
@@ -173,7 +169,7 @@ export async function runAgentLoop(opts: RunAgentOptions): Promise<RunAgentResul
 
   beginInFlight();
   try {
-  const bridge = await buildToolBridge(mcp, extrasMcp ?? null);
+  const bridge = await buildToolBridge(mcp);
   const visibleTools = toolFilter
     ? bridge.anthropicTools.filter((t) => toolFilter(t.name))
     : bridge.anthropicTools;
@@ -469,10 +465,10 @@ _[Claude declined to continue this request${details?.category ? ` (${details.cat
       // drift loudly so the registry gets the missing entry.
       const registryGated = requiresApproval(tu.name);
       const annotationOnly = !registryGated && bridge.annotatedNativeWrites.has(tu.name);
-      const unclassifiedSidecar = !registryGated && bridge.unclassifiedSidecarTools.has(tu.name);
-      if (unclassifiedSidecar) {
+      const unclassifiedEyas = !registryGated && bridge.unclassifiedEyasTools.has(tu.name);
+      if (unclassifiedEyas) {
         console.error(
-          `[agent-loop] APPROVAL DRIFT: sidecar tool "${tu.name}" is in neither REQUIRES_APPROVAL ` +
+          `[agent-loop] APPROVAL DRIFT: Eyas tool "${tu.name}" is in neither REQUIRES_APPROVAL ` +
             `nor EXTRAS_READ_ONLY — gating it as a possible write. Classify it in lib/mcp/write-tools.ts.`,
         );
       }
@@ -483,7 +479,7 @@ _[Claude declined to continue this request${details?.category ? ` (${details.cat
             `Add it to lib/mcp/write-tools.ts (and classify it in tool-bridge NATIVE_WRITE_SUPPRESS / audit-write-tools).`,
         );
       }
-      if (registryGated || annotationOnly || unclassifiedSidecar) {
+      if (registryGated || annotationOnly || unclassifiedEyas) {
         emit("tool_pending_approval", {
           id: tu.id,
           name: tu.name,

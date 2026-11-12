@@ -18,7 +18,7 @@ The left drawer (open it with the hamburger on mobile; it's pinned on desktop) g
 | **Posture** | Configuration health — Identity, Prevention, Workflows |
 | **Dashboards** | Raw browse — Detections, Hosts, Vulnerabilities |
 | **System** | Accountability + ops — IR runs, Scorecard, Cost ledger, health probes |
-| **Reference** | Developer reference — the **Agent toolbox** lists every Falcon action the assistant can use, each marked read-only or requiring approval; **Blueprint** is a developer guide that explains how a console like this one is built on falcon-mcp, FalconPy, and Claude |
+| **Reference** | Developer reference — the **Agent toolbox** lists every Falcon action the assistant can use, each marked read-only or requiring approval; **Blueprint** is a developer guide that explains how a console like this one is built on eyas-mcp and Claude |
 
 Items hide automatically when the underlying Falcon API scope isn't granted on the tenant.
 

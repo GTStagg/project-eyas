@@ -1,7 +1,5 @@
 "use server";
 import { redirect } from "next/navigation";
-import { existsSync } from "node:fs";
-import path from "node:path";
 import { isRegistered, registerWith, MIN_PASSWORD_LENGTH } from "@/lib/auth/store";
 import { getSession } from "@/lib/auth/session";
 import {
@@ -59,7 +57,6 @@ function buildConfigPatch(form: FormData): Partial<ConfigFile> {
   if (memberCid) falcon.memberCid = memberCid;
   if (Object.keys(falcon).length) patch.falcon = falcon;
 
-  // FalconPy sidecar is unconditionally on; the wizard doesn't render a toggle.
   if (irGroup) patch.irQuarantineGroupId = irGroup;
   return patch;
 }
@@ -162,15 +159,7 @@ export async function registerAction(_prev: RegisterState, formData: FormData): 
   session.loginAt = new Date().toISOString();
   await session.save();
 
-  // Falcon-extras venv is created by start.sh on launch. The sidecar is
-  // required, so a missing venv on first registration is a one-time
-  // restart requirement — cache invalidation can't conjure a missing
-  // binary. The post-register page surfaces this as a banner; if the
-  // venv exists, we go straight to the activation checklist on
-  // /getting-started.
-  const venvPython = path.join(process.cwd(), "falcon-extras", ".venv", "bin", "python");
-  const needsRestartForExtras = !existsSync(venvPython);
-  redirect(needsRestartForExtras ? "/getting-started?postRegister=restart-extras" : "/getting-started");
+  redirect("/getting-started");
 }
 
 export type TestState = {

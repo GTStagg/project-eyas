@@ -236,47 +236,6 @@ if [ ! -f "server.js" ]; then
   exit 1
 fi
 
-# ─── falcon-extras sidecar (required — provisioning + IR + Shadow-AI) ────────
-# The FalconPy sidecar is always on. The wizard's IR Quarantine and Shadow-AI
-# Banned setup cards call into it on first use, so the venv must exist before
-# the Node server accepts requests. Build it on first run from the bundled
-# wheels (no PyPI egress required from the operator's box).
-EXTRAS_VENV="${SCRIPT_DIR}/falcon-extras/.venv"
-EXTRAS_PY="${EXTRAS_VENV}/bin/python"
-EXTRAS_WHEELS="${SCRIPT_DIR}/vendor/falcon-extras-wheels"
-
-if [ ! -x "$EXTRAS_PY" ]; then
-  if [ -d "$EXTRAS_WHEELS" ] && [ "$(ls -A "$EXTRAS_WHEELS" 2>/dev/null)" ]; then
-    info "First-run offline install of falcon-extras from bundled wheels…"
-    # Reuse the same Python that worked for falcon-mcp ($PY_BIN) when set,
-    # otherwise fall back to plain python3.
-    EX_PY="${PY_BIN:-python3}"
-    rm -rf "$EXTRAS_VENV"
-    if ! "$EX_PY" -m venv "$EXTRAS_VENV" >/dev/null; then
-      err "Failed to create falcon-extras venv at $EXTRAS_VENV"; exit 1
-    fi
-    if ! "$EXTRAS_VENV/bin/pip" install --quiet --no-index \
-          --find-links "$EXTRAS_WHEELS" \
-          -r "$SCRIPT_DIR/falcon-extras/requirements.txt"; then
-      echo ""
-      err "Offline install of falcon-extras failed."
-      info "Wheels python/arch must match the host. Bundled for python ${WHEELS_PYTHON_VERSION:-3.12}."
-      echo ""
-      exit 1
-    fi
-    ok "falcon-extras installed → $EXTRAS_PY"
-  else
-    echo ""
-    err "falcon-extras venv missing at $EXTRAS_PY and no bundled wheels at $EXTRAS_WHEELS."
-    info "Rebuild the bundle on a host with PyPI access (make-dist.sh stages wheels)."
-    echo ""
-    exit 1
-  fi
-else
-  ok "falcon-extras venv ready"
-fi
-export FALCON_EXTRAS_PYTHON="$EXTRAS_PY"
-
 # ─── Verify falcon-mcp is runnable ────────────────────────────────────────────
 if [ "$USE_OFFLINE" -eq 1 ]; then
   if ! "$OFFLINE_BIN" --help >/dev/null 2>&1; then

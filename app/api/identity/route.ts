@@ -126,7 +126,7 @@ function buildPrompt(): string {
 }
 
 export async function POST() {
-  return streamAgent(async ({ mcp, extras, emit, signal }) => {
+  return streamAgent(async ({ mcp, emit, signal }) => {
     const data = await fetchIdentity(mcp);
     if (identityScopePending(data)) {
       emit("scope_pending", {
@@ -138,7 +138,6 @@ export async function POST() {
     await runAgentLoop({
       signal,
       mcp,
-      extrasMcp: extras,
       systemPrompt: buildPrompt(),
       contextBlocks: [renderIdentityContext(data)],
       initialMessages: [

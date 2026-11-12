@@ -12,7 +12,6 @@
     "pretypecheck": "next typegen",
     "typecheck": "tsc --noEmit",
     "test:smoke": "playwright test",
-    "test:sidecar": "bash ./scripts/run-sidecar-tests.sh",
     "upgrade-mcp": "bash ./scripts/upgrade-mcp.sh",
     "test:settings-store": "node ./scripts/test-settings-store.mjs",
     "test:ir-run-analysis": "node ./scripts/test-ir-run-analysis.mjs",

@@ -10,9 +10,8 @@ import { ChevronDown, ChevronRight } from "lucide-react";
 // implies r/w, read is enough for read-only surfaces).
 //
 // Keep this list as the SINGLE SOURCE OF TRUTH for "what scopes does this
-// app need." Cross-checked against `CLAUDE.md` "Falcon scope" section,
-// `falcon-extras/server.py` `required_falcon_scopes` list, and the live
-// scope sweep in /tmp/scope_sweep.py.
+// app need." Cross-checked against `CLAUDE.md` "Falcon scope" section and
+// the live probe (`node scripts/falcon-scope-probe.mjs --all`).
 
 type Tier = "core" | "discover" | "cases" | "falcon011" | "intel" | "identity" | "aidr" | "cloud" | "optional";
 
@@ -142,7 +141,7 @@ const MCP_MODULES = [
 // (that's where availability actually varies); the core scopes are baseline —
 // the app doesn't function without them and they aren't probed individually, so
 // they're intentionally unmapped and render as "not checked" rather than a
-// misleading red. Keys must match FalconMcpCapabilities / FalconExtrasCapabilities.
+// misleading red. Keys must match FalconMcpCapabilities (lib/health.ts).
 const CAP_BY_CONSOLE: Record<string, string> = {
   Cases: "cases",
   "Case Templates": "cases",

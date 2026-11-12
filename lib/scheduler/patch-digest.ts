@@ -1,6 +1,5 @@
 import "server-only";
 import { withFalconMcpClient } from "@/lib/mcp/falcon-client";
-import { withFalconExtrasClient } from "@/lib/mcp/falcon-extras-client";
 import { detectFalconError, parseConcatenatedJson } from "@/lib/mcp/parse";
 import { runAgentLoop } from "@/lib/chat/agent-loop";
 import { deliverToWebhook, getOutboundWebhookUrl } from "@/lib/webhook/deliver";
@@ -270,10 +269,9 @@ export async function runPatchDigest(): Promise<PatchDigestResult> {
   let agentError: string | null = null;
   try {
     await withFalconMcpClient(async (mcp) => {
-      await withFalconExtrasClient(async (extras) => {
+      {
         await runAgentLoop({
           mcp,
-          extrasMcp: extras,
           systemPrompt: buildPatchPlanPrompt(bundle),
           initialMessages: [
             {
@@ -307,7 +305,7 @@ export async function runPatchDigest(): Promise<PatchDigestResult> {
           maxIterations: 10,
           surface: "patch-plan",
         });
-      });
+      }
     });
   } catch (err) {
     return { kind: "error", message: err instanceof Error ? err.message : String(err) };

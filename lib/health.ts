@@ -5,42 +5,8 @@ import Anthropic from "@anthropic-ai/sdk";
 import { getAnthropicClient, getAnthropicModel } from "@/lib/llm/anthropic";
 import { getRuntimeConfig } from "@/lib/config/runtime";
 import { withFalconMcpClient } from "@/lib/mcp/falcon-client";
-import { withFalconExtrasClient } from "@/lib/mcp/falcon-extras-client";
 import { isScopeDenied } from "@/lib/mcp/parse";
 import { isRegistered } from "@/lib/auth/store";
-
-// Pinned to globalThis so the manifest is read once per process — Next.js
-// dev re-imports modules per route, and we don't want to disk-read on every
-// /status hit (well-cached at 30s, but still).
-const globalForExpectedTools = globalThis as unknown as {
-  __falconExpectedTools?: string[] | null;
-};
-
-async function loadExpectedTools(): Promise<string[] | null> {
-  if (globalForExpectedTools.__falconExpectedTools !== undefined) {
-    return globalForExpectedTools.__falconExpectedTools;
-  }
-  // Fixed path relative to project root — both the dev tree and the
-  // standalone bundle's .next/standalone/falcon-extras/ have this layout.
-  const manifestPath = path.join(
-    process.cwd(),
-    "falcon-extras",
-    "expected_tools.json",
-  );
-  try {
-    const raw = await fs.readFile(manifestPath, "utf8");
-    const parsed = JSON.parse(raw) as { tools?: unknown };
-    if (Array.isArray(parsed.tools) && parsed.tools.every((t) => typeof t === "string")) {
-      globalForExpectedTools.__falconExpectedTools = parsed.tools as string[];
-      return parsed.tools as string[];
-    }
-  } catch {
-    // Manifest missing or malformed — operate without it; the live tool list
-    // is still useful, just no diff column.
-  }
-  globalForExpectedTools.__falconExpectedTools = null;
-  return null;
-}
 
 export type ProbeStatus = "ok" | "error" | "disabled" | "initializing";
 
@@ -51,7 +17,7 @@ export const FIRST_LAUNCH_SETUP_MSG =
 
 // A spawn ENOENT while the standalone bundle's vendored wheels are present
 // means start.sh hasn't finished building the offline venv the client spawns
-// into. start.sh builds both venvs (blocking) before it execs node, so the
+// into. start.sh builds the venv (blocking) before it execs node, so the
 // only ways node serves with a venv still absent are (a) a stale pre-reinstall
 // node process whose venv was just rsync-deleted out from under it, or (b) the
 // brief mid-build window of a manual/parallel launch — both transitional, not a
@@ -78,40 +44,11 @@ export type ProbeResult = {
   capabilities?: FalconMcpCapabilities;
 };
 
-export type FalconExtrasAbout = {
-  name: string;
-  purpose: string;
-  python: string;
-  falconpy: string;
-  mcp_sdk: string;
-  required_falcon_scopes: string[];
-  base_url: string;
-  member_cid_set: boolean;
-};
-
-// Capability flags piggybacked on the existing sidecar handshake — one
-// cheap call per surface, run in parallel with listTools / getServerVersion
-// so no extra process spawn. Sidebar reads these to hide nav items whose
-// underlying Falcon API scope isn't granted on this tenant, sparing the
-// operator wasted clicks on staged-build empty states.
-//
-// Each flag follows the same semantics: TRUE if the probe succeeded with
-// granted scope, FALSE only if the sidecar returned `scope_pending: true`.
-// Probe failures (network, malformed response) default to TRUE — a
-// transient blip should never make a real surface vanish from the nav.
-export type FalconExtrasCapabilities = {
-  /** IR scope-capture tool callable + returning a structured response on a
-   *  bogus AID. Catches sidecar regressions before they manifest mid-IR. */
-  irCampaignScope: boolean;
-  /** IR readiness diagnostic callable. Distinct from "IR is configured" —
-   *  this is "the tool itself loads"; the diagnostic's own ready/not-ready
-   *  payload reflects whether the quarantine group is set. */
-  irReadiness: boolean;
-};
-
-// Capability flags backed by upstream falcon-mcp tools (not the sidecar).
-// Probed inside probeFalconMcp on the same client connection. Same semantics
-// as FalconExtrasCapabilities — false only on confirmed scope denial.
+// Capability flags backed by eyas-mcp tools, probed inside probeFalconMcp on
+// the same client connection. Each is TRUE when the probe succeeded or was
+// ambiguous, FALSE only on a confirmed scope denial — a transient blip never
+// hides a surface. Sidebar and pages read these to hide surfaces whose Falcon
+// API scope isn't granted on this tenant.
 export type FalconMcpCapabilities = {
   intel: boolean;
   // Threat Graph + MalQuery (eyas-mcp native since its sidecar port; were sidecar probes).
@@ -147,29 +84,6 @@ export type FalconMcpCapabilities = {
   ioaExclusions: boolean;
 };
 
-export type FalconExtrasInfo = {
-  status: ProbeStatus;
-  message?: string;
-  latencyMs: number;
-  serverVersion?: string;
-  tools?: string[];
-  /** Map of live tool name -> its self-described purpose (the MCP tool
-   *  description / docstring the agent sees). Surfaced on /status so operators
-   *  can see what each tool does without reading the sidecar source. */
-  toolDescriptions?: Record<string, string>;
-  about?: FalconExtrasAbout;
-  capabilities?: FalconExtrasCapabilities;
-  /** Tools the frontend + IR playbook expect on the sidecar (loaded from
-   *  falcon-extras/expected_tools.json). Populated whenever the live tool
-   *  list was successfully fetched, so a partial deploy is visible alongside
-   *  the working surface. */
-  expected_tools?: string[];
-  /** Names in `expected_tools` that aren't present in the live `tools` list.
-   *  Empty array = clean deploy; non-empty = a route or playbook is going to
-   *  break and the operator should reseed the sidecar / rebuild the bundle. */
-  missing_tools?: string[];
-};
-
 export type AuthInfo = {
   registered: boolean;
   sessionSecretConfigured: boolean;
@@ -178,7 +92,6 @@ export type AuthInfo = {
 export type HealthReport = {
   anthropic: ProbeResult;
   falconMcp: ProbeResult;
-  falconExtras: FalconExtrasInfo;
   auth: AuthInfo;
   aidr: ProbeResult;
 };
@@ -394,76 +307,8 @@ async function probeFalconMcp(): Promise<ProbeResult> {
   }
 }
 
-async function probeFalconExtras(): Promise<FalconExtrasInfo> {
-  const t0 = Date.now();
-  try {
-    const probe = await withFalconExtrasClient(async (client) => {
-      // The exclusion capability flags moved to the eyas-mcp probe with their
-      // tools. extras_ir_campaign_scope and extras_diagnose_ir_readiness run
-      // in-process (lib/eyas-tools), so they are always loaded; nothing to
-      // probe in the sidecar.
-      const irCampaignScopeProbe = Promise.resolve(true);
-      const irReadinessProbe = Promise.resolve(true);
-
-      const [toolList, info, irCampaignScope, irReadiness] = await Promise.all([
-        client.listTools(),
-        Promise.resolve(client.getServerVersion()),
-        irCampaignScopeProbe,
-        irReadinessProbe,
-      ]);
-      let about: FalconExtrasAbout | undefined;
-      try {
-        const res = await client.readResource({ uri: "falcon-extras://about" });
-        const first = res.contents[0];
-        const text = first && "text" in first ? (first.text as string) : null;
-        if (text) about = JSON.parse(text) as FalconExtrasAbout;
-      } catch {
-        // Resource not present (older sidecar build) — leave about undefined.
-      }
-      return {
-        tools: toolList.tools.map((t) => t.name),
-        toolDescriptions: Object.fromEntries(
-          toolList.tools.map((t) => [t.name, (t.description ?? "").trim()]),
-        ),
-        serverVersion: info?.version,
-        about,
-        capabilities: {
-          irCampaignScope,
-          irReadiness,
-        },
-      };
-    });
-    const expected = await loadExpectedTools();
-    let missing: string[] | undefined;
-    if (expected && probe.tools) {
-      const live = new Set(probe.tools);
-      missing = expected.filter((t) => !live.has(t));
-    }
-    return {
-      status: "ok",
-      latencyMs: Date.now() - t0,
-      tools: probe.tools,
-      toolDescriptions: probe.toolDescriptions,
-      serverVersion: probe.serverVersion,
-      about: probe.about,
-      capabilities: probe.capabilities,
-      expected_tools: expected ?? undefined,
-      missing_tools: missing,
-    };
-  } catch (err) {
-    if (await isFirstLaunchSetup(err, "falcon-extras-wheels")) {
-      return { status: "initializing", latencyMs: Date.now() - t0, message: FIRST_LAUNCH_SETUP_MSG };
-    }
-    return {
-      status: "error",
-      latencyMs: Date.now() - t0,
-      message: err instanceof Error ? err.message : String(err),
-    };
-  }
-}
-
 // Module-scoped cache. /status, header badges, and SSR pages would otherwise
-// re-fan-out anthropic + falcon-mcp + extras + auth probes on every request.
+// re-fan-out anthropic + eyas-mcp + auth probes on every request.
 // 30s strikes a balance: stale enough to cushion bursty navigation, fresh
 // enough that a config change becomes visible quickly. Force a refresh by
 // passing { force: true } from a manual reload control.
@@ -548,14 +393,13 @@ async function probeAidr(): Promise<ProbeResult> {
 }
 
 async function runProbes(): Promise<HealthReport> {
-  const [anthropic, falconMcp, falconExtras, auth, aidr] = await Promise.all([
+  const [anthropic, falconMcp, auth, aidr] = await Promise.all([
     probeAnthropic(),
     probeFalconMcp(),
-    probeFalconExtras(),
     probeAuth(),
     probeAidr(),
   ]);
-  return { anthropic, falconMcp, falconExtras, auth, aidr };
+  return { anthropic, falconMcp, auth, aidr };
 }
 
 /**

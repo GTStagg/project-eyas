@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# audit-write-tools — verify every write-shaped sidecar tool is approval-gated
+# audit-write-tools — verify every write-shaped Eyas tool is approval-gated
 # and no runAgentLoop callsite passes a `requiresApproval: () => false` bypass.
 set -euo pipefail
 
@@ -8,7 +8,6 @@ cd "$(dirname "$0")/../../.."  # repo root
 BOLD=$'\033[1m'; GREEN=$'\033[0;32m'; RED=$'\033[0;31m'; DIM=$'\033[2m'; NC=$'\033[0m'
 
 WRITE_TOOLS_FILE="lib/mcp/write-tools.ts"
-SIDECAR="falcon-extras/server.py"
 
 # Read newline-delimited stdin into the named array. Portable replacement for
 # `mapfile -t` (Bash 4+), which the macOS system bash (3.2) lacks.
@@ -36,16 +35,16 @@ read_into GATED < <(
     | sort -u
 )
 
-# Eyas's in-process tools (lib/eyas-tools): same extras_* naming, no sidecar def.
+# Eyas's in-process tools (lib/eyas-tools), named extras_*.
 read_into EYAS_TOOL_NAMES < <(
   grep -rhoE '(name: |tool[(])"extras_[a-z0-9_]+"' lib/eyas-tools 2>/dev/null \
     | sed -E 's/.*"(extras_[a-z0-9_]+)"/\1/' \
     | sort -u
 )
 
-# Sidecar and in-process Eyas tools whose name matches the write-shape regex.
+# Eyas tools whose name matches the write-shape regex.
 read_into SIDECAR_WRITE_CANDIDATES < <(
-  { grep -oE '^def extras_[a-z0-9_]+' "$SIDECAR" | sed 's/^def //'; printf '%s\n' "${EYAS_TOOL_NAMES[@]}"; } \
+  printf '%s\n' "${EYAS_TOOL_NAMES[@]}" \
     | grep -v '^$' \
     | grep -E '^(extras_(create|delete|update|add|remove|close|save)_|extras_host_(contain|lift_containment|group_(add|remove)_members)|extras_rtr_run_(patch|cleanup|falcon_script)|extras_rtr_check_patch_status)' \
     | sort -u
@@ -275,7 +274,7 @@ done
 echo
 echo "${BOLD}Allowlist freshness${NC}"
 for a in "${ALLOWLIST[@]}"; do
-  if grep -q "^def $a\b" "$SIDECAR" || printf '%s\n' "${EYAS_TOOL_NAMES[@]}" | grep -qx "$a"; then
+  if printf '%s\n' "${EYAS_TOOL_NAMES[@]}" | grep -qx "$a"; then
     echo "  ${GREEN}✓${NC} $a ${DIM}(present)${NC}"
   else
     echo "  ${RED}✗${NC} $a ${RED}(stale — remove from ALLOWLIST in run.sh)${NC}"
@@ -283,20 +282,18 @@ for a in "${ALLOWLIST[@]}"; do
   fi
 done
 
-# Registry entries pointing at tools the sidecar / upstream list no longer
-# advertises. Cheap form: grep each gated name in the sidecar OR the upstream
-# list OR either native-writes list; if absent from all, flag. Suppressed
-# NATIVE_WRITES are gated as a fail-closed backstop (no sidecar def); adopted
-# NATIVE_ADOPTED are gated + exposed (also no sidecar def) — both resolve here
-# via the native lists rather than a sidecar `def`.
+# Registry entries pointing at tools that no longer exist: each gated name
+# must be an Eyas tool or on the upstream / native-writes lists. Suppressed
+# NATIVE_WRITES are gated as a fail-closed backstop; adopted NATIVE_ADOPTED
+# are gated + exposed.
 echo
 echo "${BOLD}Registry freshness${NC}"
 known_upstream=$(printf '%s\n' "${UPSTREAM_WRITES[@]}" "${NATIVE_WRITES[@]}" "${NATIVE_ADOPTED[@]}" "${EYAS_TOOL_NAMES[@]}")
 for g in "${GATED[@]}"; do
-  if grep -q "^def $g\b" "$SIDECAR" || echo "$known_upstream" | grep -qx "$g"; then
+  if echo "$known_upstream" | grep -qx "$g"; then
     : # ok
   else
-    echo "  ${RED}✗${NC} $g ${RED}(in registry but no sidecar def, Eyas tool or upstream/native entry)${NC}"
+    echo "  ${RED}✗${NC} $g ${RED}(in registry but no Eyas tool or upstream/native entry)${NC}"
     fail=1
   fi
 done

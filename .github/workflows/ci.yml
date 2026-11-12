@@ -19,7 +19,7 @@ permissions:
 
 jobs:
   checks:
-    # Typecheck, build, the Node regression suites and the sidecar suites.
+    # Typecheck, build and the Node regression suites.
     # No network calls to Falcon or Anthropic and no real credentials; every
     # suite that opens a database gets a throwaway FALCON_DATA_DIR.
     runs-on: ubuntu-latest
@@ -30,9 +30,6 @@ jobs:
         with:
           node-version: "22"
           cache: "npm"
-      - uses: actions/setup-python@v7
-        with:
-          python-version: "3.12"
       - run: npm ci
       - name: Typecheck
         run: npm run typecheck
@@ -44,7 +41,7 @@ jobs:
         run: |
           set -euo pipefail
           export FALCON_DATA_DIR="$(mktemp -d)"
-          suites=$(node -e 'const s=require("./package.json").scripts; console.log(Object.keys(s).filter(k=>k.startsWith("test:")&&!["test:smoke","test:sidecar"].includes(k)).join(" "))')
+          suites=$(node -e 'const s=require("./package.json").scripts; console.log(Object.keys(s).filter(k=>k.startsWith("test:")&&!["test:smoke"].includes(k)).join(" "))')
           failed=0
           for s in $suites; do
             echo "::group::$s"
@@ -53,12 +50,6 @@ jobs:
           done
           test -z "$(ls -A data 2>/dev/null)" || { echo "::error::a suite wrote to ./data"; exit 1; }
           exit $failed
-      - name: Sidecar dependencies (hash-locked)
-        run: |
-          python -m venv "$RUNNER_TEMP/venv"
-          "$RUNNER_TEMP/venv/bin/pip" install --require-hashes -r falcon-extras/requirements.txt
-      - name: Sidecar suites
-        run: SIDECAR_PYTHON="$RUNNER_TEMP/venv/bin/python" bash scripts/run-sidecar-tests.sh
 
   docker:
     # Clean image build from tracked sources, then boot it with a throwaway

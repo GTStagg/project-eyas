@@ -30,12 +30,12 @@ export type ToolBridge = {
    */
   annotatedNativeWrites: ReadonlySet<string>;
   /**
-   * Visible falcon-extras tools that are neither approval-gated nor on the
-   * reviewed read-only list (EXTRAS_READ_ONLY). The sidecar carries no
-   * annotations, so an unclassified tool is assumed to write: the agent loop
+   * Eyas's in-process tools (lib/eyas-tools) that are neither approval-gated
+   * nor on the reviewed read-only list (EXTRAS_READ_ONLY). They carry no
+   * annotations, so an unclassified one is assumed to write: the agent loop
    * gates it (logging drift) and sub-agents never see it.
    */
-  unclassifiedSidecarTools: ReadonlySet<string>;
+  unclassifiedEyasTools: ReadonlySet<string>;
   invoke: (
     name: string,
     input: Record<string, unknown>,
@@ -244,18 +244,12 @@ export function makeEyasToolContext(client: Client): EyasToolContext {
   };
 }
 
-export async function buildToolBridge(
-  client: Client,
-  extras?: Client | null,
-): Promise<ToolBridge> {
-  const [toolsResp, resourcesResp, extrasToolsResp] = await Promise.all([
+export async function buildToolBridge(client: Client): Promise<ToolBridge> {
+  const [toolsResp, resourcesResp] = await Promise.all([
     client.listTools(),
     client.listResources().catch(() => ({ resources: [] as FalconResource[] })),
-    extras ? extras.listTools() : Promise.resolve({ tools: [] }),
   ]);
 
-  // Map each tool name back to the client that serves it so invoke() can
-  // dispatch correctly. On collision the primary client wins.
   // falcon-mcp 0.10.0 removed the deprecated incidents module and shipped a
   // usable Cases module in its place. Cases are now intentionally exposed to
   // the agent (writes are approval-gated via REQUIRES_APPROVAL, not filtered
@@ -268,40 +262,24 @@ export async function buildToolBridge(
     n.includes("incident") || n.includes("crowd_score") || n.includes("crowdscore");
 
   // A tool is hidden from the agent if it's an incidents/crowd_score residual
-  // OR one of the 0.12.0 native writes we route to the sidecar instead.
+  // or a native that an Eyas tool wraps (the suppression sets above).
   const isSuppressed = (n: string) =>
     isIncidentsTool(n) ||
     NATIVE_WRITE_SUPPRESS.has(n) ||
     NATIVE_READ_KEEP.has(n) ||
     PENDING_NATIVE_MIGRATION.has(n);
 
-  const toolToClient = new Map<string, Client>();
-  for (const t of toolsResp.tools) {
-    if (isSuppressed(t.name)) continue;
-    toolToClient.set(t.name, client);
-  }
-  for (const t of extrasToolsResp.tools) {
-    if (isSuppressed(t.name)) continue;
-    // Eyas's in-process tools (lib/eyas-tools) replace a sidecar tool of the
-    // same name while the sidecar is being retired.
-    if (EYAS_TOOL_MAP.has(t.name)) continue;
-    if (!toolToClient.has(t.name)) toolToClient.set(t.name, extras as Client);
-  }
-  const eyasTools = EYAS_TOOLS.filter((t) => !toolToClient.has(t.name));
-
-  const allTools = [
-    ...toolsResp.tools.filter((t) => !isSuppressed(t.name)),
-    ...extrasToolsResp.tools.filter(
-      (t) => !isSuppressed(t.name) && toolToClient.get(t.name) === extras,
-    ),
-  ];
+  // Visible native tools. On a name clash the native wins over an Eyas tool.
+  const nativeNames = new Set<string>();
+  for (const t of toolsResp.tools) if (!isSuppressed(t.name)) nativeNames.add(t.name);
+  const eyasTools = EYAS_TOOLS.filter((t) => !nativeNames.has(t.name));
+  const allTools = toolsResp.tools.filter((t) => !isSuppressed(t.name));
 
   // Fail-closed approval backstop. falcon-mcp 0.13.0 sets MCP tool annotations
   // comprehensively — READ_ONLY_ANNOTATIONS on reads, readOnlyHint:false on
   // every write (destructiveHint:true on deletes). Collect the VISIBLE native
-  // writes so the loop can gate any that slipped out of REQUIRES_APPROVAL. Only
-  // the native client is annotated; the sidecar (extras_*) sets no annotations
-  // and is covered by its own write-shape audit, so it's excluded here.
+  // writes so the loop can gate any that slipped out of REQUIRES_APPROVAL.
+  // Eyas's own tools carry no annotations and are covered below.
   const annotatedNativeWrites = new Set<string>();
   for (const t of toolsResp.tools) {
     if (isSuppressed(t.name)) continue;
@@ -309,16 +287,12 @@ export async function buildToolBridge(
     if (t.annotations?.readOnlyHint === false) annotatedNativeWrites.add(t.name);
   }
 
-  const unclassifiedSidecarTools = new Set<string>();
-  for (const t of allTools) {
-    if (toolToClient.get(t.name) !== extras) continue;
-    if (REQUIRES_APPROVAL.has(t.name) || EXTRAS_READ_ONLY.has(t.name)) continue;
-    unclassifiedSidecarTools.add(t.name);
-  }
-  // Eyas's in-process tools carry no annotations either; same fail-closed rule.
+  // Eyas's in-process tools carry no annotations: an unclassified one is
+  // assumed to write (fail closed).
+  const unclassifiedEyasTools = new Set<string>();
   for (const t of eyasTools) {
     if (REQUIRES_APPROVAL.has(t.name) || EXTRAS_READ_ONLY.has(t.name)) continue;
-    unclassifiedSidecarTools.add(t.name);
+    unclassifiedEyasTools.add(t.name);
   }
 
   const anthropicTools: Anthropic.Tool[] = [
@@ -373,7 +347,7 @@ export async function buildToolBridge(
     }
 
     const eyasTool = EYAS_TOOL_MAP.get(name);
-    if (eyasTool && !toolToClient.has(name)) {
+    if (eyasTool && !nativeNames.has(name)) {
       try {
         const r = await eyasTool.run(input, eyasCtx);
         if (eyasTool.rawResult) return r;
@@ -383,9 +357,8 @@ export async function buildToolBridge(
       }
     }
 
-    const target = toolToClient.get(name) ?? client;
     const longTimeout = LONG_RUNNING_TOOL_TIMEOUT_MS[name];
-    const resp = await target.callTool(
+    const resp = await client.callTool(
       { name, arguments: enforceToolArgs(name, input) },
       undefined,
       longTimeout ? { timeout: longTimeout } : undefined,
@@ -402,21 +375,15 @@ export async function buildToolBridge(
     // promote it to a real tool error BEFORE projectToolResult reassures.
     // Parse the raw blob ONCE and reuse it for both the error check and the
     // projection — these large payloads (hosts limit 5000, vulns, detections)
-    // were being parsed twice per tool call on the hot chat path.
-    //
-    // Only the falcon-mcp client path goes through detectFalconError. Sidecar
-    // (extras) tools return their own structured `{ok:false, error, ...}`
-    // payloads — CQL lint failures carry `cql_lint`+`fix`, scope-pending carries
-    // staged-build context — and detectFalconError would collapse them to the
-    // bare error string, stripping the context the agent needs to self-correct.
+    // were being parsed twice per tool call on the hot chat path. (Eyas's own
+    // tools return above, so their structured `{ok:false, error, ...}`
+    // payloads keep the context detectFalconError would strip.)
     const parsed = parseToolResultObjects<Record<string, unknown>>(
       resp.content as Array<{ type: string; text?: string }>,
     );
-    if (target === client) {
-      const upstreamError = detectFalconError(parsed);
-      if (upstreamError) {
-        return { content: upstreamError, isError: true };
-      }
+    const upstreamError = detectFalconError(parsed);
+    if (upstreamError) {
+      return { content: upstreamError, isError: true };
     }
     const projected = projectToolResult(name, rawText, parsed);
     return { content: projected || "(empty result)", isError: Boolean(resp.isError) };
@@ -428,7 +395,7 @@ export async function buildToolBridge(
     anthropicTools: canonicalTools(anthropicTools),
     resources: canonicalResources(resourcesResp.resources as FalconResource[]),
     annotatedNativeWrites,
-    unclassifiedSidecarTools,
+    unclassifiedEyasTools,
     invoke,
   };
 }

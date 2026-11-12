@@ -1,14 +1,12 @@
 import "server-only";
 import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { withFalconMcpClient } from "@/lib/mcp/falcon-client";
-import { withFalconExtrasClient } from "@/lib/mcp/falcon-extras-client";
 import { sseEncode } from "@/lib/chat/agent-loop";
 
 export type Emit = (event: string, data: unknown) => void;
 
 export interface StreamAgentContext {
   mcp: Client;
-  extras: Client;
   emit: Emit;
   /** Aborts when the client disconnects from the SSE stream. The agent
    *  loop checks this between iterations to break out cleanly without
@@ -45,9 +43,7 @@ export function streamAgent(
 
       try {
         await withFalconMcpClient(async (mcp) => {
-          await withFalconExtrasClient(async (extras) => {
-            await setup({ mcp, extras, emit, signal: abort.signal });
-          });
+          await setup({ mcp, emit, signal: abort.signal });
         });
       } catch (err) {
         // AbortError from a cancelled run is expected and already handled

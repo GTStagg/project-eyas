@@ -2,8 +2,8 @@ import "server-only";
 import { getRuntimeConfig } from "./runtime";
 
 /**
- * Build the environment dict for a spawned child process (eyas-mcp,
- * falcon-extras). Inherits parent process.env (PATH, HOME, NODE_ENV,
+ * Build the environment dict for a spawned child process (eyas-mcp).
+ * Inherits parent process.env (PATH, HOME, NODE_ENV,
  * FALCON_DATA_DIR pass through), strips the app's own secrets, then
  * explicitly sets every Falcon credential / per-tenant field from
  * data/eyas.db — using delete to strip any inherited value the active
@@ -31,8 +31,8 @@ export function childProcessEnv(): Record<string, string> {
     else delete result[key];
   };
 
-  // The app's own secrets never reach the children: neither eyas-mcp nor the
-  // FalconPy sidecar reads them, and both run third-party Python packages.
+  // The app's own secrets never reach the child: eyas-mcp doesn't read them,
+  // and it runs third-party Python packages.
   // AUTH_SESSION_SECRET is the root key that decrypts every stored credential;
   // the Anthropic credentials, scheduler/GitHub tokens and webhook URL are
   // only used by the Next.js process.

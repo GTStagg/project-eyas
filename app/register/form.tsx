@@ -68,7 +68,6 @@ export function RegisterForm({
   const [falconClientSecret, setFalconClientSecret] = useState("");
   const [falconBaseUrl, setFalconBaseUrl] = useState("");
   const [falconMemberCid, setFalconMemberCid] = useState("");
-  // FalconPy sidecar is unconditionally on; the wizard renders no toggle.
   const [irGroupId, setIrGroupId] = useState("");
 
   const [registerState, registerFormAction, registerPending] = useActionState(

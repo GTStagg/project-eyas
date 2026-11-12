@@ -195,7 +195,7 @@ export async function POST(request: Request) {
     );
   }
 
-  return streamAgent(async ({ mcp, extras, emit, signal }) => {
+  return streamAgent(async ({ mcp, emit, signal }) => {
     emit("status", { phase: "enriching", message: "Gathering finished intelligence + Recon corpus…" });
     const bundle = await buildDossierBundle(mcp, emit, subject);
     emit("status", { phase: "synthesizing", message: "Writing dossier…" });
@@ -203,7 +203,6 @@ export async function POST(request: Request) {
     await runAgentLoop({
       signal,
       mcp,
-      extrasMcp: extras,
       systemPrompt: buildPrompt(subject, bundle),
       initialMessages: [
         { role: "user", content: `Produce the finished-intelligence dossier on ${subject} from the enriched bundle.` },

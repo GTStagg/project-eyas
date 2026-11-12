@@ -42,7 +42,7 @@ export default async function AgentToolboxPage() {
             icon={Blocks}
             eyebrow="Reference · developer surface"
             title="One AI, the entire live Falcon tool surface."
-            subtitle="Every tool this console's agent can compose — eyas-mcp plus the FalconPy extension — each marked read-only or human-approved."
+            subtitle="Every tool this console's agent can compose — eyas-mcp plus Eyas's own extension tools — each marked read-only or human-approved."
           />
 
           {catalog.ok ? (

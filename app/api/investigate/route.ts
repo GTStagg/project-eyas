@@ -5,7 +5,6 @@ import { runSubAgent, type SubAgentResult } from "@/lib/chat/sub-agent";
 import { streamAgent } from "@/lib/chat/stream-agent";
 import { beginInFlight, endInFlight } from "@/lib/chat/in-flight";
 import { withFalconMcpClient } from "@/lib/mcp/falcon-client";
-import { withFalconExtrasClient } from "@/lib/mcp/falcon-extras-client";
 import { getAnthropicClient, getAnthropicModel } from "@/lib/llm/anthropic";
 import { streamMessage } from "@/lib/llm/messages";
 import { logUsage } from "@/lib/cost/log";
@@ -153,11 +152,8 @@ export async function POST(request: Request) {
     // concurrent requests on ONE connection, so the three native clients can
     // collapse to a single shared falcon-mcp client — a live probe measured
     // ~2.4x faster warm at this concurrency with 0 errors, and it saves 2 process
-    // spawns + 2 OAuth token mints per investigate. The extras SIDECAR is NOT
-    // covered by #478 (its @mcp.tool handlers are still blocking sync), and these
-    // slices use extras_rtr_* tools, so each subagent KEEPS its own
-    // extras client — sharing that one would re-serialize the extras calls. Fan-out
-    // is single-turn + single-tenant, so there's no active-env cred-freeze concern.
+    // spawns + 2 OAuth token mints per investigate. Fan-out is single-turn +
+    // single-tenant, so there's no active-env cred-freeze concern.
     // Default OFF preserves the per-subagent native client while the change soaks;
     // see mcp_persistent_singleton + falcon_mcp_v0_16_upgrade.
     const poolNativeClient = process.env.EYAS_POOL_SUBAGENT_MCP === "1";
@@ -165,27 +161,23 @@ export async function POST(request: Request) {
     const userPrompt = (slice: string) =>
       `Host hostname: ${hostname}. Run the ${slice} slice on this host.`;
 
-    // One subagent slice on a supplied (possibly shared) native client; extras is
-    // always its own per-slice client.
+    // One subagent slice on a supplied (possibly shared) native client.
     const runSlice = (
       mcp: Client,
       slice: "fingerprint" | "threats" | "posture",
       systemPrompt: string,
       filter: Set<string>,
     ): Promise<SubAgentResult> =>
-      withFalconExtrasClient((extras) =>
-        runSubAgent({
-          mcp,
-          extrasMcp: extras,
-          systemPrompt,
-          userPrompt: userPrompt(slice),
-          toolFilter: (name) => filter.has(name),
-          maxIterations: slice === "threats" ? 8 : 6,
-          maxTokensPerTurn: 4096,
-          surface: `investigate:${slice}` as const,
-          signal,
-        }),
-      );
+      runSubAgent({
+        mcp,
+        systemPrompt,
+        userPrompt: userPrompt(slice),
+        toolFilter: (name) => filter.has(name),
+        maxIterations: slice === "threats" ? 8 : 6,
+        maxTokensPerTurn: 4096,
+        surface: `investigate:${slice}` as const,
+        signal,
+      });
 
     const runAllSlices = (mcp: Client): Promise<SubAgentResult[]> =>
       Promise.all([
@@ -197,10 +189,10 @@ export async function POST(request: Request) {
     let fingerprint: SubAgentResult, threats: SubAgentResult, posture: SubAgentResult;
     try {
       if (poolNativeClient) {
-        // One shared native client, per-subagent extras.
+        // One shared native client.
         [fingerprint, threats, posture] = await withFalconMcpClient(runAllSlices);
       } else {
-        // Default: each subagent gets its OWN native client (+ own extras).
+        // Default: each subagent gets its OWN native client.
         [fingerprint, threats, posture] = await Promise.all([
           withFalconMcpClient((mcp) => runSlice(mcp, "fingerprint", fingerprintPrompt(), FINGERPRINT_TOOLS)),
           withFalconMcpClient((mcp) => runSlice(mcp, "threats", threatsPrompt(), THREATS_TOOLS)),

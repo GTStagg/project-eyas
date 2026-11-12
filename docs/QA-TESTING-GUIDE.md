@@ -6,7 +6,7 @@ Manual validation playbook for Eyas. One section per surface — how to trigger 
 
 - `npm run typecheck` — strict TS; runs `next typegen` first via `pretypecheck`.
 - `npm run lint` — ESLint flat config.
-- `npm run test:sidecar` — Python sidecar pure-function suites (UnionFind, RTR-preamble + retrospective classifiers, ledger matcher, CQL linter).
+- `npm run test:<suite>` — the Node pure-function suites (every `test:*` script except `test:smoke`; CI runs them all), e.g. `test:ir-classifiers` (RTR-preamble + retrospective classifiers), `test:ir-ledger-matcher`, `test:rtr-library`, `test:tool-classification`.
 - `npx playwright test` — Playwright E2E (auth seal happens via `tests/auth.setup.ts`).
 - `/audit-write-tools` — every write-shape tool is approval-gated.
 - `/audit-remediations` — patching catalog covers live Spotlight remediations.
@@ -212,7 +212,7 @@ Run dev with `npm run dev` (port 3000). Standalone notes live in a dedicated sec
 - Closed detections from a prior session show up in scope → server-side filter regressed; check the open-status filter in `lib/eyas-tools/ir/alerts.ts` (`walkHostAlerts`), used by the Phase 0 scope and `lib/eyas-tools/ir/campaign-scope.ts`.
 - The agent "asks" whether to run the playbook → IR primer detection (`detectIrPrimer` in `app/api/chat/route.ts`) regressed or `IR_TOOL_FILTER` not applied.
 - Host quarantined despite `should_proceed_with_ir: false` → Phase 0.5 gate regressed (agent ignored the partition result). Check the Phase 0.5 section in `lib/eyas-tools/playbooks/ir.ts` is rendering AND the chat route's IR primer is pre-fetching `extras_ir_phase0_actionable_check`.
-- Phase 4 closes a detection that was never touched in Phase 2 → ledger matcher / closer regressed (run `npm run test:sidecar`).
+- Phase 4 closes a detection that was never touched in Phase 2 → ledger matcher / closer regressed (run `npm run test:ir-ledger-matcher`).
 - Containment lifted on a host that was already contained at engagement start → `contained_at_start` flag ignored.
 
 **Audit trail**
@@ -287,7 +287,7 @@ Run dev with `npm run dev` (port 3000). Standalone notes live in a dedicated sec
 
 **Expected**
 
-- `/status` shows build kind (`standalone` / `docker`), version (matches `package.json`), Anthropic + Falcon-MCP + extras probe results, and `missing_tools[]` (empty in a healthy build). The extras probe is labelled **"Falcon operations add-on"** (covers containment, IR, patching, provisioning — not just containment).
+- `/status` shows build kind (`standalone` / `docker`), version (matches `package.json`), and the **Anthropic** + **CrowdStrike Falcon** probe results. There is no separate add-on row: Eyas's own tools run in-process and reach Falcon through the MCP server.
 - The **API scopes** checklist shows a per-environment availability blip on each row: green (granted), red (not granted), grey (core / baseline scope — not probed). Driven by the same `/api/health` `capabilities` map as the nav gate; the legend names the active environment. Core scopes are grey by design (the app assumes them and doesn't probe each one).
 - `/api/healthz` is a cheap liveness probe; no upstream calls; safe for orchestrator and uptime monitors.
 - `/api/health` cached 30s with in-flight de-dup; `?force=1` skips the cache but still requires auth.
@@ -297,7 +297,6 @@ Run dev with `npm run dev` (port 3000). Standalone notes live in a dedicated sec
 
 **Broken signals**
 
-- `missing_tools[]` non-empty after a `make-dist.sh` build → run `verify_tools.py` against the staged sidecar source; update `falcon-extras/expected_tools.json` if a tool was deliberately removed.
 - `/api/healthz` answers with full probe data → cheap-probe split regressed (`/healthz` must not call upstream).
 - `/api/health` 200 without a session cookie → middleware regression.
 - The Posture history card throws or blanks the page → it must degrade silently to a zero-state (the `/status` fetch is try/catch-wrapped); a thrown error here is a regression.
@@ -361,7 +360,7 @@ Run dev with `npm run dev` (port 3000). Standalone notes live in a dedicated sec
 
 **Trigger** — `/audit-write-tools`.
 
-**Expected** — every write-shape tool in `falcon-extras/server.py` appears in `lib/mcp/write-tools.ts::REQUIRES_APPROVAL`; no `runAgentLoop` callsite passes `requiresApproval: () => false`. Sub-agents reject write-shape names at the toolset layer regardless of caller intent.
+**Expected** — every write-shape Eyas tool in `lib/eyas-tools/` appears in `lib/mcp/write-tools.ts::REQUIRES_APPROVAL`; no `runAgentLoop` callsite passes `requiresApproval: () => false`. Sub-agents reject write-shape names at the toolset layer regardless of caller intent.
 
 **Broken signals** — anything the skill flags. This is a release blocker.
 
@@ -408,13 +407,13 @@ Everything above applies to the standalone bundle; the items below are standalon
 
 - `data/` is absent from the staged bundle (no dev `auth.json`, `cost-log.jsonl`, `perf-log.jsonl`).
 - `BUILD-INFO` matches `package.json` version and has `buildKind: "standalone"`.
-- Sidecar files present; `verify_tools.py` clean against `falcon-extras/expected_tools.json`.
+- No retired `falcon-extras/` files or `vendor/falcon-extras-wheels/`; eyas-mcp wheels staged in `vendor/falcon-mcp-wheels/`.
 - No native `.node` binaries other than `@img/sharp` (the only allowlisted one).
 - Smoke-boot reaches `/login`.
 
 **Broken signals**
 
-- `validate-bundle` flags a missing sidecar tool → run the AST sweep after any modular refactor (`feedback_ast_sweep_after_modular_refactor`).
+- `validate-bundle` flags `falcon-extras/` files in the bundle → a stale staging step crept back into `make-dist.sh`.
 - `data/` shipped → `make-dist.sh` regression; the `rm -rf $STAGE/data` step is load-bearing.
 
 
@@ -428,19 +427,19 @@ Everything above applies to the standalone bundle; the items below are standalon
 
 ## S3. Secret warmup
 
-**Trigger** — fresh-boot the standalone bundle; immediately fire a chat turn that uses the sidecar.
+**Trigger** — fresh-boot the standalone bundle; immediately fire a chat turn that calls a Falcon tool.
 
-**Expected** — first request succeeds; sidecar isn't told `FALCON_CLIENT_ID is missing`. `instrumentation.ts` blocks on `warmSecretCache` so secrets are resolved before any request lands.
+**Expected** — first request succeeds; the MCP server isn't told `FALCON_CLIENT_ID is missing`. `instrumentation.ts` blocks on `warmSecretCache` so secrets are resolved before any request lands.
 
-**Broken signals** — first request fails with sidecar credential error, subsequent requests succeed → warmup non-blocking regression (`standalone_secret_warmup_blocking`).
+**Broken signals** — first request fails with an MCP server credential error, subsequent requests succeed → warmup non-blocking regression (`standalone_secret_warmup_blocking`).
 
 ## S4. macOS Python
 
 **Trigger** — on a macOS host with only system Python 3.9.6, launch the bundle.
 
-**Expected** — `start.sh` finds Homebrew Python 3.12, or `PYTHON3=/path/to/python3.12` is honored; the sidecar boots. Falls back with a clear operator message if neither is available.
+**Expected** — `start.sh` finds Homebrew Python 3.12, or `PYTHON3=/path/to/python3.12` is honored; the offline eyas-mcp install from bundled wheels succeeds. Falls back with a clear operator message if neither is available.
 
-**Broken signals** — sidecar boots against system Python 3.9 and errors on type syntax → `start.sh` Python discovery regressed.
+**Broken signals** — the offline install runs against system Python 3.9 and fails → `start.sh` Python discovery regressed.
 
 ## S5. HOSTNAME quirk
 
@@ -454,7 +453,7 @@ Everything above applies to the standalone bundle; the items below are standalon
 
 Minimum to call a build shippable:
 
-1. `npm run typecheck` + `npm run lint` + `npm run test:sidecar` clean.
+1. `npm run typecheck` + `npm run lint` + the `test:*` suites clean.
 2. `/audit-write-tools` clean.
 3. `/audit-remediations` no uncovered remediations with double-digit host counts.
 4. Manual sweep of sections 3 (Chat), 8 (IR end-to-end), 11 (Status), plus whichever surfaces changed.
