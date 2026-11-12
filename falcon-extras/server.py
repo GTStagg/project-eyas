@@ -52,7 +52,7 @@ def about() -> str:
     """
     payload = {
         "name": "falcon-extras",
-        "purpose": "Eyas's remaining add-on tools (Shadow-AI, process tree, exclusions, data-protection setup) while they move into the console itself.",
+        "purpose": "Eyas's remaining add-on tools (Shadow-AI, exclusions, data-protection setup) while they move into the console itself.",
         "python": f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
         "falconpy": _pkg_version("crowdstrike-falconpy"),
         "mcp_sdk": _pkg_version("mcp"),
@@ -200,62 +200,6 @@ def extras_provision_shadow_ai_banned_policy(
 # can be in the millions on large tenants and the GraphQL API caps page sizes.
 
 
-# Known remote-access-tool image-name catalog. Each entry is
-# (regex_alternation_atom, canonical_tool, family). The regex atoms are
-# joined into one CQL alternation; a match on the image basename routes
-# to the canonical tool name (used to dedupe + classify findings) and a
-# family bucket the playbook can act on.
-#
-# Curated for the IR-thorough RAT-install scan. Limited to actively-marketed
-# RAT and RMM products that operators in the field treat as suspicious when
-# unexpected — matches ATT&CK T1219 (Remote Access Software). Not exhaustive
-# (legitimate vendor tooling like SCCM, Intune, Tanium is intentionally
-# excluded — those are usually corp-managed and not the install pattern
-# Phase 0 is hunting for).
-
-# Compiled once at import. The CQL regex is the same alternation,
-# anchored against the image basename. CQL `=/regex/i` matches anywhere in
-# the value unless anchored, so the explicit framing is what pins it to the
-# basename.
-
-
-@mcp.tool()
-def extras_host_rat_install_scan(
-    device_id: str, hours_back: int = 48
-) -> dict[str, Any]:
-    """Scan NGSIEM ProcessRollup2 events on a single host for executions of
-    known remote-access tools (RATs / RMMs). Read-only.
-
-    Implements the THOROUGH leg of the IR Phase 0 RAT-install check: a
-    detection-time-window NGSIEM query catches historical installs even when
-    the installer process has long since exited, complementing the cheap
-    `Process` falconscript pass which only catches currently-running
-    processes. Driven by ATT&CK T1219 (Remote Access Software) -- attackers
-    routinely install legitimate, signed RATs alongside malicious activity
-    so the access channel survives the cleanup of the original detection.
-
-    The catalog (AnyDesk, TeamViewer, ScreenConnect, Atera, Splashtop,
-    RustDesk, NetSupport, VNC, DWService, RemoteUtilities, LogMeIn, GoTo,
-    Kaseya, NinjaOne, Pulseway, Action1, Chrome Remote Desktop) is a
-    deliberately-narrow list of products that flag as suspicious in the
-    field when unexpected. Corp-managed agents (SCCM, Intune, Tanium) are
-    intentionally excluded.
-
-    Findings are grouped by canonical tool name -- two AnyDesk executions
-    with different installer paths collapse into one item with both paths
-    captured. Phase 0's invariant: every returned item must map to a Phase
-    2 cleanup action (e.g. uninstall-anydesk, kill-process + delete-file).
-
-    Args:
-        device_id: Falcon AID (32-char hex).
-        hours_back: Look-back window in hours (1-168, default 48). Wider
-            windows are slower but catch installs that predate the
-            triggering detection.
-    """
-    from ir.rat_scan import host_rat_install_scan as _impl
-    return _impl(device_id, hours_back)
-
-
 # ---------------------------------------------------------------------------
 # Shadow-AI hunting (per-host + fleet egress).
 #
@@ -356,18 +300,6 @@ def extras_fleet_shadow_ai_egress(
 
 
 # ---------------------------------------------------------------------------
-# Process-tree reconstruction + delivery-vector classification
-# ---------------------------------------------------------------------------
-#
-# Walks ProcessRollup2 events around a detection's pivot pid to reconstruct
-# the ancestry chain, then runs the classifier over that chain to produce
-# a delivery_vector verdict (phishing_doc, browser_drive_by, lateral_winrm,
-# scheduled_task_persistence, ...). The verdict is decision-grade for IR
-# Phase 0 — it tells the operator what the channel was, not just what
-# fired. Read-only.
-
-
-# ---------------------------------------------------------------------------
 # Shadow-AI prevention bundle (Custom IOA rule group + policy attachment).
 #
 # Operator workflow:
@@ -455,117 +387,6 @@ def extras_shadow_ai_adopt_prevention(
     """
     from shadow_ai.tools import shadow_ai_adopt_prevention as _impl
     return _impl(prevention_policy_id, comment, mode, dry_run, platform)
-
-
-@mcp.tool()
-def extras_host_process_tree(
-    device_id: str,
-    pivot_pid: int | None = None,
-    pivot_image: str | None = None,
-    pivot_ts_iso: str | None = None,
-    window_minutes: int = 10,
-    ancestry_max: int = 12,
-    descendants_max: int = 200,
-) -> dict[str, Any]:
-    """Reconstruct the process tree around a detection pivot and classify
-    the delivery vector. Read-only.
-
-    Walks NGSIEM ProcessRollup2 events on `device_id` over a window
-    centered on `pivot_ts_iso`. Locates the pivot by `pivot_pid` (preferred)
-    or by fuzzy-matching `pivot_image` near the timestamp. Then walks
-    `ParentProcessId` upward to build the ancestry chain (the load-bearing
-    output for IR — explains how the attack arrived) and `ContextProcessId`
-    downward for descendants (blast radius — what else got spawned).
-
-    The classifier inspects the ancestry and returns a `delivery_vector`
-    verdict — `phishing_doc`, `phishing_email_direct`, `browser_drive_by`,
-    `archive_extraction`, `user_executed_dropper`, `lateral_winrm`,
-    `lateral_psexec`, `scheduled_task_persistence`, `wmi_persistence`,
-    `malicious_service`, `malicious_document_lateral`, `lolbin_initial`,
-    or `unknown` — plus a confidence (`high` / `medium` / `low`) and
-    a one-sentence rationale that names the anchor.
-
-    The vector is decision-grade for IR Phase 0: it tells the operator
-    where the attack arrived (pull email, audit browser, isolate lateral
-    source) and not just what fired on the host.
-
-    Args:
-        device_id: Falcon AID (32-char hex).
-        pivot_pid: Triggering process pid from the detection's behaviors[].
-            One of pivot_pid or pivot_image is required.
-        pivot_image: Triggering process basename (e.g. `powershell.exe`),
-            used to fuzzy-match when pivot_pid isn't known.
-        pivot_ts_iso: Detection created_timestamp (ISO 8601). Required —
-            anchors the search window.
-        window_minutes: Time window radius around pivot_ts_iso (1-120,
-            default 10). The walker may widen once to ±60 min for a single
-            ancestor lookup if the parent isn't in the initial window.
-        ancestry_max: Max depth to walk upward (1-30, default 12).
-        descendants_max: Max descendant nodes to return (1-1000, default 200).
-    """
-    from ir.process_tree import host_process_tree as _impl
-    return _impl(device_id, pivot_pid=pivot_pid, pivot_image=pivot_image, pivot_ts_iso=pivot_ts_iso, window_minutes=window_minutes, ancestry_max=ancestry_max, descendants_max=descendants_max)
-
-
-# ---------------------------------------------------------------------------
-# IR campaign clustering — used by extras_ir_campaign_scope to group open
-# detections by shared process-tree ancestry. Each detection's pivot_pid is
-# walked upward through ProcessRollup2; detections whose ancestry chains
-# share at least one non-system ancestor pid are members of the same
-# campaign cluster. The cluster's "root" is the highest-up shared ancestor.
-
-# System pids / processes that connect EVERYTHING (every user process
-# eventually hits explorer.exe / services.exe / wininit / smss / csrss).
-# Excluded from cluster-shared-ancestor matching so unrelated user campaigns
-# don't get merged through the system root.
-
-
-@mcp.tool()
-def extras_ir_campaign_scope(device_id: str) -> dict[str, Any]:
-    """Server-side campaign-aware IR Phase 0 scope. Read-only.
-
-    For every open detection on the host, walks the process-tree ancestry
-    via ProcessRollup2 (caching per unique pivot_pid so detections sharing
-    a pivot pay one walk, not N), then UnionFind-clusters detections by
-    shared NON-SYSTEM ancestor pid. Each cluster is one "campaign" — the
-    set of detections rooted in the same attacker chain. System processes
-    (explorer, services, svchost, lsass, etc.) are excluded from the
-    shared-ancestor match so unrelated user campaigns don't merge through
-    the OS root.
-
-    **Why this exists** (vs `extras_close_all_open_detections_on_host`):
-    on a host with multiple distinct campaigns or background detections
-    unrelated to the current IR engagement, bulk-closing everything is
-    wrong. Phase 0 should scope to the campaign the operator is
-    responding to — and the agent should not be trusted to do the
-    clustering itself (it's tedious, ancestry-tree comparison is the kind
-    of work LLMs skip). Server-side clustering returns explicit
-    `campaigns[]` so Phase 4 can close one campaign cleanly without
-    touching unrelated alerts.
-
-    For each campaign cluster, the tool also runs the existing delivery-
-    vector classifier on the deepest ancestry chain — same `kind`
-    (`phishing_doc`, `browser_drive_by`, `c2_agent`, etc.) and confidence
-    the IR playbook already consumes from `extras_host_process_tree`.
-
-    Operator workflow:
-        1. Call this tool in Phase 0.
-        2. Pick the campaign matching the IR engagement (usually the
-           largest cluster, or the one with the most-recent activity).
-        3. Pass that campaign's `composite_ids` to Phase 4 close.
-
-    Args:
-        device_id: Falcon AID of the target host.
-
-    Returns:
-        ok, campaigns: list of {campaign_id, count, composite_ids[],
-        root_pid, root_image, delivery_vector, first_ts, last_ts,
-        sample_ancestry[]}, unclustered: composite_ids without ancestry
-        data (telemetry aged out / pivot_pid missing), total_open,
-        unique_pivots_walked, walk_seconds.
-    """
-    from ir.campaign_scope import ir_campaign_scope as _impl
-    return _impl(device_id)
 
 
 # ---------------------------------------------------------------------------

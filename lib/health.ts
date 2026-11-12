@@ -423,15 +423,10 @@ async function probeFalconExtras(): Promise<FalconExtrasInfo> {
       // they diverge.
       const mlExclusionsProbe = probeCap("extras_list_ml_exclusions", { limit: 1 });
       const ioaExclusionsProbe = probeCap("extras_list_ioa_exclusions", { limit: 1 });
-      // IR runtime probes — bench-input check that the load-bearing IR tools
-      // actually load and return a structured response. Failures register here
-      // instead of mid-IR-engagement. Bogus AID short-circuits the campaign
-      // walk to count=0 quickly.
-      const irCampaignScopeProbe = probeCap("extras_ir_campaign_scope", {
-        device_id: "00000000000000000000000000000000",
-      });
-      // extras_diagnose_ir_readiness runs in-process (lib/eyas-tools), so
-      // it is always loaded; nothing to probe in the sidecar.
+      // extras_ir_campaign_scope and extras_diagnose_ir_readiness run
+      // in-process (lib/eyas-tools), so they are always loaded; nothing to
+      // probe in the sidecar.
+      const irCampaignScopeProbe = Promise.resolve(true);
       const irReadinessProbe = Promise.resolve(true);
 
       const [

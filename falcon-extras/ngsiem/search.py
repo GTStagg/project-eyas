@@ -1,7 +1,7 @@
 """NGSIEM search runner — start / poll / fetch a single CQL query.
 
-Used by the IR ancestry walkers, process-tree reconstruction, the RAT
-install scan and the Shadow-AI hunter. (/ngsiem uses eyas-mcp's falcon_search_ngsiem.)
+Used by the Shadow-AI hunter. (/ngsiem and Eyas's own tools use eyas-mcp's
+falcon_search_ngsiem.)
 Lifted out of ``server.py`` so per-feature modules can share the runner
 without each one re-importing FalconPy + the CQL linter.
 
@@ -91,8 +91,8 @@ def run_ngsiem_search(
     # blew the MCP SDK's 60s transport timeout — the transport aborted mid-poll,
     # the agent got an opaque timeout, and the live NGSIEM job was never stopped.
     # A monotonic deadline makes budget_s a true wall-clock cap (worst-case
-    # overshoot is one POLL_S + one round-trip), keeping the 50s callers
-    # (the IR Phase 0 RAT scan, the Shadow-AI egress hunt)
+    # overshoot is one POLL_S + one round-trip), keeping the 50s caller
+    # (the Shadow-AI egress hunt)
     # safely under 60s. See mcp_timeout_vs_falcon_wait.
     deadline = time.monotonic() + budget_s
     while time.monotonic() < deadline:
@@ -118,56 +118,3 @@ def run_ngsiem_search(
     except Exception:
         pass
     return None, None
-
-
-def pr2_select() -> str:
-    """Field projection for ProcessRollup2 — kept narrow to limit token use
-    and mask noisy fields the classifier doesn't read.
-
-    Note the dual-pid model: ``TargetProcessId`` / ``ParentProcessId`` are
-    Falcon's internal *graph ids* (10-digit) used to link rows;
-    ``RawProcessId`` is the actual OS pid (4-5 digit, what Task Manager
-    / RTR shows). The walker keys on graph id; the UI displays os_pid
-    for humans.
-    """
-    return (
-        "[@timestamp, aid, TargetProcessId, ContextProcessId, "
-        "ParentProcessId, RawProcessId, FileName, ImageFileName, "
-        "CommandLine, UserName, UserSid, ProcessStartTime, FileSignInfo]"
-    )
-
-
-def ms_now() -> int:
-    return int(time.time() * 1000)
-
-
-def normalize_pr2_row(ev: dict[str, Any]) -> dict[str, Any]:
-    """Shape a ProcessRollup2 event into the
-    ``{pid, ppid, image, cmdline, user, ts}`` record the classifier + UI
-    consume."""
-
-    def _to_int(v: Any) -> int | None:
-        try:
-            return int(v) if v is not None and v != "" else None
-        except (TypeError, ValueError):
-            return None
-
-    image = str(ev.get("ImageFileName") or ev.get("FileName") or "")
-    return {
-        "pid": _to_int(ev.get("TargetProcessId")),
-        "ppid": _to_int(ev.get("ParentProcessId"))
-        or _to_int(ev.get("ContextProcessId")),
-        "os_pid": _to_int(ev.get("RawProcessId")),
-        "image": image,
-        "cmdline": (str(ev.get("CommandLine") or ""))[:480],
-        "user": ev.get("UserName") or None,
-        "user_sid": ev.get("UserSid") or None,
-        "signed": (
-            True
-            if str(ev.get("FileSignInfo") or "").lower().startswith("signed")
-            else False
-            if ev.get("FileSignInfo")
-            else None
-        ),
-        "ts": ev.get("ProcessStartTime") or ev.get("@timestamp"),
-    }
