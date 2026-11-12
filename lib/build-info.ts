@@ -5,8 +5,6 @@ import { withFalconMcpClient } from "@/lib/mcp/falcon-client";
 
 export type BundlePins = {
   "mcp-server": string;
-  "crowdstrike-falconpy": string;
-  mcp: string;
 };
 
 export type BuildKind = "standalone" | "docker";

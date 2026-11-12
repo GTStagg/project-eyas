@@ -104,6 +104,14 @@
   same duplicate refusal, regex check and monitor-first defaults. The Tuning
   panel's exclusion check now comes from the eyas-mcp health probe. The add-on
   registers no tools any more and is removed in the next change.
+- **The Falcon operations add-on is gone.** Every Eyas tool runs inside the
+  console and reaches Falcon only through eyas-mcp, so the console no longer
+  starts a second tool server. The standalone bundle and the Docker image no
+  longer carry its Python code, its virtual environment or its packages; the
+  bundle needs only Node and `uv` (for eyas-mcp). `/status` and the health
+  report drop the add-on row, the home-page and getting-started scope checks
+  read eyas-mcp's capability probes, and registration always continues to
+  Getting started.
 - Verdicts are now recorded as the `true_positive` / `false_positive` tag with
   `status='closed'` on the native detection update, the same tag the Falcon
   console writes.

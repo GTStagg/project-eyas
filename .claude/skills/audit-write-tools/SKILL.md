@@ -1,13 +1,13 @@
 ---
 name: audit-write-tools
-description: Use to verify every write-shaped Falcon/sidecar tool is approval-gated and that no caller bypasses the registry. Diffs `falcon-extras/server.py` definitions against `lib/mcp/write-tools.ts::REQUIRES_APPROVAL`, and lints `runAgentLoop` callsites for `requiresApproval: () => false` overrides. Run after adding any new sidecar tool or any new `runAgentLoop` callsite. Trigger phrases: "audit write tools", "check approval gates", "are the writes gated", "any approval bypasses".
+description: Use to verify every write-shaped Eyas tool is approval-gated and that no caller bypasses the registry. Diffs the `lib/eyas-tools/` tool names against `lib/mcp/write-tools.ts::REQUIRES_APPROVAL`, and lints `runAgentLoop` callsites for `requiresApproval: () => false` overrides. Run after adding any new Eyas tool or any new `runAgentLoop` callsite. Trigger phrases: "audit write tools", "check approval gates", "are the writes gated", "any approval bypasses".
 ---
 
 # audit-write-tools
 
 Failure modes this catches:
 
-1. **A new sidecar tool that mutates Falcon state ships without a registry entry.** The agent loop only pauses for tools in `REQUIRES_APPROVAL`. A new `extras_create_*` / `extras_delete_*` / `extras_run_*` tool that someone forgot to register is silently un-gated — the agent can call it from chat and the operator never sees the approval dialog.
+1. **A new Eyas tool that mutates Falcon state ships without a registry entry.** The agent loop only pauses for tools in `REQUIRES_APPROVAL`. A new `extras_create_*` / `extras_delete_*` / `extras_run_*` tool that someone forgot to register is silently un-gated — the agent can call it from chat and the operator never sees the approval dialog.
 
 2. **A `runAgentLoop` callsite passes `requiresApproval: () => false`.** That custom function REPLACES the registry check entirely (see `feedback_never_disable_approvals`). Copying this from a read-only route into a write-capable surface neutralizes every gate at once. The IR route had this bug 2026-05-02 and ran a `host-delete-folder` without approval.
 

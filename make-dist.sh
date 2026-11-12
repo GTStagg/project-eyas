@@ -29,8 +29,6 @@ if [ -f "$SCRIPT_DIR/internal/build.env" ]; then
   # shellcheck disable=SC1091
   . "$SCRIPT_DIR/internal/build.env"
 fi
-PIN_FALCONPY=$(node -e "process.stdout.write(require('./versions.json')['crowdstrike-falconpy'])")
-PIN_MCP_SDK=$(node -e "process.stdout.write(require('./versions.json')['mcp'])")
 GIT_SHA=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 GIT_DIRTY=""
 # --porcelain covers tracked changes AND untracked files (a not-yet-added module
@@ -165,73 +163,6 @@ for d in STANDALONE IR-SETUP SHADOW-AI-SETUP USERGUIDE DEMO DEPLOYMENT AI-SPECIA
   fi
 done
 
-# Optional Python sidecar source (no venv — user creates it on first enable).
-# Auto-discovery: copy every top-level *.py + requirements.txt + *.json
-# (expected_tools.json is read by the build-time verifier below AND the
-# runtime /api/health probe — it MUST ship), plus any subdirectory that's a
-# Python package (__init__.py) or a curated catalog (manifest.json). This way
-# new modules under falcon-extras/ ship without a matching make-dist.sh edit.
-# .venv / __pycache__ / *.pyc / test_*.py are stripped after.
-if [ -d falcon-extras ]; then
-  mkdir -p "$STAGE/falcon-extras"
-  find falcon-extras -maxdepth 1 -type f \( -name '*.py' -o -name '*.json' -o -name 'requirements.txt' \) \
-    -exec cp {} "$STAGE/falcon-extras/" \;
-  for d in falcon-extras/*/; do
-    [ -d "$d" ] || continue
-    case "$(basename "$d")" in .venv|__pycache__) continue;; esac
-    if [ -f "$d/__init__.py" ] || [ -f "$d/manifest.json" ]; then
-      # NOTE: strip the trailing slash the glob leaves on $d. BSD cp (macOS)
-      # treats `cp -R src/ dest/` as "copy the CONTENTS of src into dest",
-      # NOT "copy src as dest/src" — so a trailing slash flattens the package
-      # (ir/provision_quarantine.py -> falcon-extras/provision_quarantine.py,
-      # with every package's __init__.py colliding). That silently drops the
-      # ir/ shadow_ai/ ngsiem/ ... package dirs from the bundle and every
-      # lazily-imported cluster tool then throws ModuleNotFoundError at call
-      # time ("sidecar returned non-JSON" on the /config setup cards). See
-      # the v0.8.5 regression. "${d%/}" copies the directory itself.
-      cp -R "${d%/}" "$STAGE/falcon-extras/"
-    fi
-  done
-  find "$STAGE/falcon-extras" -type d -name __pycache__ -prune -exec rm -rf {} + 2>/dev/null || true
-  find "$STAGE/falcon-extras" -type f -name '*.pyc' -delete 2>/dev/null || true
-  # Unit tests are dev-only — they pull no runtime weight and shouldn't ship.
-  find "$STAGE/falcon-extras" -type f -name 'test_*.py' -delete 2>/dev/null || true
-
-  # Deploy verification: every tool the frontend / IR playbook expects must
-  # be registered on the bundled sidecar. We've shipped partial sidecar
-  # surfaces twice ("did my deploy actually land?" was the exact phrasing).
-  # Run the verifier with the dev venv (where `mcp` is installed) but pointed
-  # at the STAGED sidecar source so we're checking what's actually going in
-  # the bundle, not the editable dev tree.
-  if [ -x "falcon-extras/.venv/bin/python3" ]; then
-    step "Verifying staged sidecar registers every expected tool…"
-    # PYTHONDONTWRITEBYTECODE=1: the verifier imports server.py + its
-    # transitive imports; without this guard Python writes __pycache__/
-    # back into the staged tree AFTER the strip step above, and the
-    # validator flags `.pyc` artifacts in the shipped zip.
-    if ! PYTHONDONTWRITEBYTECODE=1 "falcon-extras/.venv/bin/python3" "$STAGE/falcon-extras/verify_tools.py" >/dev/null 2>&1; then
-      echo ""
-      PYTHONDONTWRITEBYTECODE=1 "falcon-extras/.venv/bin/python3" "$STAGE/falcon-extras/verify_tools.py" >&2 || true
-      echo "" >&2
-      echo "ERROR: bundled sidecar is missing tools the frontend expects." >&2
-      echo "       Update falcon-extras/expected_tools.json or restore the missing tool." >&2
-      exit 1
-    fi
-    ok "staged sidecar registers every expected tool"
-  else
-    echo "  WARN: falcon-extras/.venv missing — skipping tool-registry verification" >&2
-    echo "        run 'cd falcon-extras && uv venv && uv pip install -r requirements.txt' to enable" >&2
-  fi
-fi
-
-# Belt + suspenders: Next.js standalone tracing (nft) follows path.join calls
-# and can copy the dev host's falcon-extras/.venv into .next/standalone/ when
-# the literal path appears in source. Source-side obfuscation (see
-# lib/mcp/falcon-extras-client.ts::resolvePython) is the primary defense; this
-# is the backstop. The end-user runtime venv is rebuilt by start.sh from
-# bundled wheels on first launch.
-rm -rf "$STAGE/falcon-extras/.venv"
-
 # Same NFT-tracing leak hits data/: lib/auth, lib/cost, lib/perf all reference
 # `${cwd}/data/...` so the tracer copies the dev host's data/ into the bundle.
 # Shipping that means recipients inherit OUR auth.json (so they see sign-in
@@ -239,7 +170,7 @@ rm -rf "$STAGE/falcon-extras/.venv"
 # start.sh recreates data/ on first launch.
 rm -rf "$STAGE/data"
 
-ok "launcher + docs + optional sidecar staged"
+ok "launcher + docs staged"
 
 # ─── Stage better-sqlite3 macOS prebuilds (multi-ABI) ────────────────────────
 # Next.js standalone copies whatever `better-sqlite3/build/Release/*.node` the
@@ -409,32 +340,6 @@ PY
     exit 1
   fi
   rm -rf "$FM_CLONE"
-  # falcon-extras wheels (host containment sidecar). Same offline-install
-  # constraint applies on the target Mac.
-  if [ -f falcon-extras/requirements.txt ]; then
-    step "Downloading falcon-extras wheels (python ${WHEELS_PYTHON_VERSION}, ${WHEELS_PIP_PLATFORM})…"
-    mkdir -p "$STAGE/vendor/falcon-extras-wheels"
-    TMPVENV2="$OUT_DIR/.pipvenv-extras"
-    python3 -m venv "$TMPVENV2" >/dev/null
-    # Download exactly what the hash-locked requirements.txt pins, so the
-    # recipient's offline `pip install -r requirements.txt` finds every file.
-    if "$TMPVENV2/bin/pip" download \
-          -r falcon-extras/requirements.txt \
-          --python-version "$WHEELS_PYTHON_VERSION" \
-          --platform "$WHEELS_PIP_PLATFORM" \
-          --only-binary=:all: \
-          --dest "$STAGE/vendor/falcon-extras-wheels" >/dev/null; then
-      EX_COUNT=$(find "$STAGE/vendor/falcon-extras-wheels" -type f -name '*.whl' | wc -l | tr -d ' ')
-      ok "falcon-extras wheels staged ($EX_COUNT files)"
-    else
-      echo "  ERROR: falcon-extras wheel download failed — sidecar would need online install on the recipient's Mac." >&2
-      echo "         pip could not resolve falconpy/mcp from \$PIP_INDEX_URL (${PIP_INDEX_URL})." >&2
-      rm -rf "$STAGE/vendor/falcon-extras-wheels"
-      exit 1
-    fi
-    rm -rf "$TMPVENV2"
-  fi
-
   rm -rf "$TMPVENV"
 else
   echo "  ERROR: python3 not found on build host — cannot pre-build the offline wheels." >&2
@@ -455,8 +360,6 @@ Node:  ${NODE_VERSION}
 
 Pinned upstream versions:
   ${PIN_FALCON_MCP_PKG}             ${PIN_FALCON_MCP}
-  crowdstrike-falconpy ${PIN_FALCONPY}
-  mcp (Python SDK)     ${PIN_MCP_SDK}
 
 MCP server source: ${PIN_FALCON_MCP_GIT}
 MCP server commit: ${PIN_FALCON_MCP_REF}
@@ -471,9 +374,7 @@ cat > "$STAGE/build-info.json" <<EOF
   "gitSha": "${GIT_SHA}${GIT_DIRTY}",
   "nodeVersion": "${NODE_VERSION}",
   "pins": {
-    "mcp-server": "${PIN_FALCON_MCP}",
-    "crowdstrike-falconpy": "${PIN_FALCONPY}",
-    "mcp": "${PIN_MCP_SDK}"
+    "mcp-server": "${PIN_FALCON_MCP}"
   },
   "mcpServer": {
     "package": "${PIN_FALCON_MCP_PKG}",

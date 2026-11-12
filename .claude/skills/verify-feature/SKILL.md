@@ -1,6 +1,6 @@
 ---
 name: verify-feature
-description: Use immediately after implementing a change to confirm it actually works end-to-end before declaring the task done. Routes by surface — UI changes run Playwright, API changes run curl/fetch probes, MCP / sidecar changes run a Python probe like falconscript_probe.py. Trigger phrases: "verify the change", "smoke this end-to-end", "did the wizard work", "test it for real".
+description: Use immediately after implementing a change to confirm it actually works end-to-end before declaring the task done. Routes by surface — UI changes run Playwright, API changes run curl/fetch probes, Eyas-tool / MCP changes run the tool's test suite plus a direct probe on eyas-mcp. Trigger phrases: "verify the change", "smoke this end-to-end", "did the wizard work", "test it for real".
 ---
 
 # verify-feature
@@ -16,7 +16,7 @@ Before picking a verification path, read your own diff (`git diff --stat`) and c
 | `app/**/page.tsx`, `app/**/form.tsx`, `components/**` | UI | **Playwright** |
 | `app/api/**/route.ts`, `app/**/actions.ts` | HTTP / server action | **curl probe** (with auth cookie) |
 | `lib/mcp/**`, `lib/llm/**`, `lib/health.ts` | server-side glue | **boot probe** + targeted curl |
-| `falcon-extras/**` (Python) | sidecar | **direct Python probe** (no MCP) |
+| `lib/eyas-tools/**` | Eyas's in-process agent tools | **direct tool probe** against a fake or live eyas-mcp |
 | `lib/config/**`, `lib/auth/**`, `middleware.ts` | runtime config / auth | **session probe** + at least one gated route fetch |
 | `make-dist.sh`, `start.sh` | bundling / launch | **/validate-bundle** skill (separate) |
 
@@ -66,22 +66,18 @@ npx playwright test tests/auth.setup.ts
 
 For a server action (e.g. `registerAction`, `testConnectionAction`), drive it through the page that hosts it via Playwright instead — server actions accept multipart form data and are easier to exercise from a test than via raw curl.
 
-## Step 4 — Sidecar / MCP / Python changes: direct probe
+## Step 4 — Eyas tool / MCP changes: direct probe
 
-The pattern that worked for the falconscript validator diagnosis:
+1. Unit-level: the tool's `scripts/test-*.mjs` suite runs it against a fake eyas-mcp (`callNative` / `searchNative` handlers). Add a case for the change.
+2. Live: write a one-shot `node_modules/tsx` script that stubs `server-only`, opens `withFalconMcpClient`, builds `makeEyasToolContext(client)` and calls the tool's impl with a real input (load `.env` first for `AUTH_SESSION_SECRET`, and put `uvx` on PATH). Print the raw native response — don't paraphrase — and print shapes and error text, not tenant records.
+3. Delete the probe when done.
 
-1. Write a one-shot Python script in `/tmp/<feature>_probe.py` that loads `.env.local` into env, imports the changed module directly, and calls the function/method with a real input.
-2. Run it with `falcon-extras/.venv/bin/python /tmp/<feature>_probe.py`.
-3. Print the raw response — don't paraphrase. Look at exact stderr / exit_code / errors[] / status_code.
-4. Delete the probe when done.
-
-This bypasses MCP entirely and gives you ground truth. Use when:
-- You added/changed a tool in `falcon-extras/server.py`.
-- You changed `falcon-extras/falcon_scripts.py`.
+Use when:
+- You added/changed a tool in `lib/eyas-tools/`.
 - You changed the RTR script library (`lib/eyas-tools/rtr/`): run `/verify-patch` and `node scripts/test-rtr-library.mjs` instead.
-- You suspect an agent's reported failure is a hallucination (the falconscript validator was discovered this way).
+- You suspect an agent's reported failure is a hallucination.
 
-For an end-to-end MCP probe (validates the tool definition surfaces, not just the Python), spin up the dev server, fire `/api/health?force=1`, and inspect the `falconExtras.tools` array.
+For an end-to-end check of what the agent sees, open `/agent-toolbox` (or fetch `/api/agent-toolbox-catalog?force=1`).
 
 ## Step 5 — Runtime config / auth changes
 

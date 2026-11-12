@@ -38,8 +38,6 @@ import { logUsage, type Surface } from "@/lib/cost/log";
 
 export type SubAgentOptions = {
   mcp: Client;
-  /** Optional second MCP client (e.g. falcon-extras). Tools merged. */
-  extrasMcp?: Client | null;
   systemPrompt: string;
   /** The user message kicking off this subagent. Subagents are typically
    *  one-shot — a single user prompt eliciting a focused report slice. */
@@ -101,7 +99,6 @@ export async function runSubAgent(opts: SubAgentOptions): Promise<SubAgentResult
   const startedAt = Date.now();
   const {
     mcp,
-    extrasMcp,
     systemPrompt,
     userPrompt,
     toolFilter,
@@ -113,7 +110,7 @@ export async function runSubAgent(opts: SubAgentOptions): Promise<SubAgentResult
 
   const isCancelled = () => signal?.aborted === true;
 
-  const bridge = await buildToolBridge(mcp, extrasMcp ?? null);
+  const bridge = await buildToolBridge(mcp);
   // Belt-and-suspenders: subagents are read-only by convention. If a caller's
   // `toolFilter` accidentally allows a write-shape tool, REQUIRES_APPROVAL
   // would silently bypass here (the subagent loop has no operator-facing
@@ -124,12 +121,12 @@ export async function runSubAgent(opts: SubAgentOptions): Promise<SubAgentResult
   // (where approval gating works) and pass the result down, not to relax
   // this guard.
   // Same for the fail-closed backstops: a native tool annotated as a write but
-  // missing from the registry, or a sidecar tool not yet classified, is
+  // missing from the registry, or an Eyas tool not yet classified, is
   // treated as a write and hidden.
   const safeFilter = (name: string): boolean => {
     if (defaultRequiresApproval(name)) return false;
     if (bridge.annotatedNativeWrites.has(name)) return false;
-    if (bridge.unclassifiedSidecarTools.has(name)) return false;
+    if (bridge.unclassifiedEyasTools.has(name)) return false;
     return toolFilter ? toolFilter(name) : true;
   };
   const filteredTools = bridge.anthropicTools.filter((t) => safeFilter(t.name));

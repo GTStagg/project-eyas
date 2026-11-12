@@ -52,10 +52,6 @@ test-results
 tests/screenshots
 tests/.auth
 
-# falcon-extras python sidecar
-falcon-extras/.venv
-falcon-extras/__pycache__
-falcon-extras/**/__pycache__
 __pycache__/
 
 # standalone distribution bundle (produced by ./make-dist.sh)

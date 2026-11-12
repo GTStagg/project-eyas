@@ -104,11 +104,10 @@ export async function POST(request: Request) {
     );
   }
 
-  return streamAgent(async ({ mcp, extras, emit, signal }) => {
+  return streamAgent(async ({ mcp, emit, signal }) => {
     await runAgentLoop({
       signal,
       mcp,
-      extrasMcp: extras ?? undefined,
       systemPrompt: buildPrompt(artifact, kind),
       initialMessages: [
         { role: "user", content: `Look up artifact: ${artifact} (kind: ${kind})` },

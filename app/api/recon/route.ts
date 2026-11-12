@@ -113,11 +113,10 @@ export async function POST(request: Request) {
     );
   }
 
-  return streamAgent(async ({ mcp, extras, emit, signal }) => {
+  return streamAgent(async ({ mcp, emit, signal }) => {
     await runAgentLoop({
       signal,
       mcp,
-      extrasMcp: extras,
       systemPrompt: buildPrompt(query, kind),
       initialMessages: [
         { role: "user", content: `Recon lookup: ${query} (kind: ${kind})` },

@@ -279,7 +279,7 @@ export const NAV_GROUPS: NavGroup[] = [
       {
         href: "/blueprint",
         label: "Blueprint",
-        description: "How to build an agentic SOC on eyas-mcp, FalconPy & Claude.",
+        description: "How to build an agentic SOC on eyas-mcp & Claude.",
         icon: DraftingCompass,
       },
     ],

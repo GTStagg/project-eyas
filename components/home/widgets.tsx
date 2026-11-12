@@ -49,8 +49,7 @@ export type WidgetKind =
 
 type WidgetGroup = "Triage" | "Ask & hunt" | "Posture" | "Operations";
 
-// Capability key gating the widget. Keys are unique across the extras + mcp
-// capability namespaces, so a single lookup against both is unambiguous.
+// Capability key gating the widget (eyas-mcp capability flags from /api/health).
 type Cap = "recon" | "malQuery" | "idp" | "discover" | "intel" | "correlationRules" | "guardian";
 
 export type WidgetDef = {
@@ -105,14 +104,10 @@ export function ControlCenterGrid({
       .then((r) => r.json())
       .then((j) => {
         if (cancelled) return;
-        const ec = j?.falconExtras?.capabilities ?? {};
         const mc = j?.falconMcp?.capabilities ?? {};
         const denied = new Set<Cap>();
         // Hide a widget only on a CONCLUSIVE denial (=== false).
-        (["recon", "discover"] as const).forEach((c) => {
-          if (ec[c] === false) denied.add(c);
-        });
-        (["intel", "correlationRules", "guardian", "malQuery", "idp"] as const).forEach((c) => {
+        (["recon", "discover", "intel", "correlationRules", "guardian", "malQuery", "idp"] as const).forEach((c) => {
           if (mc[c] === false) denied.add(c);
         });
         setDeniedCaps(denied);

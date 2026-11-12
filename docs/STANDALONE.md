@@ -1,6 +1,6 @@
 # Eyas — macOS onboarding
 
-End-to-end walkthrough from a clean macOS install to a fully provisioned tenant. One linear read; follow top to bottom. No Docker, no reverse proxy, no separate sidecar container — the Next.js process spawns the `eyas-mcp` MCP server and the `falcon-extras` Python sidecar locally and binds to loopback.
+End-to-end walkthrough from a clean macOS install to a fully provisioned tenant. One linear read; follow top to bottom. No Docker, no reverse proxy, no separate container — the Next.js process spawns the `eyas-mcp` MCP server locally, runs Eyas's own tools in-process, and binds to loopback.
 
 > Looking for the Linux/Docker deployment? See [`DEPLOYMENT.md`](./DEPLOYMENT.md). Deep references for IR and Shadow-AI provisioning live in [`IR-SETUP.md`](./IR-SETUP.md) and [`SHADOW-AI-SETUP.md`](./SHADOW-AI-SETUP.md). Once the tool is running, the operator-facing tour is [`USERGUIDE.md`](./USERGUIDE.md).
 
@@ -49,15 +49,13 @@ Verify: `node --version` should print `v22.x` or `v24.x`.
 
 ### 1.3 Python 3.12
 
-Hosts the bundled `eyas-mcp` server and the `falcon-extras` FalconPy sidecar. macOS ships Python 3.9, which is too old (eyas-mcp requires ≥3.11). The standalone bundle's wheels are built for 3.12 by default, so install that minor version explicitly.
+Hosts the bundled `eyas-mcp` server (Eyas itself needs no Python). macOS ships Python 3.9, which is too old (eyas-mcp requires ≥3.11). The standalone bundle's wheels are built for 3.12 by default, so install that minor version explicitly.
 
 ```sh
 brew install python@3.12
 ```
 
 Verify: `python3.12 --version` should print `Python 3.12.x`.
-
-The same `python3.12` is reused by both `eyas-mcp` and the `falcon-extras` sidecar — no second install needed.
 
 ### 1.4 uv (online bundles only)
 
@@ -372,7 +370,7 @@ Set `ANTHROPIC_MODEL=<one-of-those-ids>` in `.env` and restart. If the gateway 4
 Many gateways forward only `/v1/messages` and 404 the `/v1/models` endpoint that the health probe uses. The build detects this and downgrades to a green status with an explanatory note when `ANTHROPIC_AUTH_TOKEN` is set.
 
 **`/status` shows an amber "setting up" state right after install or upgrade**
-Expected on the first launch after a fresh install or an upgrade. The console builds its bundled offline components before it's fully ready; while that runs (usually under a minute), the CrowdStrike Falcon and Falcon operations add-on rows show an amber **setup** badge rather than green. Wait a moment and reload — they turn green once setup finishes. If a row is still amber after a couple of minutes, check the terminal/logs (`eyas logs`) for an install error.
+Expected on the first launch after a fresh install or an upgrade. The console builds its bundled offline components before it's fully ready; while that runs (usually under a minute), the CrowdStrike Falcon row shows an amber **setup** badge rather than green. Wait a moment and reload — it turns green once setup finishes. If the row is still amber after a couple of minutes, check the terminal/logs (`eyas logs`) for an install error.
 
 **IR row stays red even after running the setup card**
 Open `/config`, click *Re-detect* on the IR quarantine setup card. If it still reports missing artifacts, check the chat transcript from the provisioning run — every `extras_provision_quarantine_policy` call returns a structured result that names which step failed. Common cause: the API client is missing `Prevention Policies:write` or `IOA Exclusions:write`. Grant the scope, then re-fire.
@@ -409,7 +407,7 @@ By default the bundle accepts either a direct Anthropic API key or a gateway on 
 ANTHROPIC_GATEWAY_BASE_URL=https://gateway.example.com ./make-dist.sh
 ```
 
-The script builds the `eyas-mcp` wheel from the commit pinned in `versions.json` and downloads every runtime dependency into `vendor/falcon-mcp-wheels/` (the sidecar's hash-locked dependencies go to `vendor/falcon-extras-wheels/`), so the bundle installs **offline** on the target Mac. If any download fails, the build stops rather than ship a bundle that needs network access at first launch.
+The script builds the `eyas-mcp` wheel from the commit pinned in `versions.json` and downloads every runtime dependency into `vendor/falcon-mcp-wheels/`, so the bundle installs **offline** on the target Mac. If any download fails, the build stops rather than ship a bundle that needs network access at first launch.
 
 Override the Python version / platform the wheels are built for:
 
@@ -441,9 +439,7 @@ project-eyas-v<version>/
 ├── .next/                   ← compiled app + static assets
 ├── public/                  ← static assets
 ├── node_modules/            ← minimal runtime deps
-├── falcon-extras/           ← FalconPy Python sidecar (always-on)
 ├── vendor/falcon-mcp-wheels/    ← pre-downloaded eyas-mcp wheels + dependencies
-├── vendor/falcon-extras-wheels/ ← (offline bundles only) pre-downloaded falcon-extras wheels
 ├── vendor/falcon-mcp-venv/      ← created on first launch by start.sh (offline path)
 ├── start.sh                 ← launcher (prereq checks + .env load + open browser)
 ├── .env.example             ← config template

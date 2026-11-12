@@ -3,13 +3,12 @@
 A 15–20 minute live walkthrough for two audiences:
 
 - **CrowdStrike customers** (SOC, IR, Falcon administrators) — show how an agent layer on top of Falcon turns multi-tab investigations and remediation work into one prompt with full audit trace.
-- **CrowdStrike Sales Engineers** — show what an MCP server for Falcon (`eyas-mcp`) + FalconPy + Claude can do together, with the codebase itself as a working reference for customers asking "how would we build this?"
+- **CrowdStrike Sales Engineers** — show what an MCP server for Falcon (`eyas-mcp`) + Claude can do together, with the codebase itself as a working reference for customers asking "how would we build this?"
 
 Adjust depth per audience. Section headers are the beats; quoted lines are what to say while clicking; *italics* are the points to actually land. Keep the **Unofficial** framing visible — the footer disclaimer carries it on every page.
 
 **Pre-flight (do this before the audience joins):**
 - Dev server running, browser at [http://127.0.0.1:3000](http://127.0.0.1:3000).
-- `falcon-extras` venv built (`falcon-extras/.venv/bin/python` exists) — the sidecar is always-on, and the containment + patching beats depend on it.
 - API client scopes confirmed: `Hosts:write` (containment), `Real Time Response:read` + `Real Time Response (Admin):write` (patching), plus the existing read scopes.
 - A second tab open at `/cost` — you'll switch to it near the end.
 - A third tab open at `/vulnerabilities?mode=newest&limit=500` — the patching beat starts there.
@@ -21,7 +20,7 @@ Adjust depth per audience. Section headers are the beats; quoted lines are what 
 
 ## Beat 1 — Frame the project (60 seconds)
 
-> "This is **Eyas** — a self-hosted Next.js app that drives CrowdStrike Falcon through Claude, wrapping `eyas-mcp` — an independent Falcon MCP server, derived from CrowdStrike's open-source `falcon-mcp` — and a FalconPy sidecar. *Eyas* is the falconry term for a young falcon in training — fitting, because it's raised on the same craft as Falcon but is distinctly its own thing. Unofficial — not a CrowdStrike product, not a replacement for the Falcon console. The question it answers: *what does an analyst's day look like when the agent does the cross-module joins, the deterministic enrichment, and the plan-execute-verify loops, and you just talk to Falcon?*"
+> "This is **Eyas** — a self-hosted Next.js app that drives CrowdStrike Falcon through Claude, wrapping `eyas-mcp` — an independent Falcon MCP server, derived from CrowdStrike's open-source `falcon-mcp` — plus Eyas's own tools, running in-process. *Eyas* is the falconry term for a young falcon in training — fitting, because it's raised on the same craft as Falcon but is distinctly its own thing. Unofficial — not a CrowdStrike product, not a replacement for the Falcon console. The question it answers: *what does an analyst's day look like when the agent does the cross-module joins, the deterministic enrichment, and the plan-execute-verify loops, and you just talk to Falcon?*"
 
 *Land:* the agent is the method; Falcon is still the subject. Every tool call is gated, traced, and auditable.
 
@@ -145,7 +144,7 @@ Point at the by-surface breakdown:
 
 ---
 
-## Beat 10 — `falcon-extras`: extending the tool surface (90 seconds)
+## Beat 10 — Extending the tool surface (90 seconds)
 
 Back to the chat tab. Paste:
 
@@ -153,9 +152,9 @@ Back to the chat tab. Paste:
 
 Let the agent answer. It should mention `falcon_contain_hosts` and `falcon_lift_host_containment`.
 
-> "Quick story. The MCP server this started from never exposed host containment — its Hosts module was read-only. So I wrote a small Python sidecar called `falcon-extras` on [FalconPy](https://falconpy.io), CrowdStrike's official Python SDK, to fill the gap: a second MCP server, spawned over stdio by this Next.js process, merged into the same tool list with no protocol-level differences. Containment — and most of the other gap-fillers — have since moved into `eyas-mcp` itself. The sidecar keeps what's uniquely ours: the patch and cleanup script library, the IR and Shadow-AI playbooks, provisioning. Even there, the actual Falcon calls now run through `eyas-mcp`."
+> "Quick story. The MCP server this started from never exposed host containment — its Hosts module was read-only. So I wrote a small Python sidecar called `falcon-extras` on [FalconPy](https://falconpy.io), CrowdStrike's official Python SDK, to fill the gap. Containment — and the other gap-fillers — have since moved into `eyas-mcp` itself, and the sidecar is gone. What's uniquely ours — the patch and cleanup script library, the IR and Shadow-AI playbooks, provisioning — now runs in-process inside this Next.js app, merged into the same tool list, and every Falcon call it makes goes through `eyas-mcp`."
 
-> "*This is the headline architectural property.* Any new MCP server I want to plug in — internal one we write, third-party, doesn't matter — slots into the same agent loop and gets the same approval gating for free."
+> "*This is the headline architectural property.* Any new tool — a native in `eyas-mcp` or one of Eyas's own — slots into the same agent loop and gets the same approval gating for free."
 
 > "And we use the same pattern for the next beat: agentic patching."
 
@@ -200,7 +199,7 @@ The agent calls `extras_rtr_run_patch` again with `dry_run=false` — **second a
 
 > "Two-stage approval. The dry-run was the rehearsal; this is the live take."
 
-Click **Approve**. Underneath, the sidecar uploads the rendered script to the Falcon script library, opens a batch RTR session, runs `runscript -CloudFile=` against every host, then deletes the upload.
+Click **Approve**. Underneath, Eyas hands the rendered script to `eyas-mcp`, which uploads it to the Falcon script library, opens a batch RTR session, runs `runscript -CloudFile=` against every host, then deletes the upload.
 
 For short scripts (Chrome / Firefox / Notepad++), this returns in ~30s with per-host stdout / exit codes. For long scripts (Windows Update install), the call returns at ~30s with `complete: false` + a `cloud_request_id` per laggard, and the agent loops on `extras_rtr_check_patch_status` until done.
 
@@ -214,7 +213,7 @@ If verification reports the CVE still open: narrate the Spotlight scan-cadence c
 
 ## Beat 12 — Wrap (60 seconds)
 
-> "What this isn't: a Falcon-console replacement, or a supported CrowdStrike product. What this is: a working reference for what an agent layer on top of Falcon does — cross-module questions in plain English, gated write actions with a full audit trace, deterministic dashboards for the predictable work, **a closed plan-execute-verify loop for vulnerability remediation**, and a clean extension pattern when upstream is missing a capability. Self-hosts on a single box; the only ongoing cost is Anthropic tokens, visible on the cost dashboard. The whole stack — `falcon-mcp` + FalconPy + Claude — is what you'd reach for to build this against your own tenant."
+> "What this isn't: a Falcon-console replacement, or a supported CrowdStrike product. What this is: a working reference for what an agent layer on top of Falcon does — cross-module questions in plain English, gated write actions with a full audit trace, deterministic dashboards for the predictable work, **a closed plan-execute-verify loop for vulnerability remediation**, and a clean extension pattern when upstream is missing a capability. Self-hosts on a single box; the only ongoing cost is Anthropic tokens, visible on the cost dashboard. The whole stack — `eyas-mcp` + Claude — is what you'd reach for to build this against your own tenant."
 
 > "Questions?"
 
@@ -227,7 +226,6 @@ If verification reports the CVE still open: narrate the Spotlight scan-cadence c
 | **Anthropic 429 mid-demo** | "Hit the rate limit on my account tier — the system prompt is 26k tokens and we're chaining iterations. Let me retry in 60 seconds — the prompt cache will hit and the next call is essentially free." |
 | **Tool returns empty** | "Quiet tenant today — that's actually a good sign for our security posture. The point of the demo is the agentic flow, which we just saw work end-to-end." |
 | **Falcon 403** | "API client doesn't have that scope in this tenant. Easy fix in the console; not interesting to debug live. Let me try a different question." |
-| **`falcon-extras` child crashes** | Skip beats 10–11's exec parts, keep the architectural narration. Show extras tools are in the tool list (works without the child being healthy as long as listing succeeded earlier). |
 | **Chat hangs > 30s on a beat-3 cross-module query** | "Watching for the activity banner — there it is, it's running `falcon_search_vulnerabilities`, that's a slower endpoint. While we wait..." (pivot to talking about `/cost` or the architecture). |
 | **Patch dry-run resolves "no curated script matches"** | Means the chosen vendor/product isn't in the catalog yet. Pivot to a known-good row (Chrome / Firefox / Office). Narrate: "the catalog is curated; matching unknown vendors is the boundary." |
 | **Patch execution returns `complete: false` + cloud_request_ids and the polling loop runs out of iterations** | "Long script — Windows Update routinely takes 25 minutes. The cloud_request_ids are durable; in production we'd raise iteration cap or hand off to a scheduled poller. For demo purposes, the architectural point already landed." |

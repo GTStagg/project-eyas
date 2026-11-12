@@ -22,25 +22,6 @@ updates:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
 
-  # falcon-extras sidecar: requirements.in compiles to the hash-locked
-  # requirements.txt.
-  - package-ecosystem: "pip"
-    directory: "/falcon-extras"
-    schedule:
-      interval: "monthly"
-    cooldown:
-      default-days: 14
-    commit-message:
-      prefix: "deps(python):"
-    labels: ["dependencies", "python"]
-    groups:
-      python-all:
-        patterns: ["*"]
-    ignore:
-      # Major upgrades (e.g. mcp 2.x) are reviewed by hand.
-      - dependency-name: "*"
-        update-types: ["version-update:semver-major"]
-
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:

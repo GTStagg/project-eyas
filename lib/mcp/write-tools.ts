@@ -130,8 +130,7 @@ export const REQUIRES_APPROVAL: ReadonlySet<string> = new Set<string>([
   // approval; the IR lift backstop (route guard) gates lift aid-keyed.
   "falcon_contain_hosts",
   "falcon_lift_host_containment",
-  // Data Protection (DLP) configuration writes. These FalconPy-backed sidecar
-  // tools create the content-pattern -> classification -> policy chain with
+  // Data Protection (DLP) configuration writes. These Eyas tools create the content-pattern -> classification -> policy chain with
   // monitor-first defaults. Tenant-wide config writes, gated fail-closed like
   // the correlation-rule writes above.
   "extras_create_data_protection_content_pattern",
@@ -156,10 +155,10 @@ export const REQUIRES_APPROVAL: ReadonlySet<string> = new Set<string>([
   // falcon_perform_host_group_action (lib/eyas-tools/host-group-tools.ts).
   "extras_host_group_add_members",
   "extras_host_group_remove_members",
-  // falcon-extras — RTR-driven patching. Only the executor is gated; the
+  // Eyas — RTR-driven patching. Only the executor is gated; the
   // catalog/resolver tools are read-only.
   "extras_rtr_run_patch",
-  // falcon-extras — saving a generic-installer param-set as a reusable per-
+  // Eyas — saving a generic-installer param-set as a reusable per-
   // tenant patch profile. Gated because saving establishes a TRUSTED, reusable
   // install source (a vendor URL the operator blesses for future one-click
   // runs); that's a conscious decision distinct from running it once. No script
@@ -167,7 +166,7 @@ export const REQUIRES_APPROVAL: ReadonlySet<string> = new Set<string>([
   // manifest regex at save time. The read companion (extras_list_patch_profiles)
   // is NOT gated; running a saved profile gates separately at extras_rtr_run_patch.
   "extras_save_patch_profile",
-  // falcon-extras — RTR-driven host cleanup (incident-response remediation).
+  // Eyas — RTR-driven host cleanup (incident-response remediation).
   // Only the executor is gated; list / resolve are read-only.
   "extras_rtr_run_cleanup",
   // RTR readiness probe (eyas-mcp; the bridge forces probe="runscript"). The
@@ -175,7 +174,7 @@ export const REQUIRES_APPROVAL: ReadonlySet<string> = new Set<string>([
   // script, opens an RTR admin session and runs `runscript` on whichever
   // device_id the agent picks, so it gates like the other RTR admin paths.
   "falcon_wait_for_rtr_sessions",
-  // falcon-extras — detection-tuning exclusion CREATES. Long-lived artifacts;
+  // Eyas — detection-tuning exclusion CREATES. Long-lived artifacts;
   // create is the consequential write and stays on the sidecar because it runs
   // the IOA zero-width-assertion + single-quote pre-flight before writing.
   // By-id DELETE is handled by native falcon_delete_exclusions (adopted in
@@ -183,7 +182,7 @@ export const REQUIRES_APPROVAL: ReadonlySet<string> = new Set<string>([
   // List variants stay read-only.
   "extras_create_ml_exclusion",
   "extras_create_ioa_exclusion",
-  // falcon-extras — Shadow-AI prevention bundle. Creates a Custom IOA rule
+  // Eyas — Shadow-AI prevention bundle. Creates a Custom IOA rule
   // group + rules and binds it to a Prevention Policy. Idempotent but the
   // first run on a tenant has fleet-wide effect once the policy is attached
   // to a host group, so it's gated. Status / dry-run paths are separate
@@ -205,7 +204,7 @@ export const REQUIRES_APPROVAL: ReadonlySet<string> = new Set<string>([
   // attached to the IR Quarantine / Shadow-AI Banned groups alongside
   // the new app-managed dedicated policies.
   "extras_detach_prevention_policy_from_host_group",
-  // falcon-extras — Shadow-AI Banned setup. Mirrors the IR pattern:
+  // Eyas — Shadow-AI Banned setup. Mirrors the IR pattern:
   // creates the "Project Eyas - Shadow-AI Banned" host group OR provisions
   // the prevention policies bound to it. Operator-driven, not a per-host
   // action — the per-host "ban" is a separate extras_host_group_add_members
@@ -237,12 +236,11 @@ export function requiresApproval(toolName: string): boolean {
   return REQUIRES_APPROVAL.has(toolName);
 }
 
-// Eyas tools (falcon-extras sidecar or in-process lib/eyas-tools) reviewed as
-// read-only (2026-11-08): queries, playbook text, diagnostics and RTR
-// command-status polling. Neither carries MCP annotations, so this list is the
-// classification: an Eyas tool in neither REQUIRES_APPROVAL nor this set is
-// treated as an unclassified write and gated (see
-// ToolBridge.unclassifiedSidecarTools). scripts/test-tool-classification.mjs
+// Eyas's in-process tools (lib/eyas-tools) reviewed as read-only: queries,
+// playbook text, diagnostics and RTR command-status polling. They carry no MCP
+// annotations, so this list is the classification: an Eyas tool in neither
+// REQUIRES_APPROVAL nor this set is treated as an unclassified write and gated
+// (see ToolBridge.unclassifiedEyasTools). scripts/test-tool-classification.mjs
 // enforces that every one is in exactly one of the two lists.
 export const EXTRAS_READ_ONLY: ReadonlySet<string> = new Set<string>([
   "extras_classify_patch_coverage",

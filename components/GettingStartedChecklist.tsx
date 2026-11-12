@@ -240,8 +240,7 @@ function initialRows(): Row[] {
 
 type HealthLite = {
   anthropic?: { status?: string; message?: string };
-  falconMcp?: { status?: string; message?: string };
-  falconExtras?: { capabilities?: Record<string, { status?: string }> };
+  falconMcp?: { status?: string; message?: string; capabilities?: Record<string, boolean> };
 };
 
 async function probeHealth(): Promise<HealthLite | null> {
@@ -285,10 +284,9 @@ function mergeHealthRow(row: Row, h: HealthLite | null, which: "anthropic" | "fa
 
 function mergeScopesRow(row: Row, h: HealthLite | null): Row {
   if (!h) return { ...row, status: "error", detail: "Couldn't reach /api/health." };
-  const caps = h.falconExtras?.capabilities ?? {};
-  const pending = Object.entries(caps).filter(
-    ([, v]) => v && typeof v === "object" && (v as { status?: string }).status === "scope_pending",
-  );
+  // A surface's flag is false only on a confirmed scope denial.
+  const caps = h.falconMcp?.capabilities ?? {};
+  const pending = Object.entries(caps).filter(([, v]) => v === false);
   if (pending.length === 0) return { ...row, status: "ok" };
   return {
     ...row,

@@ -1,12 +1,11 @@
 #!/usr/bin/env bash
-# Refresh the dev MCP servers.
+# Refresh the dev MCP server.
 #
 # The MCP server (eyas-mcp) is pinned by git commit in versions.json, and dev
 # spawns it with `uvx --from git+<repo>@<ref>` (lib/mcp/falcon-client.ts), so
 # bumping the pin is the upgrade. This script re-resolves that pinned spec from
-# a clean uv cache (useful after a pin bump, or when a cached build is suspect)
-# and refreshes the falcon-extras venv. It never resolves the server by bare
-# package name.
+# a clean uv cache (useful after a pin bump, or when a cached build is
+# suspect). It never resolves the server by bare package name.
 #
 # Standalone bundles do NOT use this script — they install pinned wheels from
 # vendor/ at start.sh time.
@@ -33,19 +32,6 @@ else
   echo "        brew install uv  (or)  curl -LsSf https://astral.sh/uv/install.sh | sh" >&2
 fi
 
-# falcon-extras: refresh the local venv if it exists.
-EXTRAS_VENV="${SCRIPT_DIR}/falcon-extras/.venv"
-if [ -x "${EXTRAS_VENV}/bin/pip" ]; then
-  step "Upgrading falcon-extras packages…"
-  "${EXTRAS_VENV}/bin/pip" install --quiet --upgrade -r falcon-extras/requirements.txt
-  ok "falcon-extras upgraded"
-  "${EXTRAS_VENV}/bin/pip" list 2>/dev/null \
-    | grep -E '^(crowdstrike-falconpy|mcp) ' \
-    | sed 's/^/    /'
-else
-  echo "  ${DIM}falcon-extras venv not present — skipping (run start.sh once to create it).${RESET}"
-fi
-
 echo ""
 echo -e "  ${GREEN}${BOLD}Done.${RESET}"
-echo "  Restart 'npm run dev' so the next MCP spawn picks up the new versions."
+echo "  Restart 'npm run dev' so the next MCP spawn picks up the new version."

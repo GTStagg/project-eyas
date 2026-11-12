@@ -2,7 +2,7 @@
 
 This document covers the Docker-based self-hosted deployment of **Eyas** on a Linux server. For the macOS standalone (no-Docker) path, see [`STANDALONE.md`](./STANDALONE.md). For local development, see [`../QUICKSTART.md`](../QUICKSTART.md).
 
-The multi-stage Dockerfile bundles the `falcon-extras` Python sidecar by default — agentic patching, agentic IR cleanup and its playbooks, Workflows execute, identity response, tenant provisioning, and Shadow-AI hunting all light up in the compose stack with no extra steps. Compose mounts `./data:/app/data` by default so registration, runtime settings, cost log, audit log, and IR run records persist across container recreation; the MCP server (`eyas-mcp`) is built from source at the commit pinned in `versions.json` — there is no published image — so every build is reproducible.
+The `app` image is Node only: Eyas's own tools run in-process — agentic patching, agentic IR cleanup and its playbooks, identity response, tenant provisioning, and Shadow-AI hunting all light up in the compose stack with no extra steps, and every Falcon call they make goes through `eyas-mcp`. Compose mounts `./data:/app/data` by default so registration, runtime settings, cost log, audit log, and IR run records persist across container recreation; the MCP server (`eyas-mcp`) is built from source at the commit pinned in `versions.json` — there is no published image — so every build is reproducible.
 
 ---
 
@@ -19,14 +19,13 @@ internet ─ TLS ───▶ │  TLS termination, real-IP fwd        │ ─�
                        │  ┌─────────────┐  ┌────────────┐ │
                        │  │ app         │  │ eyas-mcp   │ │
                        │  │ Next.js +   │──│ :8000 HTTP │ │
-                       │  │ falcon-     │  │ x-api-key  │ │
-                       │  │ extras      │  └────────────┘ │
-                       │  │ :3000       │                 │
+                       │  │ Eyas tools  │  │ x-api-key  │ │
+                       │  │ :3000       │  └────────────┘ │
                        │  └─────────────┘                 │
                        └──────────────────────────────────┘
 ```
 
-`eyas-mcp` (built from source at the pinned commit) is **not** internet-reachable — only the `app` service can talk to it on the bridge network. Only `127.0.0.1:3000` is published to the host, so the reverse proxy is the only public ingress. The `falcon-extras` sidecar runs inside the `app` container as a stdio child — no separate port, no separate service.
+`eyas-mcp` (built from source at the pinned commit) is **not** internet-reachable — only the `app` service can talk to it on the bridge network. Only `127.0.0.1:3000` is published to the host, so the reverse proxy is the only public ingress. Eyas's own tools run inside the `app` process — no separate port, no separate service.
 
 ---
 

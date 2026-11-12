@@ -10,7 +10,7 @@
 # the template through `sed`, replacing @@TOKEN@@ markers. This is the
 # adaptation of ~/.claude/skills/macos-standalone/gen-install.sh — NOT reused
 # verbatim, because eyas's launcher wraps its own start.sh (native better-sqlite3
-# + Python sidecar + baked gateway lock) instead of `node server.js`, and a
+# + baked gateway lock) instead of `node server.js`, and a
 # re-install preserves in-place credentials/DB.
 set -euo pipefail
 

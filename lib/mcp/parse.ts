@@ -40,7 +40,7 @@ export function detectFalconError(parsed: unknown[]): string | null {
 }
 
 /**
- * Detect a falcon-mcp (or FalconPy-sidecar) scope / permission denial in a
+ * Detect an eyas-mcp scope / permission denial in a
  * tool result's joined text content.
  *
  * Prefer the STRUCTURED signal over prose. falcon-mcp packages a 401/403 as an
@@ -64,7 +64,7 @@ export function isScopeDenied(text: string): boolean {
   const objIsDenial = (o: unknown, depth = 0): boolean => {
     if (!o || typeof o !== "object") return false;
     const r = o as Record<string, unknown>;
-    if (r.scope_pending === true) return true; // sidecar staged-build shape
+    if (r.scope_pending === true) return true; // staged-build shape
     const status = (r.details as { status_code?: number } | undefined)?.status_code;
     if (typeof r.error === "string" && (status === 403 || status === 401)) return true;
     if (Array.isArray(r.required_scopes) && r.required_scopes.length > 0) return true;
@@ -227,57 +227,4 @@ export function parseToolResultObjects<T = unknown>(
     }
   }
   return out;
-}
-
-/**
- * Parse a single-object JSON payload from a sidecar (falcon-extras) tool
- * result, surfacing the REAL failure instead of a generic "non-JSON" string.
- *
- * The extras tools return one JSON object (`{ok, case, ...}`). But when a tool
- * *raises* — e.g. a lazily-imported cluster package isn't present in the bundle
- * (the v0.8.5 flattened-sidecar regression) — FastMCP returns `isError:true`
- * with the exception text (`ModuleNotFoundError: No module named 'ir'`), which
- * isn't JSON. The old call sites collapsed that to a fixed "sidecar returned
- * non-JSON", hiding the actual cause: the /config cards showed "Couldn't read
- * tenant state" and the chat agent hallucinated a falcon-mcp `--modules ir`
- * fix. Echo a truncated slice of the real text so the failure is legible.
- *
- * Prefers `structuredContent` (MCP SDK ≥1.27 returns the object pre-parsed)
- * and falls back to parsing the joined text blocks.
- */
-export function parseExtrasObjectResult(result: unknown): Record<string, unknown> {
-  const r = (result ?? {}) as {
-    content?: ReadonlyArray<{ type?: string; text?: string }>;
-    structuredContent?: unknown;
-    isError?: boolean;
-  };
-  const text = Array.isArray(r.content)
-    ? r.content
-        .map((c) => (c && c.type === "text" && typeof c.text === "string" ? c.text : ""))
-        .join("\n")
-        .trim()
-    : "";
-
-  // A raised tool: isError + the exception string as text. Surface it verbatim
-  // (truncated) rather than masking it.
-  if (r.isError) {
-    const detail = text || "no detail returned";
-    return { ok: false, error: `sidecar tool error: ${detail.slice(0, 400)}` };
-  }
-
-  if (text) {
-    try {
-      const v = JSON.parse(text);
-      if (v && typeof v === "object" && !Array.isArray(v)) return v as Record<string, unknown>;
-    } catch {
-      /* fall through to structuredContent / error */
-    }
-  }
-
-  if (r.structuredContent && typeof r.structuredContent === "object") {
-    return r.structuredContent as Record<string, unknown>;
-  }
-
-  const detail = text ? `: ${text.slice(0, 400)}` : "";
-  return { ok: false, error: `sidecar returned unparseable output${detail}` };
 }

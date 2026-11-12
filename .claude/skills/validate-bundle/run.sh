@@ -53,12 +53,12 @@ else
   fail "dev data/ leaked into bundle:\n$(echo "$LEAKED_DATA" | sed 's/^/      /')"
 fi
 
-# 2. No __pycache__ or .pyc under falcon-extras
-PYCACHE=$(grep -E "^${BUNDLE_NAME}/falcon-extras/.*(__pycache__/|\.pyc$)" "$LISTING_FILE" || true)
-if [ -z "$PYCACHE" ]; then
-  ok "no __pycache__ / .pyc under falcon-extras/"
+# 2. The retired falcon-extras sidecar is gone: no source, no wheels.
+RETIRED=$(grep -E "^${BUNDLE_NAME}/(falcon-extras/|vendor/falcon-extras-wheels/)" "$LISTING_FILE" || true)
+if [ -z "$RETIRED" ]; then
+  ok "no falcon-extras files or wheels (the add-on is retired)"
 else
-  fail "Python build artifacts in falcon-extras/:\n$(echo "$PYCACHE" | head -5 | sed 's/^/      /')"
+  fail "retired falcon-extras files in the bundle:\n$(echo "$RETIRED" | head -5 | sed 's/^/      /')"
 fi
 
 # 3. No unallowed platform-specific .node native bindings. Allowlist:
@@ -83,54 +83,12 @@ else
   fail "unexpected native binding(s) — bundle may be platform-specific:\n$(echo "$NATIVE" | sed 's/^/      /')"
 fi
 
-# 4. Required sidecar files — derived from server.py's actual imports so new
-# modules added to falcon-extras/ are checked automatically.
-REQUIRED_SIDECAR=(
-  "falcon-extras/server.py"
-  "falcon-extras/requirements.txt"
-)
-if [ -f "$REPO_ROOT/falcon-extras/server.py" ]; then
-  # Extract top-level local imports: `from X import …` and `import X` where X
-  # corresponds to a file/dir under falcon-extras/. Skip third-party (falconpy,
-  # mcp, etc.) by checking for a matching path on disk.
-  while IFS= read -r mod; do
-    if [ -f "$REPO_ROOT/falcon-extras/${mod}.py" ]; then
-      REQUIRED_SIDECAR+=("falcon-extras/${mod}.py")
-    elif [ -d "$REPO_ROOT/falcon-extras/${mod}" ]; then
-      # Package — require __init__.py (or manifest.json for catalog dirs).
-      if [ -f "$REPO_ROOT/falcon-extras/${mod}/__init__.py" ]; then
-        REQUIRED_SIDECAR+=("falcon-extras/${mod}/__init__.py")
-      fi
-      if [ -f "$REPO_ROOT/falcon-extras/${mod}/manifest.json" ]; then
-        REQUIRED_SIDECAR+=("falcon-extras/${mod}/manifest.json")
-      fi
-      # Common catalog/runtime files we always want shipped if they exist.
-      for f in library.py rtr.py classifier.py; do
-        [ -f "$REPO_ROOT/falcon-extras/${mod}/${f}" ] && \
-          REQUIRED_SIDECAR+=("falcon-extras/${mod}/${f}")
-      done
-    fi
-  done < <(awk '
-    /^[[:space:]]*from[[:space:]]+[A-Za-z_][A-Za-z0-9_]*[[:space:]]+import/ { print $2 }
-    /^[[:space:]]*import[[:space:]]+[A-Za-z_][A-Za-z0-9_]*[[:space:]]*$/    { print $2 }
-  ' "$REPO_ROOT/falcon-extras/server.py" | sort -u)
-fi
-sidecar_missing=0
-for f in "${REQUIRED_SIDECAR[@]}"; do
-  if ! grep -qxF "${BUNDLE_NAME}/${f}" "$LISTING_FILE"; then
-    fail "missing sidecar file: $f"
-    sidecar_missing=1
-  fi
-done
-[ "$sidecar_missing" -eq 0 ] && ok "all required sidecar files present (${#REQUIRED_SIDECAR[@]} entries derived from server.py imports)"
-
-# 5. Wheels staged
+# 5. eyas-mcp wheels staged (offline install on the recipient's host)
 MCP_WHEELS=$(grep -cE "^${BUNDLE_NAME}/vendor/falcon-mcp-wheels/.*\.whl$" "$LISTING_FILE" || true)
-EXTRAS_WHEELS=$(grep -cE "^${BUNDLE_NAME}/vendor/falcon-extras-wheels/.*\.whl$" "$LISTING_FILE" || true)
-if [ "$MCP_WHEELS" -gt 0 ] && [ "$EXTRAS_WHEELS" -gt 0 ]; then
-  ok "wheels staged (falcon-mcp: $MCP_WHEELS, falcon-extras: $EXTRAS_WHEELS)"
+if [ "$MCP_WHEELS" -gt 0 ]; then
+  ok "eyas-mcp wheels staged ($MCP_WHEELS)"
 else
-  fail "wheels missing (falcon-mcp: $MCP_WHEELS, falcon-extras: $EXTRAS_WHEELS) — recipients on offline networks won't be able to install"
+  fail "eyas-mcp wheels missing — recipients on offline networks won't be able to install"
 fi
 
 # 6. BUILD-INFO present + version match

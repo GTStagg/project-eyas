@@ -1,6 +1,5 @@
-import { ArrowUpRight, Plug2, Package, Activity, Boxes, KeyRound, ChevronRight, History } from "lucide-react";
+import { ArrowUpRight, Plug2, Package, Activity, KeyRound, History } from "lucide-react";
 import AppShell from "@/components/AppShell";
-import { REQUIRES_APPROVAL } from "@/lib/mcp/write-tools";
 import SessionsCard from "@/components/SessionsCard";
 import ScopeChecklist, { type ScopeCapStates } from "@/components/ScopeChecklist";
 import { getActiveEnvironment, getActiveEnvironmentId } from "@/lib/config/environments";
@@ -9,7 +8,6 @@ import { getBuildInfo } from "@/lib/build-info";
 import {
   getHealthReport,
   FIRST_LAUNCH_SETUP_MSG,
-  type FalconExtrasInfo,
   type ProbeResult,
   type ProbeStatus,
 } from "@/lib/health";
@@ -26,17 +24,11 @@ export default async function Status() {
         : health.anthropic.status === "ok" && health.falconMcp.status === "ok"
           ? "ok"
           : "error";
-  const extrasAsProbe: ProbeResult = {
-    status: health.falconExtras.status,
-    latencyMs: health.falconExtras.latencyMs,
-    message: health.falconExtras.message,
-  };
 
   // Live per-environment scope availability for the ScopeChecklist blips. Only
   // the staged / optional surfaces are probed (see CAP_BY_CONSOLE); the values
   // are undefined when a probe didn't run, which the checklist renders neutral.
   const mcpCaps = health.falconMcp.capabilities;
-  const extrasCaps = health.falconExtras.capabilities;
   const capStates: ScopeCapStates = {
     intel: mcpCaps?.intel,
     cases: mcpCaps?.cases,
@@ -102,11 +94,6 @@ export default async function Status() {
                 probe={health.anthropic}
               />
               <ProbeRow
-                label="Falcon operations add-on"
-                hint="Optional add-on for host containment, guided incident response, patching, host-group provisioning, and other actions beyond the core Falcon connection. See the card below for details."
-                probe={extrasAsProbe}
-              />
-              <ProbeRow
                 label="CrowdStrike Falcon"
                 hint="Connects to Falcon and lists the tools available with your current API permissions."
                 probe={health.falconMcp}
@@ -115,8 +102,7 @@ export default async function Status() {
           </div>
 
           {/* Cards below Health are ordered alphabetically by section title:
-              Build → Diagnostics → Falcon operations add-on → Posture history
-              → Scopes → Sessions. */}
+              Build → Diagnostics → Posture history → Scopes → Sessions. */}
 
           {/* ── Build ──────────────────────────────────────────── */}
           <div className="rounded-lg border border-neutral-800 bg-neutral-950 p-8 shadow-lg shadow-black/40">
@@ -157,11 +143,6 @@ export default async function Status() {
                     label={buildInfo.bundle.mcpServer?.package ?? "MCP server"}
                     value={buildInfo.bundle.pins["mcp-server"]}
                   />
-                  <KV
-                    label="crowdstrike-falconpy"
-                    value={buildInfo.bundle.pins["crowdstrike-falconpy"]}
-                  />
-                  <KV label="mcp (Python SDK)" value={buildInfo.bundle.pins.mcp} />
                   {buildInfo.bundle.mcpServer && (
                     <KV
                       label={`${buildInfo.bundle.mcpServer.package} commit`}
@@ -213,9 +194,6 @@ export default async function Status() {
             </Group>
           </div>
 
-          {/* ── FalconPy sidecar detail ────────────────────────── */}
-          <FalconExtrasCard info={health.falconExtras} />
-
           {/* ── Posture history ────────────────────────────────── */}
           <PostureHistoryCard
             count={postureHistory.count}
@@ -258,116 +236,6 @@ export default async function Status() {
         </div>
       </main>
     </AppShell>
-  );
-}
-
-function FalconExtrasCard({ info }: { info: FalconExtrasInfo }) {
-  const enabled = info.status !== "disabled";
-  return (
-    <div className="rounded-lg border border-neutral-800 bg-neutral-950 p-8 shadow-lg shadow-black/40">
-      <div className="flex items-start gap-4">
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-brand-900/40 bg-brand-950/40 text-oxblood-400">
-          <Boxes className="h-5 w-5" strokeWidth={1.75} />
-        </div>
-        <div className="flex-1">
-          <div className="text-xs font-semibold uppercase tracking-[0.14em] text-oxblood-400">
-            Falcon operations add-on
-          </div>
-          <h1 className="mt-1.5 text-3xl font-semibold tracking-tight text-white">Extra capabilities</h1>
-          <p className="mt-1.5 text-base text-neutral-400">
-            {info.about?.purpose ??
-              "Adds host containment, guided incident response, patching, host-group provisioning, and other actions beyond the core Falcon connection."}
-          </p>
-        </div>
-        <StatusDot status={info.status} large />
-      </div>
-
-      {!enabled && (
-        <div className="mt-6 rounded-lg border border-neutral-800 bg-neutral-950/60 p-4 text-sm text-neutral-400">
-          The Falcon operations add-on isn't enabled in this build. The
-          relevant Falcon API write permissions (e.g. Hosts:write for
-          containment) are required to use it.
-        </div>
-      )}
-
-      {enabled && info.status === "initializing" && (
-        <div className="mt-6 rounded-lg border border-amber-900/60 bg-amber-950/30 p-4 text-sm text-amber-200">
-          <div className="font-semibold">Finishing first-time setup.</div>
-          <div className="mt-0.5 text-amber-200/80">
-            {info.message ?? FIRST_LAUNCH_SETUP_MSG}
-          </div>
-        </div>
-      )}
-
-      {enabled && info.status === "error" && (
-        <div className="mt-6 rounded-lg border border-red-900/60 bg-red-950/30 p-4 font-mono text-xs text-oxblood-300">
-          {info.message ?? "Add-on health check failed."}
-        </div>
-      )}
-
-      {enabled && info.status === "ok" && (
-        <>
-          <Group title="Runtime">
-            <KV label="Server version" value={info.serverVersion ?? "—"} />
-            {info.about && (
-              <>
-                <KV label="Python" value={info.about.python} />
-                <KV label="crowdstrike-falconpy" value={info.about.falconpy} />
-                <KV label="mcp (Python SDK)" value={info.about.mcp_sdk} />
-                <KV label="Falcon base URL" value={info.about.base_url} />
-                <KV
-                  label="Member CID"
-                  value={info.about.member_cid_set ? "set (MSSP child)" : "not set (single-tenant)"}
-                />
-              </>
-            )}
-          </Group>
-
-          {info.capabilities && (
-            <Group title="IR runtime probes">
-              <KV
-                label="Campaign scope"
-                value={info.capabilities.irCampaignScope ? "Reachable" : "Unreachable"}
-              />
-              <KV
-                label="Readiness diagnostic"
-                value={info.capabilities.irReadiness ? "Reachable" : "Unreachable"}
-              />
-            </Group>
-          )}
-
-          {info.expected_tools && (
-            <Group title="Deploy verification">
-              {info.missing_tools && info.missing_tools.length > 0 ? (
-                <div className="rounded-lg border border-red-900/60 bg-red-950/30 p-4 font-mono text-xs text-oxblood-200">
-                  <div className="mb-2 text-sm font-semibold tracking-tight">
-                    {info.missing_tools.length} expected{" "}
-                    {info.missing_tools.length === 1 ? "capability is" : "capabilities are"}{" "}
-                    missing on the connected add-on. Some workflows will not work
-                    until the add-on is updated and reloaded.
-                  </div>
-                  <ul className="list-disc pl-5 text-neutral-300">
-                    {info.missing_tools.map((name) => (
-                      <li key={name}>{name}</li>
-                    ))}
-                  </ul>
-                </div>
-              ) : (
-                <KV
-                  label="Status"
-                  value={`All ${info.expected_tools.length} expected capabilities registered`}
-                />
-              )}
-            </Group>
-          )}
-
-          {info.tools && info.tools.length > 0 && (
-            <ToolDomainGroups tools={info.tools} descriptions={info.toolDescriptions} />
-          )}
-
-        </>
-      )}
-    </div>
   );
 }
 
@@ -516,134 +384,6 @@ function StatusBadge({ status }: { status: ProbeStatus }) {
     >
       {text}
     </span>
-  );
-}
-
-// Maps a sidecar tool name to a security-domain group for the /status tool
-// list. Ordered, first-match-wins — keep more specific rules above generic
-// ones. Anything unmatched lands in "Other" so new tools degrade gracefully
-// (and visibly) instead of silently disappearing.
-const TOOL_DOMAIN_RULES: { domain: string; match: (n: string) => boolean }[] = [
-  { domain: "Containment", match: (n) => /^extras_host_(contain|lift_containment)$/.test(n) },
-  { domain: "Identity protection", match: (n) => n.startsWith("extras_identity_") },
-  { domain: "Shadow AI", match: (n) => n.includes("shadow_ai") },
-  {
-    domain: "Incident response",
-    match: (n) =>
-      n.startsWith("extras_ir_") ||
-      n.includes("quarantine") || // create/adopt/provision/diagnose quarantine setup
-      n === "extras_diagnose_ir_readiness" ||
-      n === "extras_host_process_tree" ||
-      n === "extras_host_rat_install_scan" ||
-      n === "extras_close_all_open_detections_on_host",
-  },
-  { domain: "Host groups", match: (n) => n.startsWith("extras_host_group_") },
-  { domain: "Patching & remediation", match: (n) => n.startsWith("extras_rtr_") },
-  { domain: "Tuning & exclusions", match: (n) => n.includes("ioa_exclusion") || n.includes("ml_exclusion") },
-  { domain: "NGSIEM", match: (n) => n.startsWith("extras_ngsiem_") },
-  { domain: "Data protection", match: (n) => n.includes("data_protection") },
-  { domain: "Fusion SOAR workflows", match: (n) => n.startsWith("extras_workflows_") },
-  {
-    domain: "Policy & lifecycle",
-    match: (n) =>
-      n.includes("prevention_policy") ||
-      n === "extras_delete_ioa_rule_group" ||
-      n === "extras_teardown_project_eyas_managed",
-  },
-];
-
-// Display order for the domain groups (most operationally central first).
-const TOOL_DOMAIN_ORDER = [
-  "Incident response",
-  "Containment",
-  "Identity protection",
-  "Shadow AI",
-  "Patching & remediation",
-  "Tuning & exclusions",
-  "Host groups",
-  "Policy & lifecycle",
-  "Data protection",
-  "NGSIEM",
-  "Fusion SOAR workflows",
-  "Other",
-];
-
-function toolDomain(name: string): string {
-  return TOOL_DOMAIN_RULES.find((r) => r.match(name))?.domain ?? "Other";
-}
-
-// First sentence of the agent-facing description, trimmed to a readable length.
-function briefDescription(desc: string | undefined): string {
-  if (!desc) return "";
-  const oneLine = desc.replace(/\s+/g, " ").trim();
-  const stop = oneLine.search(/\.\s|\.$/);
-  const first = stop >= 0 ? oneLine.slice(0, stop + 1) : oneLine;
-  return first.length > 180 ? `${first.slice(0, 177)}…` : first;
-}
-
-function ToolDomainGroups({
-  tools,
-  descriptions,
-}: {
-  tools: string[];
-  descriptions?: Record<string, string>;
-}) {
-  const byDomain = new Map<string, string[]>();
-  for (const name of tools) {
-    const d = toolDomain(name);
-    (byDomain.get(d) ?? byDomain.set(d, []).get(d)!).push(name);
-  }
-  const ordered = [...byDomain.keys()].sort(
-    (a, b) => TOOL_DOMAIN_ORDER.indexOf(a) - TOOL_DOMAIN_ORDER.indexOf(b),
-  );
-
-  return (
-    <div className="mt-8">
-      <h2 className="text-[13px] font-semibold uppercase tracking-[0.10em] text-neutral-400">
-        Tools ({tools.length})
-      </h2>
-      <p className="mt-1 text-xs text-neutral-500">
-        Grouped by security domain — expand a group to see each capability and what it does.
-      </p>
-      <div className="mt-3 space-y-2">
-        {ordered.map((domain) => {
-          const names = [...(byDomain.get(domain) ?? [])].sort((a, b) => a.localeCompare(b));
-          return (
-            <details
-              key={domain}
-              className="group overflow-hidden rounded-lg border border-neutral-800 bg-neutral-950/60"
-            >
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 hover:bg-neutral-900/50 [&::-webkit-details-marker]:hidden">
-                <span className="flex items-center gap-2 text-sm font-medium text-neutral-200">
-                  <ChevronRight className="h-4 w-4 text-neutral-500 transition-transform group-open:rotate-90" />
-                  {domain}
-                </span>
-                <span className="font-mono text-xs text-neutral-500">{names.length}</span>
-              </summary>
-              <div className="border-t border-neutral-800/80">
-                {names.map((name) => {
-                  const gated = REQUIRES_APPROVAL.has(name);
-                  const desc = briefDescription(descriptions?.[name]);
-                  return (
-                    <div key={name} className="border-b border-neutral-800/60 px-4 py-2.5 last:border-0">
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="font-mono text-[13px] text-neutral-200">{name}</span>
-                        <span
-                          className={`shrink-0 font-mono text-[11px] ${gated ? "text-amber-400" : "text-neutral-500"}`}
-                        >
-                          {gated ? "approval-gated" : "read"}
-                        </span>
-                      </div>
-                      {desc && <p className="mt-0.5 text-xs leading-relaxed text-neutral-500">{desc}</p>}
-                    </div>
-                  );
-                })}
-              </div>
-            </details>
-          );
-        })}
-      </div>
-    </div>
   );
 }
 

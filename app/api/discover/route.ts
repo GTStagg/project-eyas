@@ -72,7 +72,7 @@ function buildPrompt(): string {
 // POST — agentic posture decision document. Same deterministic enrichment,
 // injected as an uncached context block, then the agent synthesizes.
 export async function POST() {
-  return streamAgent(async ({ mcp, extras, emit, signal }) => {
+  return streamAgent(async ({ mcp, emit, signal }) => {
     const { summary } = await fetchDiscover(mcp);
     if (summary.scopePending) {
       emit("scope_pending", {
@@ -85,7 +85,6 @@ export async function POST() {
     await runAgentLoop({
       signal,
       mcp,
-      extrasMcp: extras,
       systemPrompt: buildPrompt(),
       contextBlocks: [renderDiscoverContext(summary)],
       initialMessages: [

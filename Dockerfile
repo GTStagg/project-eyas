@@ -41,30 +41,16 @@ fs.writeFileSync('/app/build-info.json', JSON.stringify({                      \
   nodeVersion: process.version,                                                \
   pins: {                                                                      \
     'mcp-server': v['mcp-server'],                                             \
-    'crowdstrike-falconpy': v['crowdstrike-falconpy'],                         \
-    mcp: v.mcp,                                                                \
   },                                                                           \
 }, null, 2) + '\n');                                                           \
 console.log(fs.readFileSync('/app/build-info.json', 'utf8'));                  \
 "
-
-# ---- python venv builder ----
-# Stays on alpine so the venv binaries are musl-linked and runnable in the
-# alpine runner. Both falconpy and mcp are pure-Python; no native build deps.
-FROM python:3.12-alpine AS pybuilder
-WORKDIR /pybuild
-COPY falcon-extras/requirements.txt ./requirements.txt
-RUN python -m venv /opt/falcon-extras-venv \
- && /opt/falcon-extras-venv/bin/pip install --no-cache-dir -r requirements.txt
 
 # ---- runner ----
 FROM node:22-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
-
-# Python runtime for the falcon-extras sidecar. The venv is copied in below.
-RUN apk add --no-cache python3
 
 RUN addgroup --system --gid 1001 nodejs \
  && adduser --system --uid 1001 nextjs
@@ -78,13 +64,6 @@ COPY --from=builder --chown=nextjs:nodejs /app/build-info.json ./build-info.json
 # Project and third-party license notices.
 COPY --chown=nextjs:nodejs LICENSE NOTICE.md ./
 COPY --chown=nextjs:nodejs licenses ./licenses
-
-# falcon-extras source (sidecar invoked over stdio by the Node process).
-COPY --chown=nextjs:nodejs falcon-extras ./falcon-extras
-
-# Pre-built venv with falconpy + mcp.
-COPY --from=pybuilder --chown=nextjs:nodejs /opt/falcon-extras-venv /opt/falcon-extras-venv
-ENV FALCON_EXTRAS_PYTHON=/opt/falcon-extras-venv/bin/python
 
 USER nextjs
 EXPOSE 3000
