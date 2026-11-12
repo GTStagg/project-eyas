@@ -4,7 +4,7 @@ import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { projectToolResult } from "./projections";
 import { detectFalconError, parseToolResultObjects } from "./parse";
 import { EXTRAS_READ_ONLY, REQUIRES_APPROVAL } from "./write-tools";
-import { DISPATCH_TOOLS, dispatchOf, runDispatch, type CallNative } from "./native-dispatch";
+import type { CallNative } from "./native-dispatch";
 import { EYAS_TOOLS, EYAS_TOOL_MAP } from "@/lib/eyas-tools";
 import type { EyasToolContext, NativeSearchResult } from "@/lib/eyas-tools/types";
 import { shapeNativePayload } from "./native-shape";
@@ -159,7 +159,8 @@ export const PENDING_NATIVE_MIGRATION: ReadonlySet<string> = new Set<string>([
   "falcon_delete_rtr_scripts",
   "falcon_search_rtr_scripts",
   // Bridge-only: the on-request bulk close extras_close_all_open_detections_on_host
-  // dispatches through it (one approval card, Eyas's verdict + audit comment).
+  // (lib/eyas-tools/ir/closers.ts) runs through it (one approval card, Eyas's
+  // verdict + audit comment).
   // IR Phase 4 closure stays ledger-driven through extras_ir_close_remediated.
   "falcon_close_host_detections",
 ]);
@@ -363,7 +364,6 @@ export async function buildToolBridge(
   }
 
   const eyasCtx = makeEyasToolContext(client);
-  const callNative = eyasCtx.callNative;
 
   const invoke: ToolBridge["invoke"] = async (name, input) => {
     if (name === READ_RESOURCE_TOOL_NAME) {
@@ -424,11 +424,6 @@ export async function buildToolBridge(
       if (upstreamError) {
         return { content: upstreamError, isError: true };
       }
-    } else if (DISPATCH_TOOLS.has(name) && parsed.length === 1 && dispatchOf(parsed[0])) {
-      // Eyas content (rendered script / validated ids) → run on eyas-mcp.
-      const done = await runDispatch(parsed[0], callNative);
-      const text = JSON.stringify(done, null, 2);
-      return { content: projectToolResult(name, text) || text, isError: false };
     }
     const projected = projectToolResult(name, rawText, parsed);
     return { content: projected || "(empty result)", isError: Boolean(resp.isError) };

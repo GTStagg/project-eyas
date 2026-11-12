@@ -23,7 +23,7 @@ if (!process.env.NATIVE_DISPATCH_CHILD) {
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-const { runDispatch, dispatchOf, DISPATCH_TOOLS } = await import(
+const { runDispatch, dispatchOf } = await import(
   pathToFileURL(path.join(root, "lib/mcp/native-dispatch.ts")).href
 );
 
@@ -51,10 +51,7 @@ const scriptResult = (over = {}) => ({
   ...over,
 });
 
-test("only the remaining sidecar tool hands the bridge a dispatch envelope", () => {
-  // The RTR tools run in-process (lib/eyas-tools/rtr-tools.ts) and call
-  // runDispatch themselves.
-  assert.deepEqual([...DISPATCH_TOOLS].sort(), ["extras_close_all_open_detections_on_host"]);
+test("a result without an envelope is not a dispatch", () => {
   assert.equal(dispatchOf({ ok: true }), null);
 });
 

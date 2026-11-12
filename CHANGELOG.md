@@ -50,6 +50,15 @@
   and rule-group deletes now use eyas-mcp's tools. The approval card says
   whether a teardown is a dry run or will delete objects. The add-on is down
   to 25 tools.
+- **IR detection scope and closing run inside Eyas.** The Phase 0 scope and
+  actionability check, the Phase 3 verification (and the release safeguard's
+  re-check of the original detections), the remediation-ledger close, the
+  close of untouched originals and the close-everything-on-a-host action now
+  read and close detections through eyas-mcp, with the same results. A
+  verification start time that isn't a plain timestamp is refused. The Phase 0
+  and Phase 3 results now list their counts before the per-detection list, so
+  a long list no longer cuts the counts off what the agent sees. The add-on
+  is down to 19 tools.
 - Verdicts are now recorded as the `true_positive` / `false_positive` tag with
   `status='closed'` on the native detection update, the same tag the Falcon
   console writes.

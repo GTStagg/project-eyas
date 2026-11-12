@@ -10,9 +10,8 @@
 //              → falcon_delete_rtr_scripts (always, even when the run failed)
 //   rtr_status → falcon_check_rtr_admin_command_status
 //
-// The in-process RTR tools (lib/eyas-tools/rtr-tools.ts) build the envelope
-// and call runDispatch directly. The sidecar's bulk close still returns a
-// `dispatch` envelope that the tool bridge hands here (DISPATCH_TOOLS).
+// The in-process tools (lib/eyas-tools/rtr-tools.ts, lib/eyas-tools/ir/closers.ts)
+// build the envelope and call runDispatch directly.
 //
 // The result keeps the shape the sidecar used to return (results[] with
 // device_id / ok / stdout / stderr / exit_code / error / cloud_request_id /
@@ -24,11 +23,6 @@
 // (scripts/test-native-dispatch.mjs).
 
 type Obj = Record<string, unknown>;
-
-// Sidecar tools whose result may carry a dispatch envelope for the bridge.
-export const DISPATCH_TOOLS: ReadonlySet<string> = new Set([
-  "extras_close_all_open_detections_on_host",
-]);
 
 /** Call one eyas-mcp tool; resolve to its first JSON object, or an error. */
 export type CallNative = (
