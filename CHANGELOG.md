@@ -3,6 +3,11 @@
 ## Unreleased
 
 ### Changed
+- **MCP server pinned to eyas-mcp f9449d5** (still 0.21.0). eyas-mcp now
+  lists its tools and resources in the same order in every process, so the
+  prompt cache holds across restarts on its side too; Eyas keeps its own
+  sorting as a backstop. `falcon_search_host_groups` caps `limit` at 500,
+  which every Eyas caller already respects.
 - **MCP server pinned to eyas-mcp 208acdd** (still 0.21.0). It adds host-group
   and policy lookups by id, safer host-group membership changes, relative
   policy precedence moves, a time limit and raw signing fields on process
