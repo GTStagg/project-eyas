@@ -53,7 +53,7 @@ Single-operator security work, primarily:
              │                           │
 ┌────────────▼──────────┐   ┌───────────▼─────────────────┐
 │ Anthropic Messages API │   │ eyas-mcp (MCP server)       │
-│ Claude Sonnet 4.6      │   │ HTTP :8000 / stdio child    │
+│ Claude Sonnet 5.5      │   │ HTTP :8000 / stdio child    │
 └────────────────────────┘   │ → CrowdStrike Falcon API    │
                              └─────────────────────────────┘
 ```

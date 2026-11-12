@@ -81,7 +81,7 @@ Then [`docs/USERGUIDE.md`](./docs/USERGUIDE.md) is the hands-on guide organized 
 ┌────────────▼──────────┐   ┌───────────▼─────────────────┐
 │ Anthropic Messages API │   │ eyas-mcp (stdio child;      │
 │ (default Claude        │   │ streamable-http in Docker)  │
-│  Sonnet 4.6)           │   │ → CrowdStrike Falcon API    │
+│  Sonnet 5.5)           │   │ → CrowdStrike Falcon API    │
 └────────────────────────┘   └─────────────────────────────┘
 ```
 
