@@ -13,6 +13,15 @@
 #   ProductName -- friendly name for log lines
 #   Kind        -- 'msi' (msiexec /i /qn) or 'exe' (Start-Process with SilentArgs)
 #   SilentArgs  -- exe-only; vendor silent-install switches
+#   Sha256      -- optional integrity pin (verify-or-abort before install)
+#
+# Install-FromUrl writes its progress lines with Write-Output and returns the
+# installer exit code as its LAST output, so `$exit = Install-FromUrl ...`
+# would capture the log lines too (and `exit $exit` would get an array).
+# Callers collect the output, print the log lines, then take the code:
+#   $result = @(Install-FromUrl -Url $url -ProductName "X" -Kind "msi")
+#   $result | Where-Object { $_ -isnot [int] }
+#   $exit = Get-InstallExitCode $result
 function Install-FromUrl {
     param(
         [Parameter(Mandatory=$true)][string]$Url,
@@ -95,4 +104,14 @@ function Install-FromUrl {
     finally {
         if (Test-Path $tmp) { Remove-Item $tmp -Force -ErrorAction SilentlyContinue }
     }
+}
+
+# The installer exit code from Install-FromUrl's output: its last item when
+# that is an integer, otherwise 1 (the helper failed without returning a code).
+function Get-InstallExitCode {
+    param([object[]]$Result)
+    if ($Result -and $Result.Count -gt 0 -and $Result[-1] -is [int]) {
+        return $Result[-1]
+    }
+    return 1
 }

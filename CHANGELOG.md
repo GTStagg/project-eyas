@@ -43,6 +43,11 @@
   scripts, the Edge, Firefox and Zoom download URLs, generic-installer URLs
   with a query string, and several PowerShell regexes. Only non-ASCII
   characters are dropped now.
+- **Windows patch scripts report a failed install.** The 13 scripts that use
+  the shared installer helper captured its progress lines along with the
+  exit code, so the log came out as one jumbled line at the end and a failed
+  install (for example MSI 1603) still exited 0. They now print the progress
+  lines in order and exit with the installer's code.
 - The posture snapshot's contained-host count is no longer capped at 200.
 - The approval card for a Fusion workflow run showed "(unspecified)" for the
   workflow; it now shows the definition id and the input.

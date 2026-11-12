@@ -12,6 +12,8 @@ if (-not $href) {
     exit 6
 }
 $url = $index + $href
-$exit = Install-FromUrl -Url $url -ProductName "VLC media player" -Kind "msi"
+$result = @(Install-FromUrl -Url $url -ProductName "VLC media player" -Kind "msi")
+$result | Where-Object { $_ -isnot [int] }
+$exit = Get-InstallExitCode $result
 Write-Output "[falcon-extras] vlc-update version=$href exit=$exit host=$env:COMPUTERNAME"
 exit $exit

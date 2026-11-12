@@ -21,6 +21,8 @@ if ($Params.Sha256) {
     Write-Output "[falcon-extras] integrity: UNVERIFIED (no hash pin) -- proceeds on HTTPS + operator approval only"
 }
 
-$exit = Install-FromUrl -Url $Params.Url -ProductName $Params.Product -Kind $Params.Kind -SilentArgs $Params.SilentArgs -Sha256 $Params.Sha256
+$result = @(Install-FromUrl -Url $Params.Url -ProductName $Params.Product -Kind $Params.Kind -SilentArgs $Params.SilentArgs -Sha256 $Params.Sha256)
+$result | Where-Object { $_ -isnot [int] }
+$exit = Get-InstallExitCode $result
 Write-Output "[falcon-extras] win-app-install product='$($Params.Product)' kind=$($Params.Kind) exit=$exit host=$env:COMPUTERNAME"
 exit $exit
