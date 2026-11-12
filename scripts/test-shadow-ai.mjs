@@ -37,6 +37,8 @@ const hunt = await load("lib/eyas-tools/shadow-ai/hunt.ts");
 
 const AID = "a".repeat(32);
 const APPX = "host-uninstall-appx-package";
+// The real sanction list lives in the settings DB; tests pass their own.
+const NONE = async () => new Set();
 
 // ------------------------------------------------ cleanup routing (port)
 
@@ -183,7 +185,7 @@ test("host scan: three parallel bounded searches, aggregated", async () => {
     if (q.startsWith("#event_simpleName=DnsRequest")) return { ok: true, results: DNS, partial: false };
     return { ok: true, results: NC, partial: false };
   });
-  const out = await hunt.hostShadowAiScan(ctx, { device_id: AID });
+  const out = await hunt.hostShadowAiScan(ctx, { device_id: AID }, NONE);
   assert.equal(calls.length, 3);
   for (const c of calls) {
     assert.deepEqual(
@@ -222,7 +224,7 @@ test("host scan: one pass failing or partial still returns the rest", async () =
     if (q.includes("DnsRequest")) return { ok: true, results: DNS, partial: true };
     return { ok: true, results: [] };
   });
-  const out = await hunt.hostShadowAiScan(ctx, { device_id: AID, hours_back: 24 });
+  const out = await hunt.hostShadowAiScan(ctx, { device_id: AID, hours_back: 24 }, NONE);
   assert.equal(out.partial, true);
   assert.deepEqual(out.errors.process_rollup2, { ok: false, error: "NGSIEM 500", surface: "NGSIEM" });
   assert.equal(out.errors.dns_request, null);
@@ -232,8 +234,8 @@ test("host scan: one pass failing or partial still returns the rest", async () =
 
 test("host scan: input checks", async () => {
   const { ctx, calls } = fakeCtx(() => ({}));
-  assert.match((await hunt.hostShadowAiScan(ctx, { device_id: "x" })).error, /32-char hex/);
-  assert.match((await hunt.hostShadowAiScan(ctx, { device_id: AID, hours_back: 337 })).error, /1-336/);
+  assert.match((await hunt.hostShadowAiScan(ctx, { device_id: "x" }, NONE)).error, /32-char hex/);
+  assert.match((await hunt.hostShadowAiScan(ctx, { device_id: AID, hours_back: 337 }, NONE)).error, /1-336/);
   assert.equal(calls.length, 0);
 });
 
@@ -254,7 +256,7 @@ test("fleet egress: grouped per host, sanctioned-only hosts dropped, busiest fir
 
 test("fleet egress: bounded search, scope denial, input checks", async () => {
   const ok = fakeCtx(() => ({ ok: true, results: [{ "@timestamp": 1, aid: "h1", DomainName: "claude.ai" }], partial: false }));
-  const out = await hunt.fleetShadowAiEgress(ok.ctx, {});
+  const out = await hunt.fleetShadowAiEgress(ok.ctx, {}, NONE);
   assert.deepEqual(
     { hb: ok.calls[0].args.hours_back, mr: ok.calls[0].args.max_rows, tb: ok.calls[0].args.time_budget_seconds },
     { hb: 24, mr: 5000, tb: 45 },
@@ -263,9 +265,9 @@ test("fleet egress: bounded search, scope denial, input checks", async () => {
   assert.equal(out.truncated, false);
 
   const denied = fakeCtx(() => ({ __error: "Permission denied. The API credentials don't have the required access. (status 403)" }));
-  const d = await hunt.fleetShadowAiEgress(denied.ctx, {});
+  const d = await hunt.fleetShadowAiEgress(denied.ctx, {}, NONE);
   assert.equal(d.scope_pending, true);
 
-  assert.match((await hunt.fleetShadowAiEgress(ok.ctx, { limit: 50 })).error, /100-10000/);
-  assert.match((await hunt.fleetShadowAiEgress(ok.ctx, { hours_back: 0 })).error, /1-168/);
+  assert.match((await hunt.fleetShadowAiEgress(ok.ctx, { limit: 50 }, NONE)).error, /100-10000/);
+  assert.match((await hunt.fleetShadowAiEgress(ok.ctx, { hours_back: 0 }, NONE)).error, /1-168/);
 });

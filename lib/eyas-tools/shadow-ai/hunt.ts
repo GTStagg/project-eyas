@@ -347,7 +347,11 @@ export function aggregateHostScan(pr2: Obj[], dns: Obj[], nc: Obj[], sanctioned:
 const HOST_PASS_BUDGET_S = 40;
 
 /** extras_host_shadow_ai_scan. */
-export async function hostShadowAiScan(ctx: EyasToolContext, input: Obj): Promise<Obj> {
+export async function hostShadowAiScan(
+  ctx: EyasToolContext,
+  input: Obj,
+  sanctioned: () => Promise<Set<string>> = sanctionedTools,
+): Promise<Obj> {
   const deviceId = input.device_id;
   const hoursBack = input.hours_back ?? 72;
   if (typeof deviceId !== "string" || !AID.test(deviceId)) return { ok: false, error: "device_id must be a 32-char hex AID" };
@@ -365,7 +369,7 @@ export async function hostShadowAiScan(ctx: EyasToolContext, input: Obj): Promis
   const partialOf = (s: Search) => !s.ok || s.partial;
   const errOf = (s: Search) => (s.ok ? null : s.error);
   const partial = partialOf(pr2) || partialOf(dns) || partialOf(nc);
-  const agg = aggregateHostScan(rows(pr2), rows(dns), rows(nc), await sanctionedTools());
+  const agg = aggregateHostScan(rows(pr2), rows(dns), rows(nc), await sanctioned());
   return {
     ok: true,
     device_id: deviceId,
@@ -427,7 +431,11 @@ export function aggregateFleetEgress(events: Obj[], sanctioned: Set<string>): Ob
 const FLEET_BUDGET_S = 45;
 
 /** extras_fleet_shadow_ai_egress. */
-export async function fleetShadowAiEgress(ctx: EyasToolContext, input: Obj): Promise<Obj> {
+export async function fleetShadowAiEgress(
+  ctx: EyasToolContext,
+  input: Obj,
+  sanctioned: () => Promise<Set<string>> = sanctionedTools,
+): Promise<Obj> {
   const hoursBack = input.hours_back ?? 24;
   const limit = input.limit ?? 5000;
   if (typeof hoursBack !== "number" || !Number.isInteger(hoursBack) || hoursBack < 1 || hoursBack > 168) {
@@ -438,7 +446,7 @@ export async function fleetShadowAiEgress(ctx: EyasToolContext, input: Obj): Pro
   }
   const s = await search(ctx, fleetEgressCql(limit), hoursBack, limit, FLEET_BUDGET_S);
   if (!s.ok) return s.error;
-  const items = aggregateFleetEgress(s.rows, await sanctionedTools());
+  const items = aggregateFleetEgress(s.rows, await sanctioned());
   const out: Obj = {
     ok: true,
     items,
