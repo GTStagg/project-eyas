@@ -426,14 +426,16 @@ async function probeFalconExtras(): Promise<FalconExtrasInfo> {
       // IR runtime probes — bench-input check that the load-bearing IR tools
       // actually load and return a structured response. Failures register here
       // instead of mid-IR-engagement. Bogus AID short-circuits the campaign
-      // walk to count=0 quickly. extras_diagnose_ir_readiness needs no args.
+      // walk to count=0 quickly.
       // extras_close_all_open_detections_on_host is intentionally NOT probed
       // here — calling it bypasses the agent-loop approval gate and would
       // actually close detections; the manifest verifier covers its presence.
       const irCampaignScopeProbe = probeCap("extras_ir_campaign_scope", {
         device_id: "00000000000000000000000000000000",
       });
-      const irReadinessProbe = probeCap("extras_diagnose_ir_readiness");
+      // extras_diagnose_ir_readiness runs in-process (lib/eyas-tools), so
+      // it is always loaded; nothing to probe in the sidecar.
+      const irReadinessProbe = Promise.resolve(true);
 
       const [
         toolList,

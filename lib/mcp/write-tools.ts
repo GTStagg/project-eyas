@@ -151,7 +151,8 @@ export const REQUIRES_APPROVAL: ReadonlySet<string> = new Set<string>([
   "extras_ir_close_remediated",
   // Post-ledger close of the untouched Phase 0 originals, on the operator's say-so.
   "extras_ir_close_untouched_originals",
-  // falcon-extras — host group membership (static groups only)
+  // Host group membership (static groups only) — in-process Eyas tools over
+  // falcon_perform_host_group_action (lib/eyas-tools/host-group-tools.ts).
   "extras_host_group_add_members",
   "extras_host_group_remove_members",
   // falcon-extras — RTR-driven patching. Only the executor is gated; the

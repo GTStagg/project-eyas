@@ -92,3 +92,26 @@ test("non-envelope results are left alone", () => {
   const plain = viaBridge("falcon_search_host_groups", JSON.stringify({ id: "g1", name: "Solo" }));
   assert.ok(!plain.includes("[Search totals"));
 });
+
+test("IOA exclusions keep their scope and matchers (v2 records use host_groups)", () => {
+  const raw = envelope(
+    [
+      {
+        id: "e1",
+        name: "RTR preamble",
+        pattern_id: "10197",
+        ifn_regex: ".*\\powershell\.exe(\W.*)?",
+        cl_regex: ".*-EncodedCommand X.*",
+        host_groups: ["g-quarantine"],
+        applied_globally: false,
+      },
+      { id: "e2", groups: [{ id: "g1", name: "Servers" }], value: "C:\\tools\\x.exe" },
+    ],
+    { total: 2, offset: 0, limit: 2, next: null },
+  );
+  const out = viaBridge("falcon_search_exclusions", raw);
+  assert.match(out, /"host_groups": \[\s*"g-quarantine"\s*\]/);
+  assert.match(out, /"cl_regex": ".*-EncodedCommand X\.\*"/);
+  assert.match(out, /"pattern_id": "10197"/);
+  assert.match(out, /"groups": \[\s*"Servers"\s*\]/);
+});
