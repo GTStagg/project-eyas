@@ -3,6 +3,10 @@
 ## Unreleased
 
 ### Changed
+- **Removed the demo talk track and AI-specialist briefing** (`docs/DEMO.md`,
+  `docs/AI-SPECIALIST.md`). Both were written for internal audiences; the
+  user guide, deployment guides and whitepaper cover the product. Bundles no
+  longer ship them.
 - **MCP server pinned to eyas-mcp 11e9564** (still 0.21.0). A detection whose
   process Falcon blocked before it ran has no process-start record, so its
   process tree used to come back empty and the IR campaign scope left it

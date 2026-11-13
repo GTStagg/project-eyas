@@ -152,12 +152,11 @@ ok "install.sh + standalone.json staged"
 # entry point; the rest are referenced from there as deeper reading. IR-SETUP
 # and SHADOW-AI-SETUP back the Part 6 / Part 7 provisioning hand-offs in the
 # onboarding guide — keep them shipped so those links resolve offline.
-# DEPLOYMENT (Docker), DEMO (SE talk track), USERGUIDE (per-persona feature
-# tour), AI-SPECIALIST (technical-eval reference), WHITEPAPER (conceptual
-# overview). Internal CHANGELOG-* and docs not relevant to recipients are
+# DEPLOYMENT (Docker), USERGUIDE (per-persona feature tour), WHITEPAPER
+# (conceptual overview). Internal CHANGELOG-* and docs not relevant to recipients are
 # skipped.
 mkdir -p "$STAGE/docs"
-for d in STANDALONE IR-SETUP SHADOW-AI-SETUP USERGUIDE DEMO DEPLOYMENT AI-SPECIALIST WHITEPAPER; do
+for d in STANDALONE IR-SETUP SHADOW-AI-SETUP USERGUIDE DEPLOYMENT WHITEPAPER; do
   if [ -f "docs/$d.md" ]; then
     cp "docs/$d.md" "$STAGE/docs/$d.md"
   fi

@@ -1,6 +1,6 @@
 # User guide
 
-Hands-on guide to **Eyas** for the three operator personas it serves: **SOC analyst**, **Falcon administrator**, and **IR analyst**. CrowdStrike Sales Engineers can also use this as a feature-tour reference when demoing — the SE-facing live walkthrough is [`DEMO.md`](./DEMO.md).
+Hands-on guide to **Eyas** for the three operator personas it serves: **SOC analyst**, **Falcon administrator**, and **IR analyst**.
 
 Unofficial — not a CrowdStrike product. For the architecture overview see [`README.md`](../README.md). For deployment see [`DEPLOYMENT.md`](./DEPLOYMENT.md) (Docker) or [`STANDALONE.md`](./STANDALONE.md) (bundled zip).
 
