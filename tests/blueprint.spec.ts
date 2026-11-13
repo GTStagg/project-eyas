@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 
-// /blueprint is the second developer Reference surface: an advisor that streams
+// /blueprint is the build-guide Reference surface: an advisor that streams
 // a "build-your-own agentic SOC" decision document from Claude, grounded in this
 // repo's own architecture, with an "Authoritative sources" panel linking out to
 // developer.crowdstrike.com. It has NO Falcon dependency (pure LLM synthesis) —
@@ -21,8 +21,8 @@ test("blueprint renders and streams a build-analysis decision document", async (
 
   await page.goto("/blueprint", { waitUntil: "domcontentloaded", timeout: 60_000 });
 
-  // (1) Hero — labeled as a developer reference surface.
-  await expect(page.getByText("developer surface")).toBeVisible({ timeout: 30_000 });
+  // (1) Hero — labeled as a reference build guide.
+  await expect(page.getByText("build guide")).toBeVisible({ timeout: 30_000 });
   await expect(
     page.getByRole("heading", { name: "Build your own agentic SOC." }),
   ).toBeVisible();
@@ -31,20 +31,17 @@ test("blueprint renders and streams a build-analysis decision document", async (
   // panel renders the outbound dev-portal links.
   await expect(page.getByRole("button", { name: "Approval-gating writes" })).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "falcon-mcp vs. FalconPy — when do I need a sidecar?" }),
+    page.getByRole("button", { name: "Tool server vs. your own tools — where does custom code go?" }),
   ).toBeVisible();
 
-  const falconMcpLink = page.getByRole("link", { name: /Falcon MCP/ });
-  await expect(falconMcpLink).toBeVisible();
-  await expect(falconMcpLink).toHaveAttribute(
-    "href",
-    "https://developer.crowdstrike.com/falcon-mcp/overview/",
-  );
-  // All nine sources link out to developer.crowdstrike.com or the CrowdStrike repos.
+  const toolServerLink = page.getByRole("link", { name: /eyas-mcp/ });
+  await expect(toolServerLink).toBeVisible();
+  await expect(toolServerLink).toHaveAttribute("href", "https://github.com/GTStagg/eyas-mcp");
+  // All eight sources link out to developer.crowdstrike.com or a source repo.
   const sourceLinks = page.locator(
-    'a[href^="https://developer.crowdstrike.com"], a[href^="https://github.com/CrowdStrike"]',
+    'a[href^="https://developer.crowdstrike.com"], a[href^="https://github.com/CrowdStrike"], a[href^="https://github.com/GTStagg"]',
   );
-  expect(await sourceLinks.count()).toBeGreaterThanOrEqual(9);
+  expect(await sourceLinks.count()).toBeGreaterThanOrEqual(8);
 
   // (3) Sidebar Reference group exposes Blueprint alongside Agent toolbox.
   await page.getByRole("button", { name: "Open menu" }).click();
