@@ -1,8 +1,11 @@
 # Changelog
 
-## Unreleased
+## 0.11.0 — Every Eyas tool runs in the console; the Python add-on is gone
 
 ### Changed
+- **Docker Compose defaults to `claude-sonnet-5-5`.** `docker-compose.yml`
+  still defaulted `ANTHROPIC_MODEL` to `claude-sonnet-4-6`; it now matches the
+  app's own default.
 - **Removed the demo talk track and AI-specialist briefing** (`docs/DEMO.md`,
   `docs/AI-SPECIALIST.md`). Both were written for internal audiences; the
   user guide, deployment guides and whitepaper cover the product. Bundles no
