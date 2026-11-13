@@ -3,6 +3,9 @@
 ## Unreleased
 
 ### Changed
+- **The Blueprint page reads in plain language.** Its starter questions, source
+  cards, placeholder and header no longer use developer terms such as
+  "sidecar", "MCP", "FalconPy" or "OAuth".
 - **Patch and cleanup script output is tagged `[eyas]`.** Lines the RTR scripts
   print used to start with `[falcon-extras]`, the name of the retired add-on.
   Leftover add-on settings were also dropped from `.env.example`.

@@ -13,17 +13,17 @@ export const DEV_PORTAL_LINKS: DevPortalLink[] = [
   {
     topic: "eyas-mcp",
     url: "https://github.com/GTStagg/eyas-mcp",
-    blurb: "The MCP server this console runs on — the Falcon surface your loop composes: tools, schemas and release notes.",
+    blurb: "The open-source Falcon tool server this console runs on: its tools, their inputs and its release notes.",
   },
   {
-    topic: "Python SDK (FalconPy)",
+    topic: "Python SDK",
     url: "https://developer.crowdstrike.com/sdks/python/",
-    blurb: "The Python SDK for anything your MCP server doesn't cover yet.",
+    blurb: "CrowdStrike's Python SDK, for Falcon operations your tool server doesn't cover yet.",
   },
   {
     topic: "API Reference",
     url: "https://developer.crowdstrike.com/api-reference/overview/",
-    blurb: "The full REST surface, operations, and the OAuth scopes each one needs.",
+    blurb: "The full REST surface, operations, and the API scopes each one needs.",
   },
   {
     topic: "Falcon Foundry",
@@ -46,9 +46,9 @@ export const DEV_PORTAL_LINKS: DevPortalLink[] = [
     blurb: "Outcome-oriented recipes: investigate threats, automate response, hunt vulnerabilities.",
   },
   {
-    topic: "FalconPy source",
+    topic: "Python SDK source",
     url: "https://github.com/CrowdStrike/falconpy",
-    blurb: "The Python SDK's source — the operation names a sidecar wraps.",
+    blurb: "The Python SDK's source code, with every operation name.",
   },
 ];
 
@@ -58,9 +58,9 @@ export type BlueprintSeed = { label: string; question: string };
 
 export const BLUEPRINT_SEEDS: BlueprintSeed[] = [
   {
-    label: "In-process MCP client vs. the native connector",
+    label: "Self-hosted tool server vs. a hosted connector",
     question:
-      "I want to drive Falcon with Claude. Should I use an in-process MCP client with a manual tool-use loop, or Anthropic's native MCP connector? Walk me through the tradeoffs and how I'd wire the in-process approach.",
+      "I want to drive Falcon with Claude. Should my console run the Falcon tool server itself and drive its own tool-use loop, or use Anthropic's hosted connector? Walk me through the tradeoffs and how I'd wire the self-hosted approach.",
   },
   {
     label: "Approval-gating writes",
@@ -68,9 +68,9 @@ export const BLUEPRINT_SEEDS: BlueprintSeed[] = [
       "How do I put a human-in-the-loop approval gate in front of every Falcon write action (containment, IOC creation, policy changes) in a Claude tool-use loop?",
   },
   {
-    label: "MCP server vs. your own tools — where does custom code go?",
+    label: "Tool server vs. your own tools — where does custom code go?",
     question:
-      "My MCP server covers most Falcon operations, but I also have workflow logic of my own (playbooks, script libraries, provisioning). How do I decide what belongs in the MCP server versus my app's own tools, and how do I compose both into one agent loop?",
+      "My Falcon tool server covers most Falcon operations, but I also have workflow logic of my own (playbooks, script libraries, provisioning). How do I decide what belongs in the tool server versus my app's own tools, and how do I compose both into one agent loop?",
   },
   {
     label: "Deterministic enrichment + agentic synthesis",
@@ -80,11 +80,11 @@ export const BLUEPRINT_SEEDS: BlueprintSeed[] = [
   {
     label: "Scopes & capability gating",
     question:
-      "How should I handle per-tenant OAuth scopes so my console degrades gracefully when a scope isn't granted, instead of erroring?",
+      "How should I handle per-tenant API scopes so my console degrades gracefully when a scope isn't granted, instead of erroring?",
   },
   {
-    label: "Composing multiple MCP servers into one loop",
+    label: "One tool catalog for one agent",
     question:
-      "How do I merge an MCP server's tools and my app's own in-process tools into a single tool catalog that one Claude loop can drive, and what are the gotchas?",
+      "How do I merge the Falcon tool server's tools and my app's own tools into a single catalog that one Claude agent can drive, and what are the gotchas?",
   },
 ];

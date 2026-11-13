@@ -12,9 +12,9 @@ export default function BlueprintPage() {
         <div className="mx-auto max-w-4xl animate-fade-in-up space-y-8">
           <PageHero
             icon={DraftingCompass}
-            eyebrow="Reference · developer surface"
+            eyebrow="Reference · build guide"
             title="Build your own agentic SOC."
-            subtitle="How this console composes eyas-mcp and Claude — so you can build the same shape in your own organization."
+            subtitle="How this console pairs Falcon with Claude, so you can build the same shape in your own organization."
           />
           <BlueprintAdvisor />
         </div>
