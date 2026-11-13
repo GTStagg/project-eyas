@@ -182,7 +182,7 @@ async function fetchAndEnrich(
 // falcon-mcp 0.16.0 #478), so the fan-out keeps several calls in flight per
 // client instead of one call per process. Per-host Spotlight calls take
 // 0.6-1.6 s and almost all of that is Falcon latency. Measured on a 200-host
-// sweep (XDR, 2026-11-13; Spotlight latency swings run to run, so three
+// sweep (2026-11-13; Spotlight latency swings run to run, so three
 // interleaved rounds): 8 clients x 1 in flight 45-115 s, 4 x 4 36-73 s,
 // 4 x 8 16-48 s, same rows, no errors. Past ~32 in flight it got slower again
 // (Spotlight throttles), so stay at 4 x 8. Hosts come off one shared queue so
