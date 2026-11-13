@@ -1,15 +1,39 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+- **The vulnerabilities page loads two to three times faster.** Its default
+  fleet sweep ran one Spotlight query at a time on each of eight server
+  processes; it now keeps eight queries in flight on each of four, taking
+  hosts from one shared queue. On a 968-host tenant the page went from about
+  70 s to 19-30 s, with the same rows.
+
+## 0.11.1 — Vulnerabilities on large tenants; Investigate finds host vulnerabilities
+
+### Fixed
+- **The vulnerabilities page loads on large tenants.** Its managed-host check
+  asks eyas-mcp for up to 5,000 full host records, and on a tenant with more
+  than about 900 hosts that reply is over 10 MB — the MCP client's default
+  per-message limit — so the client dropped the connection and the page showed
+  "Connection closed". The limit is now 128 MB.
+- **Investigate finds the host's vulnerabilities again.** The threat slice
+  filtered Spotlight by `host_info.hostname`, which the API rejects, and only
+  fell back to the host id when the user had typed one, so a hostname search
+  always reported no open vulnerabilities. Eyas now looks up the host id itself
+  (the hostname is checked against a strict character set first) and filters
+  by `aid`.
+
 ## 0.11.0 — Every Eyas tool runs in the console; the Python add-on is gone
 
 ### Changed
-- **Docker Compose defaults to `claude-sonnet-5-5`.** `docker-compose.yml`
-  still defaulted `ANTHROPIC_MODEL` to `claude-sonnet-4-6`; it now matches the
-  app's own default.
 - **Removed the demo talk track and AI-specialist briefing** (`docs/DEMO.md`,
   `docs/AI-SPECIALIST.md`). Both were written for internal audiences; the
   user guide, deployment guides and whitepaper cover the product. Bundles no
   longer ship them.
+- **Docker Compose defaults to `claude-sonnet-5-5`.** `docker-compose.yml`
+  still defaulted `ANTHROPIC_MODEL` to `claude-sonnet-4-6`; it now matches the
+  app's own default.
 - **MCP server pinned to eyas-mcp 11e9564** (still 0.21.0). A detection whose
   process Falcon blocked before it ran has no process-start record, so its
   process tree used to come back empty and the IR campaign scope left it
