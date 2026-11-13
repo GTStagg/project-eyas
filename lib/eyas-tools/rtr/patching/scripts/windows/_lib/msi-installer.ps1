@@ -35,7 +35,7 @@ function Install-FromUrl {
     $tmp = Join-Path $env:TEMP "falcon-extras-$([guid]::NewGuid()).$ext"
 
     try {
-        Write-Output "[falcon-extras] downloading $ProductName from $Url"
+        Write-Output "[eyas] downloading $ProductName from $Url"
         # Invoke-WebRequest gives us a real HTTP status on failure (WebClient
         # just throws a generic WebException). UseBasicParsing avoids the IE
         # engine dependency that breaks under SYSTEM. Following redirects is
@@ -63,7 +63,7 @@ function Install-FromUrl {
             return 4
         }
         $size = (Get-Item $tmp).Length
-        Write-Output "[falcon-extras] downloaded $size bytes -> $tmp"
+        Write-Output "[eyas] downloaded $size bytes -> $tmp"
         if ($size -lt 1024) {
             Write-Error "Downloaded file is suspiciously small ($size bytes). Aborting."
             return 5
@@ -80,10 +80,10 @@ function Install-FromUrl {
                 Write-Error "Hash mismatch for $ProductName -- expected $Sha256 got $actual. Aborting before install."
                 return 6
             }
-            Write-Output "[falcon-extras] $ProductName SHA256 verified: $actual"
+            Write-Output "[eyas] $ProductName SHA256 verified: $actual"
         }
 
-        Write-Output "[falcon-extras] installing $ProductName"
+        Write-Output "[eyas] installing $ProductName"
         if ($Kind -eq "msi") {
             $proc = Start-Process -FilePath "msiexec.exe" `
                 -ArgumentList "/i", "`"$tmp`"", "/qn", "/norestart", "REBOOT=ReallySuppress" `
@@ -93,10 +93,10 @@ function Install-FromUrl {
             $proc = Start-Process -FilePath $tmp -ArgumentList $argList -Wait -PassThru -NoNewWindow
         }
         $exit = $proc.ExitCode
-        Write-Output "[falcon-extras] $ProductName installer exit=$exit"
+        Write-Output "[eyas] $ProductName installer exit=$exit"
         # MSI exit codes: 0 = success, 3010 = success-reboot-required.
         if ($Kind -eq "msi" -and $exit -eq 3010) {
-            Write-Output "[falcon-extras] note: reboot required to complete $ProductName install"
+            Write-Output "[eyas] note: reboot required to complete $ProductName install"
             return 0
         }
         return $exit

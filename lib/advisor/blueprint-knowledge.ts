@@ -46,13 +46,13 @@ getting it free. For a security console the control is worth it.
 - **eyas-mcp** (an independent MCP server derived from CrowdStrike's
   MIT-licensed falcon-mcp) supplies the generic Falcon surface — detections,
   hosts, vulnerabilities, intel, recon, IOCs, NGSIEM, containment, RTR, host
-  groups, policies, exclusions, workflows and more. About 200 tools reach the
+  groups, policies, exclusions, workflows and more. About 210 tools reach the
   agent.
 - **The app's own tools** carry what is specific to this console — IR and
   Shadow-AI playbooks, the patch / cleanup script library, provisioning, the
   remediation-ledger closers, classifiers. They run in-process in the app and
-  make every Falcon call through eyas-mcp's tools. A small Python sidecar that
-  once filled gaps is being retired as those capabilities land upstream.
+  make every Falcon call through eyas-mcp's tools. The app runs no second MCP
+  server and no Python of its own: generic gaps are filled in eyas-mcp.
 - Everything merges into ONE tool bridge and the SAME agent loop — the model
   sees a single flat tool catalog and cannot tell what backs a tool. Generic
   Falcon operations go into the MCP server; product-specific logic stays in
@@ -63,7 +63,7 @@ getting it free. For a security console the control is worth it.
 For a *native* MCP-server tool, an in-process integration has exactly three
 seams: (1) hide it from the model at the bridge, (2) a binary approval gate
 (allow/deny, no input transform), (3) post-result processing. There is **no
-pre-write hook and no in-sidecar hook** on a native tool. This single fact
+pre-write hook and no hook inside the MCP server** on a native tool. This single fact
 drives the reconciliation policy below — any value-add that must run *before* a
 write (canonical naming, regex pre-flight, disable-before-delete) cannot be
 grafted onto a native tool, so it lives in the app's own tool, which validates

@@ -3,20 +3,20 @@
 apt_upgrade_packages() {
     local pkgs=("$@")
     if [ "${#pkgs[@]}" -eq 0 ]; then
-        echo "[falcon-extras] error: no packages supplied" >&2
+        echo "[eyas] error: no packages supplied" >&2
         return 3
     fi
     if ! command -v apt-get >/dev/null 2>&1; then
-        echo "[falcon-extras] error: apt-get not present (host is not Debian/Ubuntu?)" >&2
+        echo "[eyas] error: apt-get not present (host is not Debian/Ubuntu?)" >&2
         return 4
     fi
 
-    echo "[falcon-extras] apt-get update"
+    echo "[eyas] apt-get update"
     apt-get update -qq
 
-    echo "[falcon-extras] installing --only-upgrade ${pkgs[*]}"
+    echo "[eyas] installing --only-upgrade ${pkgs[*]}"
     apt-get install -y --only-upgrade "${pkgs[@]}"
     local rc=$?
-    echo "[falcon-extras] apt-get install exit=$rc"
+    echo "[eyas] apt-get install exit=$rc"
     return $rc
 }

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { withFalconMcpClient } from "@/lib/mcp/falcon-client";
-import { nativeSidecarPayload } from "@/lib/mcp/native-payload";
+import { nativeSearchPayload } from "@/lib/mcp/native-payload";
 import type { Host } from "@/components/HostsTable";
 
 export const runtime = "nodejs";
@@ -26,7 +26,7 @@ export async function GET(request: Request) {
     // os_product_name, external_ip, status), so the action buttons render
     // without a second host lookup.
     const payload = await withFalconMcpClient((client) =>
-      nativeSidecarPayload(client, "falcon_search_host_group_members", {
+      nativeSearchPayload(client, "falcon_search_host_group_members", {
         id: groupId,
         limit: MEMBER_LIMIT,
         sort: "hostname.asc",

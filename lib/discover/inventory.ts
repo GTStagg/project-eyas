@@ -74,7 +74,7 @@ export interface DiscoverAccount {
 export interface DiscoverEntity<T> {
   /** Total in the tenant per the API pagination meta. */
   total: number;
-  /** The hydrated sample we actually pulled (capped at the sidecar limit). */
+  /** The hydrated sample we actually pulled (capped at the fetch limit). */
   items: T[];
   scopePending?: boolean;
   error?: string;

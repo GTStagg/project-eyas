@@ -21,11 +21,11 @@ try {
     $sm = New-Object -ComObject Microsoft.Update.ServiceManager
     $existing = $sm.Services | Where-Object { $_.ServiceID -eq $mu }
     if (-not $existing) {
-        Write-Output "[falcon-extras] enrolling host in Microsoft Update"
+        Write-Output "[eyas] enrolling host in Microsoft Update"
         # 7 = AddServiceFlag.AllowPendingRegistration | AllowOnline | RegisterServiceWithAU
         $sm.AddService2($mu, 7, "") | Out-Null
     } else {
-        Write-Output "[falcon-extras] Microsoft Update already registered"
+        Write-Output "[eyas] Microsoft Update already registered"
     }
 } catch {
     Write-Error "Failed to register Microsoft Update service: $($_.Exception.Message)"
@@ -38,10 +38,10 @@ $searcher = $session.CreateUpdateSearcher()
 $searcher.ServerSelection = 3
 $searcher.ServiceID = $mu
 
-Write-Output "[falcon-extras] searching Microsoft Update for pending .NET Framework updates"
+Write-Output "[eyas] searching Microsoft Update for pending .NET Framework updates"
 $searchResult = $searcher.Search("IsInstalled=0 and Type='Software' and IsHidden=0")
 $candidates = $searchResult.Updates
-Write-Output "[falcon-extras] $($candidates.Count) total candidate(s) returned"
+Write-Output "[eyas] $($candidates.Count) total candidate(s) returned"
 
 $selected = New-Object -ComObject Microsoft.Update.UpdateColl
 foreach ($u in $candidates) {
@@ -60,11 +60,11 @@ foreach ($u in $candidates) {
 }
 
 if ($selected.Count -eq 0) {
-    Write-Output "[falcon-extras] no pending .NET Framework updates host=$env:COMPUTERNAME"
+    Write-Output "[eyas] no pending .NET Framework updates host=$env:COMPUTERNAME"
     exit 0
 }
 
-Write-Output "[falcon-extras] selected $($selected.Count) .NET Framework update(s):"
+Write-Output "[eyas] selected $($selected.Count) .NET Framework update(s):"
 for ($i = 0; $i -lt $selected.Count; $i++) {
     Write-Output "  - $($selected.Item($i).Title)"
 }
@@ -72,19 +72,19 @@ for ($i = 0; $i -lt $selected.Count; $i++) {
 $downloader = $session.CreateUpdateDownloader()
 $downloader.Updates = $selected
 $dl = $downloader.Download()
-Write-Output "[falcon-extras] download result code=$($dl.ResultCode) hresult=0x$('{0:X}' -f $dl.HResult)"
+Write-Output "[eyas] download result code=$($dl.ResultCode) hresult=0x$('{0:X}' -f $dl.HResult)"
 if ($dl.ResultCode -ne 2 -and $dl.ResultCode -ne 3) { exit 7 }
 
 $installer = $session.CreateUpdateInstaller()
 $installer.Updates = $selected
 $ir = $installer.Install()
-Write-Output "[falcon-extras] install result code=$($ir.ResultCode) hresult=0x$('{0:X}' -f $ir.HResult) reboot-required=$($ir.RebootRequired)"
+Write-Output "[eyas] install result code=$($ir.ResultCode) hresult=0x$('{0:X}' -f $ir.HResult) reboot-required=$($ir.RebootRequired)"
 
 $rebootNeeded = $ir.RebootRequired
 switch ($Params.Reboot) {
-    "force"       { if ($rebootNeeded) { Write-Output "[falcon-extras] scheduling reboot (force)"; shutdown.exe /r /t 60 /c "falcon-extras .NET post-patch reboot" } }
-    "if-required" { if ($rebootNeeded) { Write-Output "[falcon-extras] scheduling reboot (if-required)"; shutdown.exe /r /t 60 /c "falcon-extras .NET post-patch reboot" } }
-    default       { Write-Output "[falcon-extras] reboot deferred (policy=never, reboot-required=$rebootNeeded)" }
+    "force"       { if ($rebootNeeded) { Write-Output "[eyas] scheduling reboot (force)"; shutdown.exe /r /t 60 /c "falcon-extras .NET post-patch reboot" } }
+    "if-required" { if ($rebootNeeded) { Write-Output "[eyas] scheduling reboot (if-required)"; shutdown.exe /r /t 60 /c "falcon-extras .NET post-patch reboot" } }
+    default       { Write-Output "[eyas] reboot deferred (policy=never, reboot-required=$rebootNeeded)" }
 }
 
 switch ($ir.ResultCode) {

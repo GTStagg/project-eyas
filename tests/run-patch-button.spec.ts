@@ -10,7 +10,7 @@ test("Run patch link surfaces a primer on /vulnerabilities by-patch row", async 
   await page.locator("tr.cursor-pointer").first().click();
 
   // "Run patch in chat" is a <button> that navigates via window.location.
-  // Plan resolution can lag (sidecar resolves vendor/product → script id);
+  // Plan resolution can lag (Eyas's script library resolves vendor/product → script id);
   // give it longer than expect's 8s default.
   const btn = page.getByRole("button", { name: /Run patch in chat/ });
   await expect(btn).toBeVisible({ timeout: 30_000 });
@@ -18,7 +18,7 @@ test("Run patch link surfaces a primer on /vulnerabilities by-patch row", async 
 
   // Click navigates to /?primer=...; assert URL + decode the primer.
   // handleRunInChat awaits ensureVerifiedHosts() (Falcon host lookup) before
-  // navigating; that can take 30+ seconds on a cold sidecar.
+  // navigating; that can take 30+ seconds on a cold eyas-mcp start.
   await page.waitForURL(/\?primer=/, { timeout: 60_000 });
   const url = new URL(page.url());
   const primer = url.searchParams.get("primer") ?? "";

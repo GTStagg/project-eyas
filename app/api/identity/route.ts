@@ -1,7 +1,7 @@
 import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { runAgentLoop } from "@/lib/chat/agent-loop";
 import { streamAgent } from "@/lib/chat/stream-agent";
-import { nativeSidecarPayload } from "@/lib/mcp/native-payload";
+import { nativeSearchPayload } from "@/lib/mcp/native-payload";
 import { fetchIdentityDetections } from "@/lib/identity/fetch-detections";
 
 export const runtime = "nodejs";
@@ -25,10 +25,10 @@ type IdentityData = {
 // add Eyas's open-only / no-policy-match rules (lib/identity/detections.ts).
 async function fetchIdentity(mcp: Client): Promise<IdentityData> {
   const [risky, detections, sensors, rules] = await Promise.all([
-    nativeSidecarPayload(mcp, "falcon_search_risky_identities", { limit: 15 }),
+    nativeSearchPayload(mcp, "falcon_search_risky_identities", { limit: 15 }),
     fetchIdentityDetections(mcp, { hours: 168, limit: 50 }),
-    nativeSidecarPayload(mcp, "falcon_search_idp_sensors", { limit: 50 }),
-    nativeSidecarPayload(mcp, "falcon_search_idp_policy_rules", { limit: 200 }),
+    nativeSearchPayload(mcp, "falcon_search_idp_sensors", { limit: 50 }),
+    nativeSearchPayload(mcp, "falcon_search_idp_policy_rules", { limit: 200 }),
   ]);
   return { risky, detections, sensors, rules };
 }

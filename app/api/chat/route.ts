@@ -1126,8 +1126,8 @@ export async function POST(request: Request) {
             };
             if (typeof parsed.real_count !== "number") return "error";
             // If we sent prior_composite_ids we REQUIRE a numeric
-            // prior_open_count back — its absence means an older sidecar that
-            // can't re-check the originals, so we can't confirm they're closed:
+            // prior_open_count back — its absence means the verification
+            // couldn't re-check the originals, so we can't confirm they're closed:
             // fail closed rather than silently degrade to a real_count-only gate
             // (the version-skew fail-open this read closes). When we sent none
             // (clean kickoff, zero originals) priorOpenCount stays 0 correctly.

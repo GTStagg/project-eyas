@@ -5,5 +5,5 @@ $url = "https://go.microsoft.com/fwlink/?linkid=2093437"
 $result = @(Install-FromUrl -Url $url -ProductName "Microsoft Edge" -Kind "msi")
 $result | Where-Object { $_ -isnot [int] }
 $exit = Get-InstallExitCode $result
-Write-Output "[falcon-extras] edge-update exit=$exit host=$env:COMPUTERNAME"
+Write-Output "[eyas] edge-update exit=$exit host=$env:COMPUTERNAME"
 exit $exit

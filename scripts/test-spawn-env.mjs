@@ -1,5 +1,4 @@
-// childProcessEnv() must never hand the app's own secrets to eyas-mcp or the
-// FalconPy sidecar, and stale inherited Falcon credentials must be stripped
+// childProcessEnv() must never hand the app's own secrets to eyas-mcp, and stale inherited Falcon credentials must be stripped
 // when the active environment has none.
 //
 // Uses a throwaway FALCON_DATA_DIR; never touches data/.

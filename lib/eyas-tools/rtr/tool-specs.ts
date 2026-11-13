@@ -1,6 +1,6 @@
 // Agent-facing descriptions and input schemas for the RTR library tools,
-// carried over verbatim from the falcon-extras sidecar's tool listing so the
-// agent sees the same tools after the move. Edit freely.
+// originally carried over verbatim from the retired falcon-extras sidecar's
+// tool listing so the agent saw the same tools after the move. Edit freely.
 
 import type Anthropic from "@anthropic-ai/sdk";
 

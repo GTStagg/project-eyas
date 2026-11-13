@@ -24,7 +24,7 @@ export type Verdict = (typeof VALID_VERDICTS)[number];
 
 const AID = /^[0-9a-fA-F]{32}$/;
 
-/** The sidecar's device_id checks, same messages: reject anything but a
+/** Device_id checks (same messages as the former sidecar's): reject anything but a
  *  32-hex AID before it reaches an FQL literal. */
 export function checkDeviceId(v: unknown): Obj | null {
   if (!v || typeof v !== "string") return { ok: false, error: "device_id required" };

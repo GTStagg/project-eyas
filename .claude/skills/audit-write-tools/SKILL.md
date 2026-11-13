@@ -28,7 +28,7 @@ bash .claude/skills/audit-write-tools/run.sh
 Exits 0 if all gates accounted for, non-zero otherwise. Output format:
 
 ```
-[1mWrite-shape sidecar tools[0m
+[1mEyas write-shape tools[0m
   ✓ extras_host_group_add_members (gated)
   ✓ extras_host_group_remove_members (gated)
   …
@@ -43,7 +43,7 @@ PASS · 14 gated / 14 candidates · 0 bypasses
 
 ## What counts as "write-shaped"
 
-Sidecar function names matching:
+Eyas tool names (`lib/eyas-tools`) matching:
 
 - `extras_(create|delete|update|add|remove)_*`
 - `extras_*_(contain|containment|execute|run_patch|run_cleanup|run|launch)`
@@ -67,7 +67,7 @@ The default (omitting the prop entirely) is correct — the loop falls through t
 
 | Failure | Fix |
 |---|---|
-| Sidecar tool ungated | Add the tool name to `REQUIRES_APPROVAL` in `lib/mcp/write-tools.ts` |
+| Eyas tool ungated | Add the tool name to `REQUIRES_APPROVAL` in `lib/mcp/write-tools.ts` |
 | Allowlist drift (a tool in the allowlist that no longer exists) | Remove the stale entry from `run.sh::ALLOWLIST` |
 | Callsite override | Delete the `requiresApproval` line; let the registry default fire |
 | Suppressed native (`NATIVE_WRITES`) not gated | Add it to `REQUIRES_APPROVAL` (the fail-closed backstop) |

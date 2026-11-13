@@ -1,6 +1,6 @@
 import { parseConcatenatedJson, detectFalconError, isScopeDenied } from "@/lib/mcp/parse";
 
-// Pure shaping for nativeSidecarPayload (lib/mcp/native-payload.ts): turn a
+// Pure shaping for nativeSearchPayload (lib/mcp/native-payload.ts): turn a
 // native MCP-server search result's text into the payload the deterministic
 // consumers read:
 //   { ok: true, items, count, total?, totals_by_entity_type? } | { ok: true, scope_pending: true } | { ok: false, error }

@@ -3,5 +3,5 @@ $url = "https://dl.google.com/dl/chrome/install/googlechromestandaloneenterprise
 $result = @(Install-FromUrl -Url $url -ProductName "Google Chrome" -Kind "msi")
 $result | Where-Object { $_ -isnot [int] }
 $exit = Get-InstallExitCode $result
-Write-Output "[falcon-extras] chrome-update exit=$exit host=$env:COMPUTERNAME"
+Write-Output "[eyas] chrome-update exit=$exit host=$env:COMPUTERNAME"
 exit $exit

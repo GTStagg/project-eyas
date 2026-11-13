@@ -12,5 +12,5 @@
 # but the command itself completes successfully on the host side.
 $ErrorActionPreference = "Continue"
 
-Write-Output "[falcon-extras] rebooting host=$env:COMPUTERNAME"
+Write-Output "[eyas] rebooting host=$env:COMPUTERNAME"
 Restart-Computer -Force

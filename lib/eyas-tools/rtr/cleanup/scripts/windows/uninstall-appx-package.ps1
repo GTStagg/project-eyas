@@ -37,7 +37,7 @@ $forbiddenPatterns = @(
 )
 foreach ($fp in $forbiddenPatterns) {
     if ($pattern -match $fp) {
-        Write-Output "[falcon-extras] refused: pattern '$pattern' matches forbidden system package class '$fp'"
+        Write-Output "[eyas] refused: pattern '$pattern' matches forbidden system package class '$fp'"
         exit 0
     }
 }
@@ -50,25 +50,25 @@ $found = 0
 try {
     $packages = @(Get-AppxPackage -AllUsers -Name $pattern -ErrorAction Stop)
 } catch {
-    Write-Output "[falcon-extras] Get-AppxPackage failed for pattern '$pattern': $($_.Exception.Message)"
+    Write-Output "[eyas] Get-AppxPackage failed for pattern '$pattern': $($_.Exception.Message)"
     exit 0
 }
 
 $found = $packages.Count
 if ($found -eq 0) {
-    Write-Output "[falcon-extras] no packages match pattern '$pattern' — nothing to remove"
+    Write-Output "[eyas] no packages match pattern '$pattern' — nothing to remove"
     exit 0
 }
 
 foreach ($pkg in $packages) {
-    Write-Output "[falcon-extras] found $($pkg.PackageFullName) (publisher=$($pkg.Publisher))"
+    Write-Output "[eyas] found $($pkg.PackageFullName) (publisher=$($pkg.Publisher))"
     try {
         Remove-AppxPackage -AllUsers -Package $pkg.PackageFullName -ErrorAction Stop
         $removed += 1
-        Write-Output "[falcon-extras] removed package $($pkg.PackageFullName)"
+        Write-Output "[eyas] removed package $($pkg.PackageFullName)"
     } catch {
         $failed += 1
-        Write-Output "[falcon-extras] failed to remove $($pkg.PackageFullName): $($_.Exception.Message)"
+        Write-Output "[eyas] failed to remove $($pkg.PackageFullName): $($_.Exception.Message)"
     }
 }
 
@@ -83,13 +83,13 @@ try {
         try {
             Remove-AppxProvisionedPackage -Online -PackageName $pp.PackageName -ErrorAction Stop | Out-Null
             $provisioningRemoved += 1
-            Write-Output "[falcon-extras] removed provisioned $($pp.PackageName)"
+            Write-Output "[eyas] removed provisioned $($pp.PackageName)"
         } catch {
-            Write-Output "[falcon-extras] failed to remove provisioned $($pp.PackageName): $($_.Exception.Message)"
+            Write-Output "[eyas] failed to remove provisioned $($pp.PackageName): $($_.Exception.Message)"
         }
     }
 } catch {
-    Write-Output "[falcon-extras] Get-AppxProvisionedPackage failed: $($_.Exception.Message)"
+    Write-Output "[eyas] Get-AppxProvisionedPackage failed: $($_.Exception.Message)"
 }
 
-Write-Output "[falcon-extras] summary: pattern=$pattern found=$found removed=$removed provisioning_removed=$provisioningRemoved failed=$failed"
+Write-Output "[eyas] summary: pattern=$pattern found=$found removed=$removed provisioning_removed=$provisioningRemoved failed=$failed"

@@ -17,5 +17,5 @@ if ($href -notmatch "^https?://") { $href = $base + ($(if ($href.StartsWith("/")
 $result = @(Install-FromUrl -Url $href -ProductName "WinRAR" -Kind "exe" -SilentArgs "/S")
 $result | Where-Object { $_ -isnot [int] }
 $exit = Get-InstallExitCode $result
-Write-Output "[falcon-extras] winrar-update url=$href exit=$exit host=$env:COMPUTERNAME"
+Write-Output "[eyas] winrar-update url=$href exit=$exit host=$env:COMPUTERNAME"
 exit $exit

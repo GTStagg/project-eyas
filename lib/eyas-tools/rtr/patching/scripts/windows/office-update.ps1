@@ -12,8 +12,8 @@ if (-not (Test-Path $c2r)) {
     exit 4
 }
 
-Write-Output "[falcon-extras] channel hint: $($Params.Channel)"
-Write-Output "[falcon-extras] launching: $c2r /update user displaylevel=false"
+Write-Output "[eyas] channel hint: $($Params.Channel)"
+Write-Output "[eyas] launching: $c2r /update user displaylevel=false"
 & $c2r /update user displaylevel=false forceappshutdown=false
-Write-Output "[falcon-extras] OfficeC2RClient exit=$LASTEXITCODE host=$env:COMPUTERNAME"
+Write-Output "[eyas] OfficeC2RClient exit=$LASTEXITCODE host=$env:COMPUTERNAME"
 exit $LASTEXITCODE

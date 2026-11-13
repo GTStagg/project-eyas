@@ -53,13 +53,13 @@ foreach ($profile in Get-UserProfilePaths) {
     if (Test-Path -LiteralPath $runKey) {
         try {
             Remove-ItemProperty -LiteralPath $runKey -Name 'Ollama' -Force -ErrorAction Stop
-            Write-Output "[falcon-extras] removed Run-key Ollama for $($profile.User)"
+            Write-Output "[eyas] removed Run-key Ollama for $($profile.User)"
         } catch { }
     }
 }
 
 $pendingRebootCount = $script:PendingRebootPaths.Count
-Write-Output "[falcon-extras] uninstall-ollama done service_removed=$serviceRemoved uninstaller_ran=$uninstallerRan processes_killed=$killed swept=$swept pending_reboot=$pendingRebootCount host=$env:COMPUTERNAME"
+Write-Output "[eyas] uninstall-ollama done service_removed=$serviceRemoved uninstaller_ran=$uninstallerRan processes_killed=$killed swept=$swept pending_reboot=$pendingRebootCount host=$env:COMPUTERNAME"
 if ($pendingRebootCount -gt 0) {
-    Write-Output "[falcon-extras] pending-reboot paths: $($script:PendingRebootPaths -join '; ')"
+    Write-Output "[eyas] pending-reboot paths: $($script:PendingRebootPaths -join '; ')"
 }

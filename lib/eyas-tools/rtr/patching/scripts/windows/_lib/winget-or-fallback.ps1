@@ -18,13 +18,13 @@ function Invoke-AppUpgrade {
     )
     $winget = Get-WingetPath
     if ($winget) {
-        Write-Output "[falcon-extras] using winget: $winget"
+        Write-Output "[eyas] using winget: $winget"
         & $winget upgrade --id $Id --silent --accept-package-agreements --accept-source-agreements --disable-interactivity
         return $LASTEXITCODE
     }
     $choco = Get-Command choco -ErrorAction SilentlyContinue
     if ($choco -and $ChocoId) {
-        Write-Output "[falcon-extras] using choco: $($choco.Source)"
+        Write-Output "[eyas] using choco: $($choco.Source)"
         & $choco.Source upgrade $ChocoId -y --no-progress
         return $LASTEXITCODE
     }

@@ -98,8 +98,8 @@ export function underlyingEventTimestamps(rec: Obj): number[] {
   return out;
 }
 
-/** UTC ISO 8601 the way Python's datetime.isoformat() writes it (the sidecar's
- *  reason strings): microseconds only when non-zero, `+00:00` suffix. */
+/** UTC ISO 8601 the way Python's datetime.isoformat() writes it (matching the
+ *  former sidecar's reason strings): microseconds only when non-zero, `+00:00` suffix. */
 function isoUtc(epochSeconds: number): string {
   const d = new Date(Math.floor(epochSeconds) * 1000);
   const base = d.toISOString().slice(0, 19);

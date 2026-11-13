@@ -40,9 +40,9 @@ foreach ($profile in Get-UserProfilePaths) {
             $dest = "${cfg}.quarantined-$stamp"
             Move-Item -LiteralPath $cfg -Destination $dest -Force -ErrorAction Stop
             $configsPreserved += 1
-            Write-Output "[falcon-extras] preserved MCP config: $dest"
+            Write-Output "[eyas] preserved MCP config: $dest"
         } catch {
-            Write-Output "[falcon-extras] failed to preserve MCP config ${cfg}: $($_.Exception.Message)"
+            Write-Output "[eyas] failed to preserve MCP config ${cfg}: $($_.Exception.Message)"
         }
     }
 }
@@ -59,13 +59,13 @@ try {
         try {
             Remove-AppxPackage -AllUsers -Package $pkg.PackageFullName -ErrorAction Stop
             $appxRemoved += 1
-            Write-Output "[falcon-extras] removed Appx package: $($pkg.PackageFullName)"
+            Write-Output "[eyas] removed Appx package: $($pkg.PackageFullName)"
         } catch {
-            Write-Output "[falcon-extras] failed to remove Appx package $($pkg.PackageFullName): $($_.Exception.Message)"
+            Write-Output "[eyas] failed to remove Appx package $($pkg.PackageFullName): $($_.Exception.Message)"
         }
     }
 } catch {
-    Write-Output "[falcon-extras] Get-AppxPackage failed: $($_.Exception.Message)"
+    Write-Output "[eyas] Get-AppxPackage failed: $($_.Exception.Message)"
 }
 
 # Provisioned-package leg — without this, removing the package per-user
@@ -78,13 +78,13 @@ try {
         try {
             Remove-AppxProvisionedPackage -Online -PackageName $pp.PackageName -ErrorAction Stop | Out-Null
             $appxProvisionedRemoved += 1
-            Write-Output "[falcon-extras] removed provisioned Appx: $($pp.PackageName)"
+            Write-Output "[eyas] removed provisioned Appx: $($pp.PackageName)"
         } catch {
-            Write-Output "[falcon-extras] failed to remove provisioned Appx $($pp.PackageName): $($_.Exception.Message)"
+            Write-Output "[eyas] failed to remove provisioned Appx $($pp.PackageName): $($_.Exception.Message)"
         }
     }
 } catch {
-    Write-Output "[falcon-extras] Get-AppxProvisionedPackage failed: $($_.Exception.Message)"
+    Write-Output "[eyas] Get-AppxProvisionedPackage failed: $($_.Exception.Message)"
 }
 
 $candidates = @(
@@ -103,7 +103,7 @@ foreach ($profile in Get-UserProfilePaths) {
 $swept += Sweep-Paths -Paths $candidates
 
 $pendingRebootCount = $script:PendingRebootPaths.Count
-Write-Output "[falcon-extras] uninstall-claude-desktop done uninstaller_ran=$uninstallerRan appx_removed=$appxRemoved appx_provisioned_removed=$appxProvisionedRemoved processes_killed=$killed swept=$swept configs_preserved=$configsPreserved pending_reboot=$pendingRebootCount host=$env:COMPUTERNAME"
+Write-Output "[eyas] uninstall-claude-desktop done uninstaller_ran=$uninstallerRan appx_removed=$appxRemoved appx_provisioned_removed=$appxProvisionedRemoved processes_killed=$killed swept=$swept configs_preserved=$configsPreserved pending_reboot=$pendingRebootCount host=$env:COMPUTERNAME"
 if ($pendingRebootCount -gt 0) {
-    Write-Output "[falcon-extras] pending-reboot paths: $($script:PendingRebootPaths -join '; ')"
+    Write-Output "[eyas] pending-reboot paths: $($script:PendingRebootPaths -join '; ')"
 }

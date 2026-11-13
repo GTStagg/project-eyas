@@ -1,6 +1,6 @@
 // Deterministic enrichment for the /quarantine surface. Pure functions — no
 // I/O, no clock unless passed in — so they unit-test cleanly (same precedent as
-// lib/queue/campaigns.ts and the sidecar pure-function suites).
+// lib/queue/campaigns.ts and the lib/eyas-tools pure-function suites).
 //
 // falcon-mcp 0.11.0's quarantine module returns FalconPy's GetQuarantineFiles
 // records pass-through. The FQL-documented fields (hostname, sha256, state,

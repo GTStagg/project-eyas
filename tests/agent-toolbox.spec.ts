@@ -1,12 +1,12 @@
 import { test, expect } from "@playwright/test";
 
 // /agent-toolbox is the developer Reference surface: it renders the EXACT
-// agent-visible tool catalog (post-suppression) from the live falcon-mcp +
-// extension bridge, each tool tagged read-only vs. approval-gated, with its
+// agent-visible tool catalog (post-suppression) from the live eyas-mcp +
+// in-process Eyas tool bridge, each tool tagged read-only vs. approval-gated, with its
 // JSON input schema behind a disclosure. This spec asserts user-VISIBLE output
 // (real tool rows, working filters, an expanded schema), not derived counts —
 // per the verify-feature anti-pattern note. Assumes Falcon is configured so the
-// catalog builds (the box this runs on has live falcon-mcp + sidecar).
+// catalog builds (the box this runs on has a live eyas-mcp).
 
 // Next.js 15 dev-mode injects a caret-color hydration warning on focused
 // inputs; it's noise, not a real error.

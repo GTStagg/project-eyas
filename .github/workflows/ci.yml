@@ -72,7 +72,6 @@ jobs:
           sudo chown 1001:1001 "$RUNNER_TEMP/data"
           docker run -d --name eyas -p 127.0.0.1:3000:3000 \
             -e AUTH_SESSION_SECRET="$(openssl rand -hex 32)" \
-            -e FALCON_EXTRAS_ENABLED=false \
             -v "$RUNNER_TEMP/data:/app/data" eyas-app:ci
           for i in $(seq 1 30); do
             if curl -fsS http://127.0.0.1:3000/api/healthz; then echo; break; fi

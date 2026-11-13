@@ -15,5 +15,5 @@ $url = "https://api.adoptium.net/v3/installer/latest/$ver/ga/windows/x64/jdk/hot
 $result = @(Install-FromUrl -Url $url -ProductName "Eclipse Temurin JDK $ver" -Kind "msi")
 $result | Where-Object { $_ -isnot [int] }
 $exit = Get-InstallExitCode $result
-Write-Output "[falcon-extras] temurin-install version=$ver exit=$exit host=$env:COMPUTERNAME"
+Write-Output "[eyas] temurin-install version=$ver exit=$exit host=$env:COMPUTERNAME"
 exit $exit

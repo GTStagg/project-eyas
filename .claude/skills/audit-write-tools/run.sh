@@ -43,7 +43,7 @@ read_into EYAS_TOOL_NAMES < <(
 )
 
 # Eyas tools whose name matches the write-shape regex.
-read_into SIDECAR_WRITE_CANDIDATES < <(
+read_into EYAS_WRITE_CANDIDATES < <(
   printf '%s\n' "${EYAS_TOOL_NAMES[@]}" \
     | grep -v '^$' \
     | grep -E '^(extras_(create|delete|update|add|remove|close|save)_|extras_host_(contain|lift_containment|group_(add|remove)_members)|extras_rtr_run_(patch|cleanup|falcon_script)|extras_rtr_check_patch_status)' \
@@ -132,16 +132,16 @@ NATIVE_ADOPTED=(
   "falcon_delete_host_groups"
   "falcon_update_policy"
   "falcon_perform_policy_action"
-  # falcon-mcp 0.16.0 #487 — host grouping-tag write. No sidecar twin (Eyas
+  # falcon-mcp 0.16.0 #487 — host grouping-tag write. No Eyas twin (Eyas
   # quarantines via static host-group membership, not FalconGroupingTags), so
   # adopted: exposed + gated, never suppressed.
   "falcon_manage_host_grouping_tags"
-  # falcon-mcp 0.17.0 AgentWorks — invoke a Charlotte AI agent. No sidecar twin;
+  # falcon-mcp 0.17.0 AgentWorks — invoke a Charlotte AI agent. No Eyas twin;
   # user-approved adopt (exposed + gated, never suppressed) — the approval gate
   # keeps agent-invocation human-in-the-loop.
   "falcon_invoke_agentworks_agent"
   # falcon-mcp 0.20.0 Data Security — edit any DLP entity (policy, pattern,
-  # classification, …). No sidecar twin; user-approved adopt (exposed + gated).
+  # classification, …). No Eyas twin; user-approved adopt (exposed + gated).
   "falcon_update_data_security_entity"
   # eyas-mcp network containment — replaced the sidecar twins (live contain +
   # lift verified); exposed + gated, IR lift backstop applies.
@@ -185,8 +185,8 @@ fail=0
 total_candidates=0
 total_gated=0
 
-echo "${BOLD}Sidecar write-shape tools${NC}"
-for t in "${SIDECAR_WRITE_CANDIDATES[@]}"; do
+echo "${BOLD}Eyas write-shape tools${NC}"
+for t in "${EYAS_WRITE_CANDIDATES[@]}"; do
   total_candidates=$((total_candidates+1))
   if is_gated "$t"; then
     echo "  ${GREEN}✓${NC} $t ${DIM}(gated)${NC}"

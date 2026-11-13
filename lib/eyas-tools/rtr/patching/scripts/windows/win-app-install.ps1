@@ -16,13 +16,13 @@
 # Runtime integrity banner. ASCII only -- library.py::_ascii_coerce strips any
 # non-7-bit byte from the rendered body, so no check marks / em dashes here.
 if ($Params.Sha256) {
-    Write-Output "[falcon-extras] integrity: HASH-PINNED ($($Params.Sha256))"
+    Write-Output "[eyas] integrity: HASH-PINNED ($($Params.Sha256))"
 } else {
-    Write-Output "[falcon-extras] integrity: UNVERIFIED (no hash pin) -- proceeds on HTTPS + operator approval only"
+    Write-Output "[eyas] integrity: UNVERIFIED (no hash pin) -- proceeds on HTTPS + operator approval only"
 }
 
 $result = @(Install-FromUrl -Url $Params.Url -ProductName $Params.Product -Kind $Params.Kind -SilentArgs $Params.SilentArgs -Sha256 $Params.Sha256)
 $result | Where-Object { $_ -isnot [int] }
 $exit = Get-InstallExitCode $result
-Write-Output "[falcon-extras] win-app-install product='$($Params.Product)' kind=$($Params.Kind) exit=$exit host=$env:COMPUTERNAME"
+Write-Output "[eyas] win-app-install product='$($Params.Product)' kind=$($Params.Kind) exit=$exit host=$env:COMPUTERNAME"
 exit $exit

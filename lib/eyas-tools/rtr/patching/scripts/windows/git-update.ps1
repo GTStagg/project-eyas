@@ -15,5 +15,5 @@ $result = @(Install-FromUrl -Url $asset.browser_download_url -ProductName "Git f
     -SilentArgs "/VERYSILENT /NORESTART /SUPPRESSMSGBOXES /CLOSEAPPLICATIONS")
 $result | Where-Object { $_ -isnot [int] }
 $exit = Get-InstallExitCode $result
-Write-Output "[falcon-extras] git-update version=$($asset.name) exit=$exit host=$env:COMPUTERNAME"
+Write-Output "[eyas] git-update version=$($asset.name) exit=$exit host=$env:COMPUTERNAME"
 exit $exit

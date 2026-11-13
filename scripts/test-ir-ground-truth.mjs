@@ -171,7 +171,7 @@ function turn(calls) {
   return { toolCallsJson: JSON.stringify(calls) };
 }
 // Default excerpt = what a SUCCESSFUL call of that tool really returns (the
-// sidecar's {ok:true,…}; eyas-mcp's {succeeded_ids:[…]}), since ground truth
+// retired sidecar's {ok:true,…}; eyas-mcp's {succeeded_ids:[…]}), since ground truth
 // now confirms a contain from the result, not just isError.
 function call(name, input, { approval = "allow", isError = false, excerpt } = {}) {
   const ids = input?.device_ids ?? input?.ids ?? [];
@@ -369,7 +369,7 @@ test("parsePhase0: tolerates malformed entry shapes (composite_ids not array, mi
 
 
 // ── contain must be CONFIRMED by its result, not just non-error ─────────────
-// The sidecar reports an API failure as a normal {ok:false, errors} payload and
+// The retired sidecar reported an API failure as a normal {ok:false, errors} payload and
 // eyas-mcp reports a partial failure as {partial_failure, succeeded_ids,
 // failed_ids} — both with isError=false. Counting either as "this workflow
 // contained the host" would let the F1 lift backstop release a containment the

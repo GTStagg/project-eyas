@@ -602,7 +602,7 @@ const PROJECTIONS: Record<string, Projection> = {
   }),
 
   // --- falcon-mcp 0.12.0 native config-surface reads ---
-  // The agent reaches these directly (the write paths route to sidecar twins,
+  // The agent reaches these directly (the write paths route to Eyas twins,
   // but the reads have no curated twin). Project to list-level fields and drop
   // the heavy nested blobs. falcon_get_certificate_details intentionally has NO
   // projection — a single certificate record is tiny and sits comfortably under
@@ -777,14 +777,14 @@ const PROJECTIONS: Record<string, Projection> = {
   }),
 
   // --- falcon-mcp 0.17.0 Fusion SOAR reads (#543) ---
-  // falcon_search_workflow_executions mirrors the sidecar's _project_execution
-  // (falcon-extras/workflows.py): a full execution record carries per-step
+  // falcon_search_workflow_executions mirrors the former sidecar's
+  // _project_execution (falcon-extras/workflows.py): a full execution record carries per-step
   // results + trigger payload + internal state that tips the MCP token cap on
   // busy tenants. Runs start through the native falcon_execute_workflow;
   // this native read auto-exposes and is token-bound here. Workflow scope is
   // granted on our tenants. The other two Fusion reads
   // (falcon_search_workflow_definitions, falcon_get_workflow_execution_results)
-  // have shapes the sidecar doesn't confirm → they fall through to the generic
+  // have shapes the former sidecar never confirmed → they fall through to the generic
   // 12KB cap rather than risk a field-guess that empties the record (the
   // recon-drift lesson). Same for the AgentWorks / ZTA / Cloud Insights reads:
   // those scopes aren't granted on our tenants (no live shape to confirm), and

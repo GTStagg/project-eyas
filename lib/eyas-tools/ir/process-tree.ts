@@ -5,7 +5,7 @@
 // the named image closest in time), re-centres the window on the process's own
 // start when a behavioural detection fired long after it launched, looks a
 // missing parent up once over the previous 7 days, and walks descendants. Eyas
-// maps its nodes into the shape the sidecar returned, then runs its own
+// maps its nodes into the shape the former sidecar returned, then runs its own
 // classifier (lib/eyas-tools/process-tree/classifier.ts) over the chain.
 //
 // The native tool stays hidden from the agent (NATIVE_READ_KEEP in
@@ -25,7 +25,7 @@ const IMAGE = /^[A-Za-z0-9_. \-]{1,96}$/;
 const TREE_BUDGET_SECONDS = 45;
 const TREE_TIMEOUT_MS = 65_000;
 
-/** A process id as the sidecar returned it: a number when it fits exactly, the
+/** A process id as the former sidecar returned it: a number when it fits exactly, the
  *  digit string otherwise, null when absent or not digits. */
 export function toPid(v: unknown): number | string | null {
   if (typeof v === "number" && Number.isInteger(v)) return v;
@@ -36,7 +36,7 @@ export function toPid(v: unknown): number | string | null {
 
 const strOrNull = (v: unknown): string | null => (typeof v === "string" && v ? v : null);
 
-/** A native tree node in the sidecar's {pid, ppid, os_pid, image, cmdline,
+/** A native tree node in the former sidecar's {pid, ppid, os_pid, image, cmdline,
  *  user, user_sid, signed, ts} shape, plus the native `sha256`, raw `signing`
  *  and, when present, `blocked` / `source_event` / `parent_image` (a process
  *  the sensor blocked before it ran has no ProcessRollup2; eyas-mcp ≥ 11e9564

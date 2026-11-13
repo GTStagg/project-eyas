@@ -18,7 +18,7 @@ import { buildPrimerHref } from "@/components/primerHandoff";
 //
 // Reads state from /api/ir-quarantine/diagnose. Per detected case,
 // renders the right CTA: each CTA hands off to chat with a primer that
-// fires the gated sidecar tool. After successful tool execution, the
+// fires the gated Eyas tool. After successful tool execution, the
 // operator returns to /config and clicks "Refresh" — the card re-reads
 // state and shows the next step (or "ready").
 //

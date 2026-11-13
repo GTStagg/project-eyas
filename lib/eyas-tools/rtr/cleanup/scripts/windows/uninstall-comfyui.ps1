@@ -33,9 +33,9 @@ Get-CimInstance -ClassName Win32_Process -ErrorAction SilentlyContinue |
         try {
             Stop-Process -Id $_.ProcessId -Force -ErrorAction Stop
             $killed += 1
-            Write-Output "[falcon-extras] killed ComfyUI python pid=$($_.ProcessId)"
+            Write-Output "[eyas] killed ComfyUI python pid=$($_.ProcessId)"
         } catch {
-            Write-Output "[falcon-extras] failed to kill pid=$($_.ProcessId): $_"
+            Write-Output "[eyas] failed to kill pid=$($_.ProcessId): $_"
         }
     }
 
@@ -78,13 +78,13 @@ foreach ($profile in Get-UserProfilePaths) {
     if (Test-Path -LiteralPath $pinokio) {
         if (Remove-OrSchedulePendingReboot -Path $pinokio) {
             $swept += 1
-            Write-Output "[falcon-extras] swept Pinokio comfy.git for $($profile.User)"
+            Write-Output "[eyas] swept Pinokio comfy.git for $($profile.User)"
         }
     }
 }
 
 $pendingRebootCount = $script:PendingRebootPaths.Count
-Write-Output "[falcon-extras] uninstall-comfyui done processes_killed=$killed swept=$swept pending_reboot=$pendingRebootCount host=$env:COMPUTERNAME"
+Write-Output "[eyas] uninstall-comfyui done processes_killed=$killed swept=$swept pending_reboot=$pendingRebootCount host=$env:COMPUTERNAME"
 if ($pendingRebootCount -gt 0) {
-    Write-Output "[falcon-extras] pending-reboot paths: $($script:PendingRebootPaths -join '; ')"
+    Write-Output "[eyas] pending-reboot paths: $($script:PendingRebootPaths -join '; ')"
 }
