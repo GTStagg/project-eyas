@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 
 // /discover — Falcon Discover asset/application/account inventory decision-doc
-// surface. On the SE tenant the Discover scope is granted, so the page renders
+// surface. On a tenant with the Discover scope granted, the page renders
 // summary stat cards + entity tables (NOT the scope-pending banner).
 test("Discover surface renders inventory cards + tables and nav link", async ({ page }) => {
   const consoleErrors: string[] = [];

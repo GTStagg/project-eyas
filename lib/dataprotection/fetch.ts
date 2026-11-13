@@ -9,8 +9,8 @@ import { parseConcatenatedJson, detectFalconError, isScopeDenied } from "@/lib/m
 // and Falcon caps that hydrate at 200 IDs ("maximum number of IDs exceeded -
 // 200", HTTP 400) even though the tool accepts limit up to 500. A tenant with
 // more than 200 content patterns / classifications / per-platform policies
-// failed the whole surface at limit 500 (seen live on XDR us-2: 208 content
-// patterns). Pages of 200 keep each hydrate legal.
+// failed the whole surface at limit 500 (seen live). Pages of 200 keep each
+// hydrate legal.
 //
 // Loop on our own offset and stop on a short page or on reaching
 // pagination.total. Don't trust pagination.offset: upstream reports

@@ -384,7 +384,7 @@ test("data security projection keeps scalars, collapses heavy blobs, never empti
 });
 
 // ── Threat Graph ran-on projection (eyas-mcp native, formerly sidecar) ────
-// Live record shape (XDR us-2): ~1 KB of raw edge per device. A full 50-device
+// Live record shape: ~1 KB of raw edge per device. A full 50-device
 // page must project under the 12 KB generic cap — it overflowed (14.3 KB, last
 // ~8 devices truncated) while the ~100-char vertex `id` was kept.
 test("threat graph ran-on: 50-device page projects untruncated, pivot fields only", () => {
