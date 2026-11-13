@@ -95,6 +95,12 @@ export const REQUIRES_APPROVAL: ReadonlySet<string> = new Set<string>([
   "falcon_delete_policies",
   "falcon_perform_policy_action",
   "falcon_set_policy_precedence",
+  // Falcon Complete Message Center writes (eyas-mcp 6f0b394). SUPPRESSED by
+  // user decision — held back in NATIVE_WRITE_SUPPRESS; gated here as the
+  // fail-closed backstop if they're ever exposed.
+  "falcon_create_message_center_case",
+  "falcon_add_message_center_case_comment",
+  "falcon_add_message_center_case_attachment",
   // Native host grouping-tag write (falcon-mcp 0.16.0 #487). ADOPTED — no
   // sidecar twin (Eyas quarantines via STATIC host-group membership, not
   // FalconGroupingTags), so there's no pre-write value-add to route around;

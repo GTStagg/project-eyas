@@ -110,6 +110,10 @@ const SCOPES: Record<Tier, ScopeRow[]> = {
   ],
   optional: [
     { consoleName: "CAO Hunting", read: true, write: false, unlocks: "Tool surfaced but kept out of hot prompts; not in Falcon Go/Pro editions" },
+    // eyas-mcp falconcomplete module (6f0b394). Read-only in Eyas: the three
+    // Message Center writes are held back at the bridge, so write isn't needed.
+    { consoleName: "Message Center", read: true, write: false, unlocks: "Agent can search and read Falcon Complete / Support cases and their message threads, and count cases (chat only)" },
+    { consoleName: "Falcon Complete Dashboards", read: true, write: false, unlocks: "Agent can report Falcon Complete alert, escalation, remediation and block / allow list counts (chat only)" },
   ],
 };
 
@@ -134,6 +138,7 @@ const MCP_MODULES = [
   { token: "cloud", needs: "Cloud Security API Detections + Cloud Security API Assets + Falcon Container Image + Kubernetes Protection read (new in 0.10.0)" },
   { token: "shield", needs: "Falcon Shield / SaaS Security read (new in 0.10.0)" },
   { token: "guardian", needs: "AIDR read (new in 0.19.0 — AI-agent activity / Guardian)" },
+  { token: "falconcomplete", needs: "Message Center read + Falcon Complete Dashboards read (no underscore)" },
 ];
 
 // Console scope name → the live capability key reported by /api/health for the
