@@ -14,7 +14,7 @@ import {
 import { fetchDataSecurityEntities } from "@/lib/dataprotection/fetch";
 import { fetchDiscoverSnapshot } from "@/lib/discover/native";
 import { fetchPreventionPosture } from "@/lib/prevention/posture";
-import { nativeSidecarPayload } from "@/lib/mcp/native-payload";
+import { nativeSearchPayload } from "@/lib/mcp/native-payload";
 import { fetchContainedHosts } from "@/lib/hosts/contained";
 import { fetchIdentityDetections } from "@/lib/identity/fetch-detections";
 import { clusterCampaigns } from "@/lib/queue/campaigns";
@@ -222,7 +222,7 @@ async function captureIdentity(
   };
 
   try {
-    const p = await nativeSidecarPayload(mcp, "falcon_search_risky_identities", { limit: 100 });
+    const p = await nativeSearchPayload(mcp, "falcon_search_risky_identities", { limit: 100 });
     if (p?.ok === true && Array.isArray(p.items)) {
       const items = p.items as Array<{ riskScoreSeverity?: string }>;
       out.risky_entities = items.filter((n) => {
@@ -244,7 +244,7 @@ async function captureIdentity(
   }
 
   try {
-    const p = await nativeSidecarPayload(mcp, "falcon_search_idp_policy_rules", { limit: 500 });
+    const p = await nativeSearchPayload(mcp, "falcon_search_idp_policy_rules", { limit: 500 });
     if (p?.ok === true && Array.isArray(p.items)) {
       const items = p.items as Array<{ enabled?: boolean }>;
       out.policy_rules_enabled = items.filter((x) => x.enabled === true).length;

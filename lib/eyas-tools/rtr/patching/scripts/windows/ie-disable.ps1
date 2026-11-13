@@ -14,29 +14,29 @@ $stateMatch = $info | Select-String -Pattern "^State\s*:\s*(\S+)" | Select-Objec
 $state = if ($stateMatch) { $stateMatch.Matches.Groups[1].Value } else { $null }
 
 if (-not $state) {
-    Write-Output "[falcon-extras] could not read DISM state for $feature (rc=$rcInfo) host=$env:COMPUTERNAME"
+    Write-Output "[eyas] could not read DISM state for $feature (rc=$rcInfo) host=$env:COMPUTERNAME"
     Write-Output "----- dism output -----"
     $info | ForEach-Object { Write-Output $_ }
     exit 2
 }
 
-Write-Output "[falcon-extras] $feature current state: $state host=$env:COMPUTERNAME"
+Write-Output "[eyas] $feature current state: $state host=$env:COMPUTERNAME"
 
 if ($state -eq "Disabled" -or $state -eq "DisabledWithPayloadRemoved") {
-    Write-Output "[falcon-extras] already disabled, no-op"
+    Write-Output "[eyas] already disabled, no-op"
     exit 0
 }
 
-Write-Output "[falcon-extras] disabling $feature (no restart) ..."
+Write-Output "[eyas] disabling $feature (no restart) ..."
 $disable = & dism.exe /online /Disable-Feature /FeatureName:$feature /NoRestart 2>&1
 $rc = $LASTEXITCODE
 $disable | ForEach-Object { Write-Output $_ }
 
 # DISM returns 0 on success, 3010 on success-pending-reboot. Both are wins.
 if ($rc -eq 0 -or $rc -eq 3010) {
-    Write-Output "[falcon-extras] ie-disable done (exit=$rc, reboot required to fully apply) host=$env:COMPUTERNAME"
+    Write-Output "[eyas] ie-disable done (exit=$rc, reboot required to fully apply) host=$env:COMPUTERNAME"
     exit 0
 }
 
-Write-Output "[falcon-extras] dism Disable-Feature failed, exit=$rc"
+Write-Output "[eyas] dism Disable-Feature failed, exit=$rc"
 exit $rc

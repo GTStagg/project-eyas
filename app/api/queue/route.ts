@@ -63,7 +63,7 @@ export async function GET() {
       const rows: QueueRow[] = rankDetections(merged, containedAids);
 
       // Identity overlay: enrich the top-N endpoint rows in parallel via the
-      // sidecar correlation tool. Endpoint-only because IDP rows have no AID.
+      // native host-identity correlation tool. Endpoint-only because IDP rows have no AID.
       // Fire-and-forget tolerant — if a single correlation call fails the row
       // simply lacks the field; the queue still renders.
       const overlayCount = await enrichTopRowsWithIdentity(rows);
@@ -199,8 +199,7 @@ async function fetchOpenIdpDetections(client: Client): Promise<RankInput[]> {
 // Mutates the rows array in place: attaches identity_overlap to up to
 // IDENTITY_OVERLAY_TOP_N endpoint rows in the `top` bucket. Returns the
 // number of rows actually enriched. All correlation calls share a single
-// extras client connection — the helper passes the existing client through
-// rather than spawning per-call.
+// eyas-mcp client connection rather than spawning per-call.
 async function enrichTopRowsWithIdentity(rows: QueueRow[]): Promise<number> {
   const candidates = rows
     .filter(

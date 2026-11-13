@@ -61,7 +61,7 @@ foreach ($base in $bases) {
     $sub = Join-Path $base $image
     if (-not (Test-Path $sub)) { continue }
     $touchedSubkeys += 1
-    Write-Output "[falcon-extras] inspecting $sub"
+    Write-Output "[eyas] inspecting $sub"
 
     $priorValues = Get-ItemProperty -Path $sub -ErrorAction SilentlyContinue
     foreach ($v in $attackerValues) {
@@ -69,10 +69,10 @@ foreach ($base in $bases) {
             $prior = $priorValues.$v
             try {
                 Remove-ItemProperty -Path $sub -Name $v -Force -ErrorAction Stop
-                Write-Output "[falcon-extras] removed $v (was '$prior') at $sub"
+                Write-Output "[eyas] removed $v (was '$prior') at $sub"
                 $removedValues += 1
             } catch {
-                Write-Output "[falcon-extras] failed to remove $v at ${sub}: $_"
+                Write-Output "[eyas] failed to remove $v at ${sub}: $_"
             }
         }
     }
@@ -83,13 +83,13 @@ foreach ($base in $bases) {
         if (($gf -band 0x200) -ne 0) {
             try {
                 Remove-ItemProperty -Path $sub -Name 'GlobalFlag' -Force -ErrorAction Stop
-                Write-Output "[falcon-extras] removed GlobalFlag (was 0x$([Convert]::ToString($gf,16)) -- silent-exit trigger) at $sub"
+                Write-Output "[eyas] removed GlobalFlag (was 0x$([Convert]::ToString($gf,16)) -- silent-exit trigger) at $sub"
                 $removedValues += 1
             } catch {
-                Write-Output "[falcon-extras] failed to remove GlobalFlag at ${sub}: $_"
+                Write-Output "[eyas] failed to remove GlobalFlag at ${sub}: $_"
             }
         } else {
-            Write-Output "[falcon-extras] leaving GlobalFlag=0x$([Convert]::ToString($gf,16)) at $sub (no silent-exit bit set; likely legitimate)"
+            Write-Output "[eyas] leaving GlobalFlag=0x$([Convert]::ToString($gf,16)) at $sub (no silent-exit bit set; likely legitimate)"
         }
     }
 
@@ -103,17 +103,17 @@ foreach ($base in $bases) {
     if ($remainingValueCount -eq 0 -and $remainingChildren -eq 0) {
         try {
             Remove-Item -Path $sub -Force -ErrorAction Stop
-            Write-Output "[falcon-extras] removed empty subkey $sub"
+            Write-Output "[eyas] removed empty subkey $sub"
             $removedSubkeys += 1
         } catch {
-            Write-Output "[falcon-extras] failed to remove empty subkey ${sub}: $_"
+            Write-Output "[eyas] failed to remove empty subkey ${sub}: $_"
         }
     }
 }
 
 if ($touchedSubkeys -eq 0) {
-    Write-Output "[falcon-extras] no IFEO / SilentProcessExit subkey present for image '$image' -- nothing to remediate"
+    Write-Output "[eyas] no IFEO / SilentProcessExit subkey present for image '$image' -- nothing to remediate"
     exit 0
 }
 
-Write-Output "[falcon-extras] remove-ifeo-hijack done image='$image' subkeys_inspected=$touchedSubkeys values_removed=$removedValues empty_subkeys_removed=$removedSubkeys host=$env:COMPUTERNAME"
+Write-Output "[eyas] remove-ifeo-hijack done image='$image' subkeys_inspected=$touchedSubkeys values_removed=$removedValues empty_subkeys_removed=$removedSubkeys host=$env:COMPUTERNAME"

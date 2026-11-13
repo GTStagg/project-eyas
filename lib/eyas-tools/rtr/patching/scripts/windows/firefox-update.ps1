@@ -18,14 +18,14 @@ try {
         -Uri "https://product-details.mozilla.org/1.0/firefox_versions.json"
     $version = $versions.LATEST_FIREFOX_VERSION
     if (-not $version) { throw "product-details JSON missing LATEST_FIREFOX_VERSION" }
-    Write-Output "[falcon-extras] resolved Firefox stable version: $version"
+    Write-Output "[eyas] resolved Firefox stable version: $version"
 } catch {
-    Write-Output "[falcon-extras] WARN: product-details lookup failed ($($_.Exception.Message)); falling back to redirector"
+    Write-Output "[eyas] WARN: product-details lookup failed ($($_.Exception.Message)); falling back to redirector"
     $url = "https://download.mozilla.org/?product=firefox-msi-latest-ssl&os=win64&lang=en-US"
     $result = @(Install-FromUrl -Url $url -ProductName "Mozilla Firefox" -Kind "msi")
     $result | Where-Object { $_ -isnot [int] }
     $exit = Get-InstallExitCode $result
-    Write-Output "[falcon-extras] firefox-update exit=$exit host=$env:COMPUTERNAME"
+    Write-Output "[eyas] firefox-update exit=$exit host=$env:COMPUTERNAME"
     exit $exit
 }
 
@@ -38,5 +38,5 @@ $url = "https://archive.mozilla.org/pub/firefox/releases/$version/win64/en-US/$e
 $result = @(Install-FromUrl -Url $url -ProductName "Mozilla Firefox $version" -Kind "msi")
 $result | Where-Object { $_ -isnot [int] }
 $exit = Get-InstallExitCode $result
-Write-Output "[falcon-extras] firefox-update exit=$exit host=$env:COMPUTERNAME"
+Write-Output "[eyas] firefox-update exit=$exit host=$env:COMPUTERNAME"
 exit $exit

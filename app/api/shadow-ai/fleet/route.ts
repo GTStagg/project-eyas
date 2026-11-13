@@ -26,7 +26,7 @@ type FleetItem = {
   tools: ToolHit[];
 };
 
-type SidecarPayload = {
+type EgressScanPayload = {
   ok: boolean;
   items?: Array<{ aid: string; tools: ToolHit[] }>;
   events_scanned?: number;
@@ -63,7 +63,7 @@ export async function GET(request: Request) {
     // extras_fleet_shadow_ai_egress, run in-process (lib/eyas-tools/shadow-ai).
     const egressPayload = (await withFalconMcpClient((client) =>
       fleetShadowAiEgress(makeEyasToolContext(client), { hours_back: hours, limit: 5000 }),
-    )) as SidecarPayload;
+    )) as EgressScanPayload;
 
     if (egressPayload.ok === false || egressPayload.scope_pending) {
       if (egressPayload.scope_pending) {

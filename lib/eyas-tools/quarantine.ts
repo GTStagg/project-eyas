@@ -7,8 +7,8 @@ import type { EyasToolContext } from "./types";
 // time, so a group created or adopted earlier in the same chat turn (saved by
 // the chat route's auto-save hook) is already visible.
 //
-// Policy provisioning (extras_provision_quarantine_policy) is still in the
-// sidecar; the recommended actions below name it unchanged.
+// Policy provisioning (extras_provision_quarantine_policy) lives in
+// ./quarantine-provision.ts; the recommended actions below name it.
 
 type Obj = Record<string, unknown>;
 

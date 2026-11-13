@@ -44,7 +44,7 @@ test("capability-gap badge + affordances on /vulnerabilities (or none if tenant 
 
   if (gapCount === 0) {
     console.log(
-      "[probe] No capability gap in the active tenant's live Spotlight data — every Windows remediation maps to a curated script. Badge branch not exercised against live data (verified deterministically via the sidecar probe instead).",
+      "[probe] No capability gap in the active tenant's live Spotlight data — every Windows remediation maps to a curated script. Badge branch not exercised against live data (verified deterministically by test:rtr-library instead).",
     );
   } else {
     // A gap row exists — assert the feature renders end-to-end.

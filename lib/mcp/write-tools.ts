@@ -102,7 +102,7 @@ export const REQUIRES_APPROVAL: ReadonlySet<string> = new Set<string>([
   "falcon_add_message_center_case_comment",
   "falcon_add_message_center_case_attachment",
   // Native host grouping-tag write (falcon-mcp 0.16.0 #487). ADOPTED — no
-  // sidecar twin (Eyas quarantines via STATIC host-group membership, not
+  // Eyas twin (Eyas quarantines via STATIC host-group membership, not
   // FalconGroupingTags), so there's no pre-write value-add to route around;
   // native is the primary path, gated. NOT in NATIVE_WRITE_SUPPRESS. The
   // annotation backstop already gates it fail-closed (readOnlyHint:false); this
@@ -181,7 +181,7 @@ export const REQUIRES_APPROVAL: ReadonlySet<string> = new Set<string>([
   // device_id the agent picks, so it gates like the other RTR admin paths.
   "falcon_wait_for_rtr_sessions",
   // Eyas — detection-tuning exclusion CREATES. Long-lived artifacts;
-  // create is the consequential write and stays on the sidecar because it runs
+  // create is the consequential write and stays an Eyas tool because it runs
   // the IOA zero-width-assertion + single-quote pre-flight before writing.
   // By-id DELETE is handled by native falcon_delete_exclusions (adopted in
   // 0.6.7); the thin extras_delete_*_exclusion twins were un-registered.

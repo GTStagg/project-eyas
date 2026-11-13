@@ -21,32 +21,32 @@ $victims = Get-ItemProperty -Path $keys -ErrorAction SilentlyContinue | Where-Ob
 }
 
 if (-not $victims) {
-    Write-Output "[falcon-extras] no Adobe Flash Player installs found host=$env:COMPUTERNAME"
+    Write-Output "[eyas] no Adobe Flash Player installs found host=$env:COMPUTERNAME"
     # Still sweep the leftover directories in case a prior uninstall left bits behind.
     $swept = 0
     foreach ($dir in @("$env:WINDIR\System32\Macromed\Flash", "$env:WINDIR\SysWOW64\Macromed\Flash")) {
         if (Test-Path $dir) {
-            Write-Output "[falcon-extras] removing leftover directory $dir"
+            Write-Output "[eyas] removing leftover directory $dir"
             Remove-Item -Path $dir -Recurse -Force -ErrorAction SilentlyContinue
             if (-not (Test-Path $dir)) { $swept++ }
         }
     }
-    Write-Output "[falcon-extras] flash-uninstall done (no installs, swept=$swept) host=$env:COMPUTERNAME"
+    Write-Output "[eyas] flash-uninstall done (no installs, swept=$swept) host=$env:COMPUTERNAME"
     exit 0
 }
 
-Write-Output "[falcon-extras] found $($victims.Count) Adobe Flash Player install(s):"
+Write-Output "[eyas] found $($victims.Count) Adobe Flash Player install(s):"
 $victims | ForEach-Object { Write-Output "  - $($_.DisplayName)  [$($_.PSChildName)]" }
 
 $failed = 0
 foreach ($v in $victims) {
     $guid = $v.PSChildName
     if ($guid -match "^\{[0-9A-Fa-f\-]+\}$") {
-        Write-Output "[falcon-extras] uninstalling $($v.DisplayName) via msiexec /x $guid"
+        Write-Output "[eyas] uninstalling $($v.DisplayName) via msiexec /x $guid"
         $proc = Start-Process -FilePath "msiexec.exe" `
             -ArgumentList "/x", $guid, "/qn", "/norestart" `
             -Wait -PassThru -NoNewWindow
-        Write-Output "[falcon-extras]   exit=$($proc.ExitCode)"
+        Write-Output "[eyas]   exit=$($proc.ExitCode)"
         if ($proc.ExitCode -ne 0 -and $proc.ExitCode -ne 3010) { $failed++ }
         continue
     }
@@ -57,7 +57,7 @@ foreach ($v in $victims) {
     # path would also be safe, but we only get here when it's not MSI).
     $cmd = $v.UninstallString
     if (-not $cmd) {
-        Write-Output "[falcon-extras] skipping $($v.DisplayName) -- no UninstallString in registry"
+        Write-Output "[eyas] skipping $($v.DisplayName) -- no UninstallString in registry"
         $failed++
         continue
     }
@@ -76,14 +76,14 @@ foreach ($v in $victims) {
         $args = if ($parts.Length -gt 1) { "$($parts[1]) -uninstall" } else { "-uninstall" }
     }
     if (-not (Test-Path $exe)) {
-        Write-Output "[falcon-extras] skipping $($v.DisplayName) -- uninstaller not on disk: $exe"
+        Write-Output "[eyas] skipping $($v.DisplayName) -- uninstaller not on disk: $exe"
         $failed++
         continue
     }
-    Write-Output "[falcon-extras] uninstalling $($v.DisplayName) via $exe $args"
+    Write-Output "[eyas] uninstalling $($v.DisplayName) via $exe $args"
     $proc = Start-Process -FilePath $exe -ArgumentList $args `
         -Wait -PassThru -NoNewWindow
-    Write-Output "[falcon-extras]   exit=$($proc.ExitCode)"
+    Write-Output "[eyas]   exit=$($proc.ExitCode)"
     if ($proc.ExitCode -ne 0) { $failed++ }
 }
 
@@ -93,12 +93,12 @@ foreach ($v in $victims) {
 $swept = 0
 foreach ($dir in @("$env:WINDIR\System32\Macromed\Flash", "$env:WINDIR\SysWOW64\Macromed\Flash")) {
     if (Test-Path $dir) {
-        Write-Output "[falcon-extras] removing leftover directory $dir"
+        Write-Output "[eyas] removing leftover directory $dir"
         Remove-Item -Path $dir -Recurse -Force -ErrorAction SilentlyContinue
         if (-not (Test-Path $dir)) { $swept++ }
-        else { Write-Output "[falcon-extras]   WARN: $dir still present after Remove-Item"; $failed++ }
+        else { Write-Output "[eyas]   WARN: $dir still present after Remove-Item"; $failed++ }
     }
 }
 
-Write-Output "[falcon-extras] flash-uninstall done failed=$failed of $($victims.Count) swept=$swept host=$env:COMPUTERNAME"
+Write-Output "[eyas] flash-uninstall done failed=$failed of $($victims.Count) swept=$swept host=$env:COMPUTERNAME"
 exit $failed

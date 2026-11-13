@@ -36,7 +36,7 @@ foreach ($profile in Get-UserProfilePaths) {
 $swept += Sweep-Paths -Paths $candidates
 
 $pendingRebootCount = $script:PendingRebootPaths.Count
-Write-Output "[falcon-extras] uninstall-lmstudio done uninstaller_ran=$uninstallerRan processes_killed=$killed swept=$swept pending_reboot=$pendingRebootCount host=$env:COMPUTERNAME"
+Write-Output "[eyas] uninstall-lmstudio done uninstaller_ran=$uninstallerRan processes_killed=$killed swept=$swept pending_reboot=$pendingRebootCount host=$env:COMPUTERNAME"
 if ($pendingRebootCount -gt 0) {
-    Write-Output "[falcon-extras] pending-reboot paths: $($script:PendingRebootPaths -join '; ')"
+    Write-Output "[eyas] pending-reboot paths: $($script:PendingRebootPaths -join '; ')"
 }

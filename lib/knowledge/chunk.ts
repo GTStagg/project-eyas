@@ -1,7 +1,7 @@
 // Deterministic, heading/paragraph-aware chunking for the knowledge base.
 //
 // Pure function — no I/O, no clock, no randomness — so it unit-tests cleanly
-// (same precedent as the sidecar pure-function suites). Retrieval is lexical
+// (same precedent as the other pure-function suites under scripts/test-*.mjs). Retrieval is lexical
 // (FTS5), so chunks only need to be coherent passages of a bounded size; we do
 // NOT need semantic/embedding-aware splitting. We split on blank-line paragraph
 // boundaries, keep markdown headings attached to the text that follows them,

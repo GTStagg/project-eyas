@@ -8,5 +8,5 @@ $result = @(Install-FromUrl -Url $url -ProductName "Adobe Acrobat Reader DC" -Ki
     -SilentArgs "/sAll /rs /msi /norestart")
 $result | Where-Object { $_ -isnot [int] }
 $exit = Get-InstallExitCode $result
-Write-Output "[falcon-extras] acrobat-reader-update exit=$exit host=$env:COMPUTERNAME"
+Write-Output "[eyas] acrobat-reader-update exit=$exit host=$env:COMPUTERNAME"
 exit $exit

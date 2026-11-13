@@ -16,40 +16,40 @@
 pkg_upgrade_packages() {
     local pkgs=("$@")
     if [ "${#pkgs[@]}" -eq 0 ]; then
-        echo "[falcon-extras] error: no packages supplied" >&2
+        echo "[eyas] error: no packages supplied" >&2
         return 3
     fi
 
     if command -v apt-get >/dev/null 2>&1; then
-        echo "[falcon-extras] using apt-get (apt-get update; apt-get install --only-upgrade)"
+        echo "[eyas] using apt-get (apt-get update; apt-get install --only-upgrade)"
         apt-get update -qq
         apt-get install -y --only-upgrade "${pkgs[@]}"
         local rc=$?
-        echo "[falcon-extras] apt-get install exit=$rc"
+        echo "[eyas] apt-get install exit=$rc"
         return $rc
     fi
 
     if command -v dnf >/dev/null 2>&1; then
-        echo "[falcon-extras] using dnf (dnf upgrade -y)"
+        echo "[eyas] using dnf (dnf upgrade -y)"
         # `dnf upgrade <pkg>` is a no-op (success) when the package is
         # already at the latest version, which matches apt --only-upgrade
         # semantics. --setopt=install_weak_deps=False keeps the upgrade
         # tight without pulling Recommends.
         dnf upgrade -y --setopt=install_weak_deps=False "${pkgs[@]}"
         local rc=$?
-        echo "[falcon-extras] dnf upgrade exit=$rc"
+        echo "[eyas] dnf upgrade exit=$rc"
         return $rc
     fi
 
     if command -v yum >/dev/null 2>&1; then
-        echo "[falcon-extras] using yum (yum update -y)"
+        echo "[eyas] using yum (yum update -y)"
         yum update -y "${pkgs[@]}"
         local rc=$?
-        echo "[falcon-extras] yum update exit=$rc"
+        echo "[eyas] yum update exit=$rc"
         return $rc
     fi
 
-    echo "[falcon-extras] error: no supported package manager (apt-get / dnf / yum) on this host" >&2
+    echo "[eyas] error: no supported package manager (apt-get / dnf / yum) on this host" >&2
     return 4
 }
 

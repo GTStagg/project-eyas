@@ -367,13 +367,14 @@ const CACHE_TTL_MS = 60_000;
 // so this single pre-cache pass stamps `capability_gap` on the global AND the
 // per-host fan-out result. A "gap" is a Windows remediation that no curated
 // patch script covers but the generic installer can still close at runtime
-// (operator supplies a vendor URL). The sidecar classifier is the source of
-// truth; we just feed it the distinct (vendor, product, os) triples.
+// (operator supplies a vendor URL). Eyas's in-process patch-coverage
+// classifier is the source of truth; we just feed it the distinct
+// (vendor, product, os) triples.
 //
 // Dedup is load-bearing: thousands of rows collapse to dozens of products, so
-// the sidecar payload stays tiny. Index alignment (results[i] <-> triples[i])
-// is guaranteed by classify_patch_coverage. Never throws — a sidecar that's
-// down or scope-gated degrades to "no badge", never a broken page.
+// the classifier input stays tiny. Index alignment (results[i] <-> triples[i])
+// is guaranteed by classifyPatchCoverage. Never throws — a classifier failure
+// degrades to "no badge", never a broken page.
 const GAP_TRIPLE_SEP = "";
 function deriveGapTriple(r: Vulnerability): { vendor: string; product: string; os: string } {
   const app = r.apps?.[0];

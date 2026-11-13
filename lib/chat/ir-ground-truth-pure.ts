@@ -16,7 +16,7 @@ import type { ToolCallRecord } from "@/lib/chat/ir-run-record";
  *  reuses this would fail OPEN (skip the backstop) while this reader fails
  *  SAFE — an asymmetry a skeptic audit flagged. Falcon AIDs are canonically
  *  lowercase hex, so lowercasing both sides is loss-free. */
-// Network-contain / lift tools. The sidecar names are what every IR run before
+// Network-contain / lift tools. The retired sidecar names are what every IR run before
 // the eyas-mcp migration recorded; the native names are eyas-mcp's. Ground
 // truth recognizes both so historical ir_run_turns keep reading the same.
 export const CONTAIN_TOOLS: ReadonlySet<string> = new Set(["extras_host_contain", "falcon_contain_hosts"]);
@@ -25,7 +25,7 @@ export const LIFT_TOOLS: ReadonlySet<string> = new Set([
   "falcon_lift_host_containment",
 ]);
 
-// The device-id list a containment-family call targets: sidecar tools take
+// The device-id list a containment-family call targets: the retired sidecar tools took
 // `device_ids`, eyas-mcp's take `ids`.
 function targetIds(input: unknown): unknown {
   if (!input || typeof input !== "object") return undefined;
@@ -60,8 +60,9 @@ export function extractDeviceIds(input: unknown): string[] {
  *  containment of a DC severs domain authentication fleet-wide, so this drives
  *  the blast-radius warning on the contain approval card (F4). */
 /** Did a contain / lift call's RESULT confirm the action took effect for `aid`?
- *  A non-error MCP result isn't enough: the sidecar reports an API failure as a
- *  normal `{ok:false, errors}` payload, and eyas-mcp reports a partial failure
+ *  A non-error MCP result isn't enough: the retired sidecar reported an API
+ *  failure as a normal `{ok:false, errors}` payload (older recorded runs), and
+ *  eyas-mcp reports a partial failure
  *  as `{partial_failure:true, succeeded_ids, failed_ids}` — both arrive with
  *  isError=false. Counting those as "the workflow contained this host" would
  *  let the F1 lift backstop release a containment the workflow never applied

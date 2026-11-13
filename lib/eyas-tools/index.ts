@@ -12,7 +12,7 @@ import { TUNING_TOOLS } from "./tuning-tools";
 export type { EyasTool, EyasToolContext, EyasToolResult } from "./types";
 
 // Every tool Eyas serves in-process. The bridge lists these alongside
-// eyas-mcp's natives, and they win over a sidecar tool of the same name.
+// eyas-mcp's natives; on a name clash the visible native wins.
 export const EYAS_TOOLS: readonly EyasTool[] = [
   ...PLAYBOOK_TOOLS,
   ...RTR_TOOLS,

@@ -24,28 +24,28 @@ $victims = Get-ItemProperty -Path $keys -ErrorAction SilentlyContinue | Where-Ob
 }
 
 if (-not $victims) {
-    Write-Output "[falcon-extras] no legacy Oracle JRE installs found host=$env:COMPUTERNAME"
+    Write-Output "[eyas] no legacy Oracle JRE installs found host=$env:COMPUTERNAME"
     exit 0
 }
 
-Write-Output "[falcon-extras] found $($victims.Count) legacy JRE install(s):"
+Write-Output "[eyas] found $($victims.Count) legacy JRE install(s):"
 $victims | ForEach-Object { Write-Output "  - $($_.DisplayName)  [$($_.PSChildName)]" }
 
 $failed = 0
 foreach ($v in $victims) {
     $guid = $v.PSChildName
     if ($guid -notmatch "^\{[0-9A-Fa-f\-]+\}$") {
-        Write-Output "[falcon-extras] skipping $($v.DisplayName) -- non-MSI uninstall key ($guid)"
+        Write-Output "[eyas] skipping $($v.DisplayName) -- non-MSI uninstall key ($guid)"
         $failed++
         continue
     }
-    Write-Output "[falcon-extras] uninstalling $($v.DisplayName) via msiexec /x $guid"
+    Write-Output "[eyas] uninstalling $($v.DisplayName) via msiexec /x $guid"
     $proc = Start-Process -FilePath "msiexec.exe" `
         -ArgumentList "/x", $guid, "/qn", "/norestart" `
         -Wait -PassThru -NoNewWindow
-    Write-Output "[falcon-extras]   exit=$($proc.ExitCode)"
+    Write-Output "[eyas]   exit=$($proc.ExitCode)"
     if ($proc.ExitCode -ne 0 -and $proc.ExitCode -ne 3010) { $failed++ }
 }
 
-Write-Output "[falcon-extras] jre-uninstall done failed=$failed of $($victims.Count) host=$env:COMPUTERNAME"
+Write-Output "[eyas] jre-uninstall done failed=$failed of $($victims.Count) host=$env:COMPUTERNAME"
 exit $failed

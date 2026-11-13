@@ -271,7 +271,7 @@ export default function ShadowAiPanel() {
 
   const toggleSanction = async (tool: string, sanctioned: boolean) => {
     // Optimistic local update — the next fleet/host refresh re-derives
-    // the verdict from the sidecar, but the chips flip immediately.
+    // the verdict server-side, but the chips flip immediately.
     setSanctionedTools((prev) => {
       const set = new Set(prev);
       if (sanctioned) set.add(tool.toLowerCase());
@@ -289,7 +289,7 @@ export default function ShadowAiPanel() {
         setSanctionedTools(j.sanctionedTools);
       }
       // Drop cached host scans so the next drill-in re-fetches with
-      // updated sanctioned flags + verdict from the sidecar.
+      // updated sanctioned flags + a fresh server-side verdict.
       setHostScans({});
       void refresh();
     } catch {

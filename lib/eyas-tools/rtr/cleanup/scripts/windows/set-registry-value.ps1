@@ -111,15 +111,15 @@ if (Test-Path $rkey) {
 
 if ($resolved -eq $DELETE) {
     if ($priorRepr -eq '(absent)') {
-        Write-Output "[falcon-extras] $slot already absent at $ref ($mode)"
+        Write-Output "[eyas] $slot already absent at $ref ($mode)"
         exit 0
     }
     try {
         Remove-ItemProperty -Path $rkey -Name $entry.Name -Force
-        Write-Output "[falcon-extras] $slot deleted at $ref (was $priorRepr, $mode)"
+        Write-Output "[eyas] $slot deleted at $ref (was $priorRepr, $mode)"
         exit 0
     } catch {
-        Write-Output "[falcon-extras] delete failed at ${ref}: $_"
+        Write-Output "[eyas] delete failed at ${ref}: $_"
         exit 1
     }
 }
@@ -129,8 +129,8 @@ try {
         New-Item -Path $rkey -Force | Out-Null
     }
     Set-ItemProperty -Path $rkey -Name $entry.Name -Value $resolved -Type $entry.Type
-    Write-Output "[falcon-extras] $slot set to '$resolved' at $ref (was $priorRepr, $mode)"
+    Write-Output "[eyas] $slot set to '$resolved' at $ref (was $priorRepr, $mode)"
 } catch {
-    Write-Output "[falcon-extras] set failed at ${ref}: $_"
+    Write-Output "[eyas] set failed at ${ref}: $_"
     exit 1
 }

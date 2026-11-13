@@ -44,11 +44,11 @@ function Remove-OrSchedulePendingReboot {
             $scheduled = [NativeMethods.Kernel32]::MoveFileEx($Path, $null, 4)
             if ($scheduled) {
                 $script:PendingRebootPaths += $Path
-                Write-Output "[falcon-extras] $Path locked -- scheduled for deletion at next reboot"
+                Write-Output "[eyas] $Path locked -- scheduled for deletion at next reboot"
                 return $true
             }
         } catch { }
-        Write-Output "[falcon-extras] failed to remove ${Path}: $_"
+        Write-Output "[eyas] failed to remove ${Path}: $_"
         return $false
     }
 }
@@ -79,10 +79,10 @@ function Stop-AndRemoveService {
     }
     $out = & sc.exe delete $ServiceName 2>&1
     if ($LASTEXITCODE -eq 0) {
-        Write-Output "[falcon-extras] removed service $ServiceName"
+        Write-Output "[eyas] removed service $ServiceName"
         return $true
     }
-    Write-Output "[falcon-extras] sc.exe delete $ServiceName failed: $out"
+    Write-Output "[eyas] sc.exe delete $ServiceName failed: $out"
     return $false
 }
 
@@ -94,9 +94,9 @@ function Stop-ProcessesByName {
             try {
                 Stop-Process -Id $_.Id -Force -ErrorAction Stop
                 $killed += 1
-                Write-Output "[falcon-extras] killed $name pid=$($_.Id)"
+                Write-Output "[eyas] killed $name pid=$($_.Id)"
             } catch {
-                Write-Output "[falcon-extras] failed to kill $name pid=$($_.Id): $_"
+                Write-Output "[eyas] failed to kill $name pid=$($_.Id): $_"
             }
         }
     }
@@ -142,7 +142,7 @@ function Invoke-VendorUninstall {
             if (-not $cmd) { $cmd = $props.UninstallString }
             if (-not $cmd) { continue }
 
-            Write-Output "[falcon-extras] uninstalling '$display' via $cmd"
+            Write-Output "[eyas] uninstalling '$display' via $cmd"
             try {
                 $exe = $null; $rest = $null
                 if ($cmd.StartsWith('"')) {
@@ -162,15 +162,15 @@ function Invoke-VendorUninstall {
                     }
                 }
                 if (-not $exe -or -not (Test-Path -LiteralPath $exe)) {
-                    Write-Output "[falcon-extras] uninstaller exe not found: $exe"
+                    Write-Output "[eyas] uninstaller exe not found: $exe"
                     continue
                 }
                 $argList = if ($rest) { "$rest $SilentArgs" } else { $SilentArgs }
                 $p = Start-Process -FilePath $exe -ArgumentList $argList -Wait -PassThru -NoNewWindow -ErrorAction Stop
                 $invoked += 1
-                Write-Output "[falcon-extras] '$display' uninstaller exit=$($p.ExitCode)"
+                Write-Output "[eyas] '$display' uninstaller exit=$($p.ExitCode)"
             } catch {
-                Write-Output "[falcon-extras] uninstall '$display' failed: $_"
+                Write-Output "[eyas] uninstall '$display' failed: $_"
             }
         }
     }
@@ -187,7 +187,7 @@ function Sweep-Paths {
         if (-not (Test-Path -LiteralPath $p)) { continue }
         if (Remove-OrSchedulePendingReboot -Path $p) {
             $swept += 1
-            Write-Output "[falcon-extras] swept $p"
+            Write-Output "[eyas] swept $p"
         }
     }
     return $swept

@@ -14,8 +14,8 @@ export const dynamic = "force-dynamic";
 // The /blueprint developer advisor. Reasons about HOW to build an agentic SOC
 // on eyas-mcp + Claude, grounded in this project's own reference
 // architecture. It calls NO Falcon tenant tools — pure LLM synthesis — so it is
-// deliberately NOT wired through streamAgent() (which spawns eyas-mcp +
-// extras clients and would require Falcon to be configured). A developer
+// deliberately NOT wired through streamAgent() (which spawns an eyas-mcp
+// client and would require Falcon to be configured). A developer
 // evaluating "could I build this" should get value with only Anthropic set up.
 
 const SSE_HEADERS = {

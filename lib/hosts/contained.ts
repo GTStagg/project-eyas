@@ -1,6 +1,6 @@
 import "server-only";
 import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { nativeSidecarPayload } from "@/lib/mcp/native-payload";
+import { nativeSearchPayload } from "@/lib/mcp/native-payload";
 import { withFalconMcpClient } from "@/lib/mcp/falcon-client";
 
 // Hosts in network containment, including pending transitions so the operator
@@ -49,7 +49,7 @@ export async function fetchContainedHosts(
   mcp: Client,
   limit = 200,
 ): Promise<ContainedHostsResult> {
-  const p = await nativeSidecarPayload(mcp, "falcon_search_hosts", {
+  const p = await nativeSearchPayload(mcp, "falcon_search_hosts", {
     filter: CONTAINED_HOSTS_FILTER,
     limit,
     sort: "last_seen.desc",

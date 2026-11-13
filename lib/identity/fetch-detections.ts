@@ -1,6 +1,6 @@
 import "server-only";
 import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { nativeSidecarPayload } from "@/lib/mcp/native-payload";
+import { nativeSearchPayload } from "@/lib/mcp/native-payload";
 import {
   identityDetectionSearchArgs,
   shapeIdentityDetections,
@@ -14,7 +14,7 @@ export async function fetchIdentityDetections(
   mcp: Client,
   opts: IdentityDetectionOptions = {},
 ): Promise<Record<string, unknown>> {
-  const p = await nativeSidecarPayload(
+  const p = await nativeSearchPayload(
     mcp,
     "falcon_search_detections",
     identityDetectionSearchArgs(opts),

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { withFalconMcpClient } from "@/lib/mcp/falcon-client";
-import { nativeSidecarPayload } from "@/lib/mcp/native-payload";
+import { nativeSearchPayload } from "@/lib/mcp/native-payload";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,7 +15,7 @@ type GroupSummary = {
 export async function GET() {
   try {
     const items = await withFalconMcpClient<GroupSummary[]>(async (client) => {
-      const payload = await nativeSidecarPayload(client, "falcon_search_host_groups", {
+      const payload = await nativeSearchPayload(client, "falcon_search_host_groups", {
         limit: 500,
         sort: "name.asc",
       });

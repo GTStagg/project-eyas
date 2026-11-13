@@ -45,7 +45,7 @@ const AID = /^[0-9a-fA-F]{32}$/;
 const isObj = (v: unknown): v is Obj => !!v && typeof v === "object" && !Array.isArray(v);
 const str = (v: unknown) => (typeof v === "string" ? v : v == null ? "" : String(v));
 
-/** The dispatch envelope a sidecar result carries, or null. */
+/** The dispatch envelope an Eyas tool result carries, or null. */
 export function dispatchOf(result: unknown): Obj | null {
   return isObj(result) && isObj(result.dispatch) ? result.dispatch : null;
 }

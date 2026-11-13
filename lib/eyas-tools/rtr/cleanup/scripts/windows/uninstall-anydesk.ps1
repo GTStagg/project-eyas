@@ -48,11 +48,11 @@ function Remove-OrSchedulePendingReboot {
             $scheduled = [NativeMethods.Kernel32]::MoveFileEx($Path, $null, 4)
             if ($scheduled) {
                 $script:pendingReboot += $Path
-                Write-Output "[falcon-extras] $Path locked -- scheduled for deletion at next reboot"
+                Write-Output "[eyas] $Path locked -- scheduled for deletion at next reboot"
                 return $true
             }
         } catch { }
-        Write-Output "[falcon-extras] failed to remove ${Path}: $_"
+        Write-Output "[eyas] failed to remove ${Path}: $_"
         return $false
     }
 }
@@ -66,9 +66,9 @@ if ($svc) {
     $out = & sc.exe delete 'AnyDesk' 2>&1
     if ($LASTEXITCODE -eq 0) {
         $serviceRemoved = $true
-        Write-Output "[falcon-extras] removed AnyDesk service"
+        Write-Output "[eyas] removed AnyDesk service"
     } else {
-        Write-Output "[falcon-extras] sc.exe delete AnyDesk failed: $out"
+        Write-Output "[eyas] sc.exe delete AnyDesk failed: $out"
     }
 }
 
@@ -76,9 +76,9 @@ if ($svc) {
 Get-Process -Name 'AnyDesk' -ErrorAction SilentlyContinue | ForEach-Object {
     try {
         Stop-Process -Id $_.Id -Force -ErrorAction Stop
-        Write-Output "[falcon-extras] killed AnyDesk pid=$($_.Id)"
+        Write-Output "[eyas] killed AnyDesk pid=$($_.Id)"
     } catch {
-        Write-Output "[falcon-extras] failed to kill AnyDesk pid=$($_.Id): $_"
+        Write-Output "[eyas] failed to kill AnyDesk pid=$($_.Id): $_"
     }
 }
 
@@ -104,9 +104,9 @@ foreach ($exe in $candidates) {
         $proc = Start-Process -FilePath $exe -ArgumentList '--remove','--silent' `
             -Wait -PassThru -NoNewWindow -ErrorAction Stop
         $uninstallerRan = $true
-        Write-Output "[falcon-extras] AnyDesk --remove from $exe exit=$($proc.ExitCode)"
+        Write-Output "[eyas] AnyDesk --remove from $exe exit=$($proc.ExitCode)"
     } catch {
-        Write-Output "[falcon-extras] AnyDesk --remove failed at ${exe}: $_"
+        Write-Output "[eyas] AnyDesk --remove failed at ${exe}: $_"
     }
 }
 
@@ -128,7 +128,7 @@ foreach ($dir in $dirs) {
     if (Test-Path $dir) {
         if (Remove-OrSchedulePendingReboot -Path $dir) {
             $swept += 1
-            Write-Output "[falcon-extras] swept $dir"
+            Write-Output "[eyas] swept $dir"
         }
     }
 }
@@ -150,13 +150,13 @@ foreach ($bin in $portableBins) {
     if (Test-Path -LiteralPath $bin) {
         if (Remove-OrSchedulePendingReboot -Path $bin) {
             $swept += 1
-            Write-Output "[falcon-extras] swept portable $bin"
+            Write-Output "[eyas] swept portable $bin"
         }
     }
 }
 
 $pendingRebootCount = $pendingReboot.Count
-Write-Output "[falcon-extras] uninstall-anydesk done service_removed=$serviceRemoved uninstaller_ran=$uninstallerRan swept=$swept pending_reboot=$pendingRebootCount host=$env:COMPUTERNAME"
+Write-Output "[eyas] uninstall-anydesk done service_removed=$serviceRemoved uninstaller_ran=$uninstallerRan swept=$swept pending_reboot=$pendingRebootCount host=$env:COMPUTERNAME"
 if ($pendingRebootCount -gt 0) {
-    Write-Output "[falcon-extras] pending-reboot paths: $($pendingReboot -join '; ')"
+    Write-Output "[eyas] pending-reboot paths: $($pendingReboot -join '; ')"
 }

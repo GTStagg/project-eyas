@@ -4,5 +4,5 @@ $url = "https://zoom.us/client/latest/ZoomInstallerFull.msi?archType=x64"
 $result = @(Install-FromUrl -Url $url -ProductName "Zoom" -Kind "msi")
 $result | Where-Object { $_ -isnot [int] }
 $exit = Get-InstallExitCode $result
-Write-Output "[falcon-extras] zoom-update exit=$exit host=$env:COMPUTERNAME"
+Write-Output "[eyas] zoom-update exit=$exit host=$env:COMPUTERNAME"
 exit $exit

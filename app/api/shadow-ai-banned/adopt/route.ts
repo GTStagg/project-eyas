@@ -15,7 +15,7 @@ const CANONICAL_NAME = "Project Eyas - Shadow-AI Banned";
 //   { name?: string }   — find an existing host group by exact name and save
 //                         its id as the active env's Shadow-AI banned group.
 // Backs the "Adopt existing group by name" control on the Shadow-AI banned
-// setup card. The sidecar lookup is read-only against Falcon; the only write
+// setup card. The group lookup is read-only against Falcon; the only write
 // is the settings persistence the operator requested by clicking — same
 // posture as the "Save group id" button. Refuses with 409 mid-agent-run.
 

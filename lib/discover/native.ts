@@ -1,6 +1,6 @@
 import "server-only";
 import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { nativeSidecarPayload } from "@/lib/mcp/native-payload";
+import { nativeSearchPayload } from "@/lib/mcp/native-payload";
 import {
   normalizeAccounts,
   normalizeApplications,
@@ -23,7 +23,7 @@ import {
 // - Accounts: falcon_search_accounts.
 export async function fetchDiscoverSnapshot(mcp: Client, sample = 100): Promise<DiscoverSnapshot> {
   const safe = (name: string, args: Record<string, unknown>) =>
-    nativeSidecarPayload(mcp, name, args).catch(
+    nativeSearchPayload(mcp, name, args).catch(
       (e): Record<string, unknown> => ({ ok: false, error: e instanceof Error ? e.message : String(e) }),
     );
   const [allAssets, unmanaged, apps, accounts] = await Promise.all([

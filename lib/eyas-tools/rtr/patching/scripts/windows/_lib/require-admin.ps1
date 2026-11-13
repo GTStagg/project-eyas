@@ -9,4 +9,4 @@ if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administra
     exit 2
 }
 
-Write-Output "[falcon-extras] start $(Get-Date -Format o) host=$env:COMPUTERNAME"
+Write-Output "[eyas] start $(Get-Date -Format o) host=$env:COMPUTERNAME"

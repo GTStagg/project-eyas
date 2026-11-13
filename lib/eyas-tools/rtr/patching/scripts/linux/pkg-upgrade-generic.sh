@@ -9,11 +9,11 @@
 # RHEL 7/8/9, Rocky, Alma, Fedora, Amazon Linux 2/2023.
 
 if [ -z "${PACKAGE:-}" ]; then
-    echo "[falcon-extras] error: PACKAGE not set; resolver did not supply package param" >&2
+    echo "[eyas] error: PACKAGE not set; resolver did not supply package param" >&2
     exit 3
 fi
 
 pkg_upgrade_packages "$PACKAGE"
 rc=$?
-echo "[falcon-extras] pkg-upgrade-generic package=$PACKAGE exit=$rc host=$(hostname)"
+echo "[eyas] pkg-upgrade-generic package=$PACKAGE exit=$rc host=$(hostname)"
 exit $rc

@@ -9,12 +9,12 @@ import "server-only";
  * returns the error object as if it were one Case/Detection/Host/Vuln and
  * the dashboard renders a single empty row.
  *
- * Only apply this to the falcon-mcp client path. The sidecar (falcon-extras)
- * returns its own structured `{ok:false, error, ...}` payloads — CQL lint
- * failures carry `cql_lint`+`fix`, scope-pending carries staged-build context
- * — and this matcher would collapse them to the bare error string, stripping
- * the context the agent needs. The caller (tool-bridge invoke) is responsible
- * for that gating.
+ * Only apply this to native eyas-mcp results. Eyas's in-process tools return
+ * their own structured `{ok:false, error, ...}` payloads — scope-pending
+ * carries staged-build context — and this matcher would collapse them to the
+ * bare error string, stripping the context the agent needs. The caller
+ * (tool-bridge invoke) is responsible for that gating; a native CQL check
+ * failure (`cql_lint` + `fix`) is let through below.
  *
  * Returns a human-readable error string, or null if the payload looks like
  * real data.
@@ -51,8 +51,8 @@ export function detectFalconError(parsed: unknown[]): string | null {
  * 403 description is "Permission denied. The API credentials don't have the
  * required access." and contains neither "scope not permitted" nor "access
  * denied" — those are raw CrowdStrike body phrasings that only sometimes ride
- * along via the appended "API said: …". The sidecar signals the same condition
- * structurally as `{scope_pending:true}`.
+ * along via the appended "API said: …". Eyas's own tools signal the same
+ * condition structurally as `{scope_pending:true}`.
  *
  * Returns true only when a denial is positively identified, so callers keep
  * their fail-open default (treat "not denied" as granted) and a transient blip
@@ -98,7 +98,7 @@ export function isScopeDenied(text: string): boolean {
  * path) emits `pagination`, so this deliberately does NOT fire on the
  * FQL-error shape `{results, fql_guide, hint}` (no `pagination` — isScopeDenied
  * still peeks its results[0]), on the native ngsiem `{results, cql_guide, hint}`
- * shape, or on any sidecar `{ok, results|items}` payload. Returns the rows, or
+ * shape, or on any Eyas-tool `{ok, results|items}` payload. Returns the rows, or
  * null when `value` is not a search envelope.
  */
 export function unwrapSearchEnvelope(value: unknown): unknown[] | null {
@@ -194,7 +194,7 @@ export function parseConcatenatedJson<T = unknown>(text: string): T[] {
  *
  * The MCP Python SDK (FastMCP) serializes a tool's `list[dict]` return as ONE
  * TextContent block PER row, each block a valid standalone JSON document; a
- * single-object return (the sidecar's `{ok, items}` shape) is one block. So the
+ * single-object return (e.g. an `{ok, items}` shape) is one block. So the
  * correct primitive is to JSON.parse each block directly rather than join every
  * block into one string and re-derive the boundaries (which is what a caller
  * does when it feeds parseConcatenatedJson a `content.map().join("\n")` blob).

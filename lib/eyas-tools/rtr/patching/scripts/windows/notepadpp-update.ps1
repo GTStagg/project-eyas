@@ -11,5 +11,5 @@ if (-not $asset) {
 $result = @(Install-FromUrl -Url $asset.browser_download_url -ProductName "Notepad++" -Kind "exe" -SilentArgs "/S")
 $result | Where-Object { $_ -isnot [int] }
 $exit = Get-InstallExitCode $result
-Write-Output "[falcon-extras] notepadpp-update version=$($asset.name) exit=$exit host=$env:COMPUTERNAME"
+Write-Output "[eyas] notepadpp-update version=$($asset.name) exit=$exit host=$env:COMPUTERNAME"
 exit $exit

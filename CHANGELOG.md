@@ -3,6 +3,9 @@
 ## Unreleased
 
 ### Changed
+- **Patch and cleanup script output is tagged `[eyas]`.** Lines the RTR scripts
+  print used to start with `[falcon-extras]`, the name of the retired add-on.
+  Leftover add-on settings were also dropped from `.env.example`.
 - **MCP server pinned to eyas-mcp 6f0b394** (still 0.21.0). The agent can now
   search and read Falcon Complete Message Center cases and their message
   threads, count cases, and report Falcon Complete dashboard totals. These
