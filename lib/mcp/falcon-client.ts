@@ -49,6 +49,11 @@ function buildTransport(): Transport {
     args,
     env,
     stderr: "inherit",
+    // The SDK drops the connection ("Connection closed") on any single message
+    // over 10 MB. Full host records run ~10 KB each, so falcon_search_hosts at
+    // limit 5000 (the vulnerabilities page's managed-host check) can reach
+    // tens of MB on a large tenant. This is a ceiling, not a preallocation.
+    maxBufferSize: 128 * 1024 * 1024,
   });
 }
 

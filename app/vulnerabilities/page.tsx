@@ -170,24 +170,25 @@ async function fetchAndEnrich(
 // ordering creates: a tenant where 2 hosts hold 600+ Critical+High vulns each
 // will see ALL 1,000-2,000 globally-fetched rows come from those 2 hosts, and
 // the rest of the fleet's worst CVEs never enter the table. Strategy:
-//   1. Enumerate managed hosts (single falcon_search_hosts call, ~5s).
+//   1. Enumerate managed hosts (single falcon_search_hosts call, ~2-5s).
 //   2. Fan out per-AID Spotlight queries — one facet-list call (cve +
-//      remediation) per host — across PARALLEL_WORKERS fresh MCP clients. Each
-//      worker handles its slice serially (falcon-mcp serializes JSON-RPC per
-//      client per the persistent-singleton lesson), so true concurrency comes
-//      from spawning multiple clients. A probe confirmed that for these heavy
-//      Spotlight queries the multi-process fan-out beats a single pooled client.
+//      remediation) per host — across FANOUT_CLIENTS fresh MCP clients, each
+//      with FANOUT_INFLIGHT_PER_CLIENT calls in flight off a shared queue.
+//      A few clients still beat one (1 x 16 in flight was slower than 4 x 8).
 //   3. Apply per-host top-K trim so we only render the worst-K per host
 //      (remediation entities already ride on each row from step 2).
 // Truncates fleets larger than MAX_FANOUT_HOSTS to keep wallclock bounded.
-// 8 parallel falcon-mcp child processes. Each is its own withFalconMcpClient
-// context — falcon-mcp serializes JSON-RPC per client, so true concurrency
-// only comes from spawning multiple clients (see CLAUDE.md "MCP concurrency"
-// gotcha + the persistent-singleton revert). On a 200-host fleet sweep,
-// 4 workers → ~1m40s wall-clock; 8 workers halves that. The cost is 4 extra
-// short-lived python processes (~50 MB RSS each) for the duration of the
-// fan-out — well inside the budget on any host running this app.
-const FANOUT_PARALLEL_WORKERS = 8;
+// eyas-mcp handles concurrent requests on one connection (inherited from
+// falcon-mcp 0.16.0 #478), so the fan-out keeps several calls in flight per
+// client instead of one call per process. Per-host Spotlight calls take
+// 0.6-1.6 s and almost all of that is Falcon latency. Measured on a 200-host
+// sweep (2026-11-13; Spotlight latency swings run to run, so three
+// interleaved rounds): 8 clients x 1 in flight 45-115 s, 4 x 4 36-73 s,
+// 4 x 8 16-48 s, same rows, no errors. Past ~32 in flight it got slower again
+// (Spotlight throttles), so stay at 4 x 8. Hosts come off one shared queue so
+// a slow host doesn't hold up a fixed shard.
+const FANOUT_CLIENTS = 4;
+const FANOUT_INFLIGHT_PER_CLIENT = 8;
 const FANOUT_MAX_HOSTS = 200;
 
 type FanoutMeta = {
@@ -234,60 +235,46 @@ async function fetchPerHostFanout(
     const fleetTruncated = aids.length > FANOUT_MAX_HOSTS;
     const targetAids = fleetTruncated ? aids.slice(0, FANOUT_MAX_HOSTS) : aids;
 
-    // Round-robin distribute AIDs across worker shards so each worker has
-    // roughly equal sequential work to process.
-    const shards: string[][] = Array.from({ length: FANOUT_PARALLEL_WORKERS }, () => []);
-    targetAids.forEach((aid, i) => shards[i % FANOUT_PARALLEL_WORKERS].push(aid));
-
+    let next = 0;
     const allRows: Vulnerability[] = (
       await Promise.all(
-        shards.map(async (shard): Promise<Vulnerability[]> => {
-          if (shard.length === 0) return [];
-          return withFalconMcpClient(async (client) => {
-            const out: Vulnerability[] = [];
-            for (const aid of shard) {
-              const baseArgs = {
-                filter: `${baseFilter}+aid:'${aid}'`,
-                sort: "created_timestamp|desc",
-                limit: PER_HOST_LIMIT,
-              };
-              const callFacet = async (
-                facet: string | string[],
-              ): Promise<Vulnerability[]> => {
-                const result = await client.callTool({
-                  name: "falcon_search_vulnerabilities",
-                  arguments: { ...baseArgs, facet },
-                });
-                const text = (result.content as Array<{ type: string; text?: string }>)
-                  .map((c) => (c.type === "text" && c.text ? c.text : ""))
-                  .join("\n");
-                const parsed = parseConcatenatedJson<Vulnerability>(text);
-                if (detectFalconError(parsed)) return [];
-                return parsed;
-              };
-              try {
-                // One facet-list call per host (falcon-mcp 0.14.0 PR #460): the
-                // cve (ExPRT/exploit_status/KEV) and remediation (entities for
-                // By-patch grouping) blocks hydrate as sub-objects on a single
-                // row set, so the old two-call fan-out + merge-by-id is gone.
-                // host_info is intentionally NOT requested here — it's stamped
-                // from the managed-host enumeration in the normalization step
-                // below. (The 8-client shard topology stays: for these heavy
-                // Spotlight queries the multi-process fan-out beats a single
-                // pooled client, and the gap widens with fleet size.)
-                const rows = await callFacet(["cve", "remediation"]);
-                for (const r of rows) {
-                  if (!r.aid) r.aid = aid;
-                }
-                out.push(...rows);
-              } catch {
+        Array.from({ length: FANOUT_CLIENTS }, () =>
+          withFalconMcpClient(async (client) => {
+            const fetchHost = async (aid: string): Promise<Vulnerability[]> => {
+              // One facet-list call per host (falcon-mcp 0.14.0 PR #460): the
+              // cve (ExPRT/exploit_status/KEV) and remediation (entities for
+              // By-patch grouping) blocks hydrate as sub-objects on a single
+              // row set. host_info is intentionally NOT requested here — it's
+              // stamped from the managed-host enumeration below.
+              const result = await client.callTool({
+                name: "falcon_search_vulnerabilities",
+                arguments: {
+                  filter: `${baseFilter}+aid:'${aid}'`,
+                  sort: "created_timestamp|desc",
+                  limit: PER_HOST_LIMIT,
+                  facet: ["cve", "remediation"],
+                },
+              });
+              const text = (result.content as Array<{ type: string; text?: string }>)
+                .map((c) => (c.type === "text" && c.text ? c.text : ""))
+                .join("\n");
+              const rows = parseConcatenatedJson<Vulnerability>(text);
+              if (detectFalconError(rows)) return [];
+              for (const r of rows) if (!r.aid) r.aid = aid;
+              return rows;
+            };
+            const lanes = Array.from({ length: FANOUT_INFLIGHT_PER_CLIENT }, async () => {
+              const out: Vulnerability[] = [];
+              while (next < targetAids.length) {
+                const aid = targetAids[next++];
                 // Per-host failures don't kill the whole fan-out.
-                continue;
+                out.push(...(await fetchHost(aid).catch(() => [])));
               }
-            }
-            return out;
-          });
-        }),
+              return out;
+            });
+            return (await Promise.all(lanes)).flat();
+          }),
+        ),
       )
     ).flat();
 

@@ -1,5 +1,28 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+- **The vulnerabilities page loads two to three times faster.** Its default
+  fleet sweep ran one Spotlight query at a time on each of eight server
+  processes; it now keeps eight queries in flight on each of four, taking
+  hosts from one shared queue, and returns the same rows.
+
+## 0.11.1 — Vulnerabilities on large tenants; Investigate finds host vulnerabilities
+
+### Fixed
+- **The vulnerabilities page loads on large tenants.** Its managed-host check
+  asks eyas-mcp for up to 5,000 full host records, and on a large tenant that
+  reply can pass 10 MB, the MCP client's default per-message limit, so the
+  client dropped the connection and the page showed "Connection closed". The
+  limit is now 128 MB.
+- **Investigate finds the host's vulnerabilities again.** The threat slice
+  filtered Spotlight by `host_info.hostname`, which the API rejects, and only
+  fell back to the host id when the user had typed one, so a hostname search
+  always reported no open vulnerabilities. Eyas now looks up the host id itself
+  (the hostname is checked against a strict character set first) and filters
+  by `aid`.
+
 ## 0.11.0 — Every Eyas tool runs in the console; the Python add-on is gone
 
 ### Changed

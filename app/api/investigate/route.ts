@@ -5,6 +5,7 @@ import { runSubAgent, type SubAgentResult } from "@/lib/chat/sub-agent";
 import { streamAgent } from "@/lib/chat/stream-agent";
 import { beginInFlight, endInFlight } from "@/lib/chat/in-flight";
 import { withFalconMcpClient } from "@/lib/mcp/falcon-client";
+import { parseConcatenatedJson } from "@/lib/mcp/parse";
 import { getAnthropicClient, getAnthropicModel } from "@/lib/llm/anthropic";
 import { streamMessage } from "@/lib/llm/messages";
 import { logUsage } from "@/lib/cost/log";
@@ -72,16 +73,14 @@ function threatsPrompt(): string {
     "",
     "ROUND 1 — fire both in parallel:",
     "- `falcon_search_detections` with `filter: \"device.hostname:'<HOSTNAME>'\"`, limit 25, sort `created_timestamp.desc`.",
-    "- `falcon_search_vulnerabilities` with `facet: \"cve\"` (REQUIRED — without it rows have no CVE id, severity, or product) and `filter: \"status:'open'+host_info.hostname:'<HOSTNAME>'\"`, limit 25.",
+    "- `falcon_search_vulnerabilities` with `facet: \"cve\"` (REQUIRED — without it rows have no CVE id, severity, or product) and `filter: \"status:'open'+aid:'<DEVICE_ID>'\"`, limit 25, using the device_id from the user message. If the user message has no device_id, skip this call and write 'Vulnerabilities unavailable — the host id could not be resolved.' under the Open vulnerabilities heading.",
     "",
-    "ROUND 2 (only if Round 1's vulnerabilities returned 0 rows AND the user message includes a device_id): retry the vuln call with `aid:'<DEVICE_ID>'` instead of the hostname filter. Skip otherwise.",
-    "",
-    "ROUND 3 (only if Round 1's detections surfaced one or more SHA-256 hashes in `behaviors[].sha256` or top-level `sha256`): pick at most TWO of the highest-severity hashes and call `falcon_get_threatgraph_ran_on` once per hash with `value=<hash>`, `indicator_type='sha256'`, `limit=50`. This enumerates other tenant hosts that ran the same binary — load-bearing for blast-radius. Do NOT run more than two — token budget. Skip entirely on a permission or other error.",
+    "ROUND 2 (only if Round 1's detections surfaced one or more SHA-256 hashes in `behaviors[].sha256` or top-level `sha256`): pick at most TWO of the highest-severity hashes and call `falcon_get_threatgraph_ran_on` once per hash with `value=<hash>`, `indicator_type='sha256'`, `limit=50`. This enumerates other tenant hosts that ran the same binary — load-bearing for blast-radius. Do NOT run more than two — token budget. Skip entirely on a permission or other error.",
     "",
     "OUTPUT: render these three H2 Markdown sections, in this exact order:",
     "- `## Recent detection activity` — table of detections (severity / tactic · technique / time / cmdline summary). 'No recent detections' if none.",
     "- `## Open vulnerabilities` — table of CVEs (severity / CVSS / product / detected). 'No open vulnerabilities' if none.",
-    "- `## Lateral spread` — only if Round 3 ran with results. For each hash queried: hash (truncated to 12 chars) | other hosts that ran it (count + first three hostnames). One line each. If a hash returned zero other hosts: 'isolated to this host.' If Round 3 was skipped or errored: omit the section entirely.",
+    "- `## Lateral spread` — only if Round 2 ran with results. For each hash queried: hash (truncated to 12 chars) | other hosts that ran it (count + first three hostnames). One line each. If a hash returned zero other hosts: 'isolated to this host.' If Round 2 was skipped or errored: omit the section entirely.",
     "",
     "DISCIPLINE: no preamble, no narration, no trailing commentary. Start with the `## Recent detection activity` heading. Be decisive — if something looks suspicious in the cmdline, name it.",
   ].join("\n");
@@ -121,6 +120,28 @@ const SYNTHESIS_PROMPT = [
 
 type Body = { hostname?: string };
 
+// Spotlight rejects `host_info.hostname` as a filter field, so the threats
+// slice needs the host's device id to find its vulnerabilities. Resolved here
+// on the slice's own client rather than asking the agent to chain the lookup.
+// The hostname is interpolated into FQL, so it is reject-validated, not escaped.
+const HOSTNAME_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,254}$/;
+async function resolveDeviceId(mcp: Client, hostname: string): Promise<string | null> {
+  if (!HOSTNAME_RE.test(hostname)) return null;
+  try {
+    const result = await mcp.callTool({
+      name: "falcon_search_hosts",
+      arguments: { filter: `hostname:'${hostname}'`, limit: 1 },
+    });
+    const text = (result.content as Array<{ type: string; text?: string }>)
+      .map((c) => (c.type === "text" && c.text ? c.text : ""))
+      .join("\n");
+    const id = parseConcatenatedJson<{ device_id?: string }>(text).find((r) => r.device_id)?.device_id;
+    return id && /^[0-9a-f]{32}$/i.test(id) ? id : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function POST(request: Request) {
   const body = (await request.json().catch(() => ({}))) as Body;
   const hostname = (body.hostname ?? "").trim();
@@ -158,8 +179,8 @@ export async function POST(request: Request) {
     // see mcp_persistent_singleton + falcon_mcp_v0_16_upgrade.
     const poolNativeClient = process.env.EYAS_POOL_SUBAGENT_MCP === "1";
 
-    const userPrompt = (slice: string) =>
-      `Host hostname: ${hostname}. Run the ${slice} slice on this host.`;
+    const userPrompt = (slice: string, deviceId?: string | null) =>
+      `Host hostname: ${hostname}.${deviceId ? ` Host device_id: ${deviceId}.` : ""} Run the ${slice} slice on this host.`;
 
     // One subagent slice on a supplied (possibly shared) native client.
     const runSlice = (
@@ -167,11 +188,12 @@ export async function POST(request: Request) {
       slice: "fingerprint" | "threats" | "posture",
       systemPrompt: string,
       filter: Set<string>,
+      deviceId?: string | null,
     ): Promise<SubAgentResult> =>
       runSubAgent({
         mcp,
         systemPrompt,
-        userPrompt: userPrompt(slice),
+        userPrompt: userPrompt(slice, deviceId),
         toolFilter: (name) => filter.has(name),
         maxIterations: slice === "threats" ? 8 : 6,
         maxTokensPerTurn: 4096,
@@ -182,7 +204,7 @@ export async function POST(request: Request) {
     const runAllSlices = (mcp: Client): Promise<SubAgentResult[]> =>
       Promise.all([
         runSlice(mcp, "fingerprint", fingerprintPrompt(), FINGERPRINT_TOOLS),
-        runSlice(mcp, "threats", threatsPrompt(), THREATS_TOOLS),
+        resolveDeviceId(mcp, hostname).then((id) => runSlice(mcp, "threats", threatsPrompt(), THREATS_TOOLS, id)),
         runSlice(mcp, "posture", posturePrompt(), POSTURE_TOOLS),
       ]);
 
@@ -195,7 +217,9 @@ export async function POST(request: Request) {
         // Default: each subagent gets its OWN native client.
         [fingerprint, threats, posture] = await Promise.all([
           withFalconMcpClient((mcp) => runSlice(mcp, "fingerprint", fingerprintPrompt(), FINGERPRINT_TOOLS)),
-          withFalconMcpClient((mcp) => runSlice(mcp, "threats", threatsPrompt(), THREATS_TOOLS)),
+          withFalconMcpClient(async (mcp) =>
+            runSlice(mcp, "threats", threatsPrompt(), THREATS_TOOLS, await resolveDeviceId(mcp, hostname)),
+          ),
           withFalconMcpClient((mcp) => runSlice(mcp, "posture", posturePrompt(), POSTURE_TOOLS)),
         ]);
       }
