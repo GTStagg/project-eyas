@@ -23,7 +23,7 @@
 - **Docker:** [`QUICKSTART.md`](./QUICKSTART.md) also covers a Docker Compose bring-up. Compose builds `eyas-mcp` from source at the pinned commit; no container images are published.
 - **The MCP server is fetched from [`eyas-mcp`](https://github.com/GTStagg/eyas-mcp) on GitHub** — dev, `make-dist.sh` and Compose all use the commit pinned in `versions.json`.
 
-Then [`docs/USERGUIDE.md`](./docs/USERGUIDE.md) is the hands-on guide organized by analyst persona, and [`docs/DEMO.md`](./docs/DEMO.md) a guided live-demo talk track.
+Then [`docs/USERGUIDE.md`](./docs/USERGUIDE.md) is the hands-on guide organized by analyst persona.
 
 ---
 
@@ -137,7 +137,7 @@ lib/
   cost/             Token-spend log + Anthropic pricing table
   db/               SQLite (better-sqlite3) + Drizzle, migrations, column encryption
 tests/              Playwright smoke tests + reference screenshots
-docs/               Operator + deployment guides (USERGUIDE, DEPLOYMENT, STANDALONE, DEMO, IR-SETUP, SHADOW-AI-SETUP, …)
+docs/               Operator + deployment guides (USERGUIDE, DEPLOYMENT, STANDALONE, IR-SETUP, SHADOW-AI-SETUP, …)
 scripts/            Build helpers (install.sh generator), scope probe, pure-function test runners
 vendor/             Vendored npm tarballs + native prebuilds for the offline bundle
 versions.json       Pinned MCP server (eyas-mcp) commit

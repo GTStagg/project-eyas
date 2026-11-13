@@ -6,8 +6,8 @@ import "server-only";
 // platform primitives (APIs, SDKs, scopes, Foundry) — it cannot
 // teach the composition patterns that make an agentic SOC actually work. That
 // knowledge lives in this reference implementation. So the advisor grounds on
-// the brief below (curated from docs/AI-SPECIALIST.md, docs/FALCON-MCP-VS-
-// FALCONPY.md and the CLAUDE.md conventions) and deep-links OUT to the dev
+// the brief below (curated from docs/WHITEPAPER.md and the CLAUDE.md
+// conventions) and deep-links OUT to the dev
 // portal for the primitives — it never re-hosts vendor docs.
 //
 // Compiled into the bundle as constants (not a runtime file read) so the
