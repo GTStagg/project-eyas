@@ -2,7 +2,7 @@
 
 Guidance for Claude Code in this repo. Surface-level facts: [`README.md`](./README.md), [`QUICKSTART.md`](./QUICKSTART.md), [`docs/DEPLOYMENT.md`](./docs/DEPLOYMENT.md), [`docs/STANDALONE.md`](./docs/STANDALONE.md). Tenant-provisioning: [`docs/IR-SETUP.md`](./docs/IR-SETUP.md), [`docs/SHADOW-AI-SETUP.md`](./docs/SHADOW-AI-SETUP.md). Release history: [`CHANGELOG.md`](./CHANGELOG.md). Security posture: [`SECURITY.md`](./SECURITY.md). This file is the load-bearing stuff not visible from the code; deep gotchas live in the auto-memory index (MEMORY.md), referenced inline below.
 
-The current line is **0.10.x** (0.10.0: most of the old Python sidecar moved onto eyas-mcp, Claude 5.5 defaults; since then the sidecar is gone entirely) — see `CHANGELOG.md`. **0.3.0** was the fresh-baseline cut: fresh-install-only, no migration path from older 0.20.x installs.
+The current line is **0.11.x** (0.11.0: the Python sidecar is gone — every Eyas tool runs in-process over eyas-mcp; 0.10.0 moved most of it onto eyas-mcp and set Claude 5.5 defaults) — see `CHANGELOG.md`. **0.3.0** was the fresh-baseline cut: fresh-install-only, no migration path from older 0.20.x installs.
 
 ## Project shape
 

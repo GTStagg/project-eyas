@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.11.0 — Every Eyas tool runs in the console; the Python add-on is gone
 
 ### Changed
 - **Removed the demo talk track and AI-specialist briefing** (`docs/DEMO.md`,
