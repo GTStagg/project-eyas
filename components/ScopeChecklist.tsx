@@ -44,8 +44,8 @@ const SCOPES: Record<Tier, ScopeRow[]> = {
   // Falcon Discover asset/account/application inventory — backs the /discover
   // surface. The 2026-06-08 live probe (scripts/falcon-scope-probe.mjs)
   // confirmed all four Discover read endpoints (applications / hosts / accounts
-  // / logins) return 200 on the SE tenant, so the capability is real. The
-  // CONSOLE LABEL is edition-dependent and uncertain — on this tenant it is
+  // / logins) return 200 on a test tenant, so the capability is real. The
+  // CONSOLE LABEL is edition-dependent and uncertain — on that tenant it is
   // believed to be "Assets" (there is no "Exposure Management" row); older
   // editions label it "Falcon Discover". If the row below doesn't match your
   // console's API-scope list, grant the closest asset-inventory equivalent.

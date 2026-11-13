@@ -336,7 +336,7 @@ function pickList(v: unknown, key: string, cap: number): unknown {
 }
 
 // --- Finished intelligence (eyas-mcp falcon_get_intel_reports / _actors) ---
-// Shapes confirmed live (XDR us-2, FANCY BEAR). The report BODY is in
+// Shapes confirmed live. The report BODY is in
 // `description` (≈20 KB, with WordPress [vc_*] shortcodes) — `summary` was
 // null on every report sampled, which is why the former sidecar tool (body
 // from `summary`) silently returned no body. Lists are {id,slug,value} /
@@ -664,7 +664,7 @@ const PROJECTIONS: Record<string, Projection> = {
   // Records can be numerous (limit up to 500) and bulky, so
   // token-bound them rather than leaning on the 12KB generic cap.
   //
-  // Field names below were confirmed against a LIVE us-2 tenant dump (2026-06-29)
+  // Field names below were confirmed against a live tenant dump (2026-06-29)
   // — NOT copied from the sidecar's _project_* maps, which turned out to carry
   // latent drift (they read flat notification fields + user_name/credentials_url
   // that the API actually nests / omits; harmless there only because recon data
@@ -810,15 +810,15 @@ const PROJECTIONS: Record<string, Projection> = {
 
   // --- eyas-mcp Threat Graph reads (#13, formerly sidecar extras_threatgraph_*) ---
   // ran-on returns ~1 KB of raw edge per device (50 devices ≈ 50 KB); the
-  // projection keeps the pivot fields (~150 B each). Shape confirmed live (XDR
-  // us-2). Summary / edge-types fall through to the generic cap.
+  // projection keeps the pivot fields (~150 B each). Shape confirmed live.
+  // Summary / edge-types fall through to the generic cap.
   falcon_get_threatgraph_ran_on: threatGraphEdgeProjection,
   falcon_get_threatgraph_edges: threatGraphEdgeProjection,
 
   // --- eyas-mcp NGSIEM listings (#13, formerly sidecar extras_ngsiem_list_*) ---
-  // Shapes confirmed live (XDR us-2). Connections: drop the per-connection HEC
+  // Shapes confirmed live. Connections: drop the per-connection HEC
   // ingest_url (long, and not something the agent should be repeating).
-  // Parsers: ~750 B raw each (465 on XDR = 346 KB) — keep identity, type,
+  // Parsers: ~750 B raw each (hundreds per tenant) — keep identity, type,
   // vendor/product and update status. Lookup files are bare name strings and
   // fall through to the generic cap.
   falcon_list_ngsiem_data_connections: (c) => ({
@@ -832,9 +832,9 @@ const PROJECTIONS: Record<string, Projection> = {
     last_ingested_volume_one_day: undef(c.last_ingested_volume_one_day),
   }),
   // --- eyas-mcp hunting guides / workflow triggers (#13, formerly sidecar) ---
-  // Shapes confirmed live (XDR us-2). A single guide carries its whole query
-  // list (561 refs ≈ 118 KB) and full MITRE objects (≈ 47 KB) — 5 guides were
-  // 718 KB raw. Keep the descriptive fields, a query COUNT, and technique ids;
+  // Shapes confirmed live. A single guide carries its whole query list
+  // (often 100+ KB) and full MITRE objects (tens of KB), so a handful of
+  // guides runs to hundreds of KB raw. Keep the descriptive fields, a query COUNT, and technique ids;
   // the queries themselves are one falcon_get_hunting_guides /
   // falcon_search_hunting_queries call away. Hunting queries are small and
   // fall through to the generic cap.
@@ -869,10 +869,10 @@ const PROJECTIONS: Record<string, Projection> = {
   // Agent-path budgets sized so 3 reports / 2 actors (the dossier's own
   // limits) fit the 12 KB generic cap; the dossier bundle uses 8000.
   // --- eyas-mcp Identity Protection reads (#13/#15, formerly sidecar) ---
-  // Shapes confirmed live (XDR us-2). Policy rules: 178 rules = 1 MB raw —
+  // Shapes confirmed live. Policy rules run ~5 KB raw each —
   // ruleAction (~2.3 KB: grace periods, periodicity) and emailNotification
   // (~1 KB) dominate; keep identity / state / action name / condition count.
-  // Risky identities: 15 = 17.8 KB raw; flatten riskFactors and accounts.
+  // Risky identities run ~1 KB raw each; flatten riskFactors and accounts.
   // Sensors / endpoint history / correlation are small (generic cap).
   falcon_search_idp_policy_rules: (r) => ({
     id: undef(r._id ?? r.id),

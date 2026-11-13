@@ -10,10 +10,9 @@ export const dynamic = "force-dynamic";
 // stored secret never leaves the server. Returns the probe result for
 // the operator to compare against the tenant they expect.
 //
-// This is what distinguishes environments at-a-glance: the SE record's
-// clientId returns the SE tenant's CID; the Default record's clientId
-// returns the Default tenant's CID. A mismatch (clientId for SE pasted
-// into the Default record) shows up immediately.
+// This is what distinguishes environments at-a-glance: each record's
+// clientId returns its own tenant's CID, so a clientId pasted into the
+// wrong environment record shows up immediately.
 export async function POST(
   _request: Request,
   context: { params: Promise<{ id: string }> },
