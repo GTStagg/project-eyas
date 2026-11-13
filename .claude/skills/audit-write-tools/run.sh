@@ -90,8 +90,9 @@ UPSTREAM_WRITES=(
 # tool-bridge.ts) so they never reach the agent — Eyas has its own tool for
 # each with a check that runs before the write (zero-width pre-flight,
 # canonical naming + auto-save, dynamic-group refusal, disable-before-delete,
-# monitor-first defaults), or the write is fleet-wide with no curated path
-# (set_policy_precedence). Invariant: each must be BOTH suppressed AND gated.
+# monitor-first defaults), or the write is held back with no curated path
+# (set_policy_precedence is fleet-wide; the Message Center writes are held back
+# by user decision). Invariant: each must be BOTH suppressed AND gated.
 #
 # NATIVE_ADOPTED (further below) = ADOPTED. Native is the agent's primary
 # write path — exposed + gated like UPSTREAM_WRITES. Invariant: each must be
@@ -111,6 +112,11 @@ NATIVE_WRITES=(
   # falcon-mcp 0.20.0 Data Security (#576) — KEEP: the create twins
   # (extras_create_data_protection_*) apply monitor-first defaults pre-write.
   "falcon_create_data_security_entity"
+  # eyas-mcp 6f0b394 Falcon Complete Message Center writes — held back by user
+  # decision (2026-11-13); no Eyas tool.
+  "falcon_create_message_center_case"
+  "falcon_add_message_center_case_comment"
+  "falcon_add_message_center_case_attachment"
 )
 
 # The adopted natives — exposed to the agent (NOT in NATIVE_WRITE_SUPPRESS) and

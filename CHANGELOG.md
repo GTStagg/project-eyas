@@ -3,6 +3,13 @@
 ## Unreleased
 
 ### Changed
+- **MCP server pinned to eyas-mcp 6f0b394** (still 0.21.0). The agent can now
+  search and read Falcon Complete Message Center cases and their message
+  threads, count cases, and report Falcon Complete dashboard totals. These
+  need the Message Center and Falcon Complete Dashboards read scopes, which
+  the scope checklist now lists as optional. eyas-mcp's three Message Center
+  write tools (open a case, reply, attach a file) are held back and never
+  reach the agent.
 - **The vulnerabilities page loads two to three times faster.** Its default
   fleet sweep ran one Spotlight query at a time on each of eight server
   processes; it now keeps eight queries in flight on each of four, taking

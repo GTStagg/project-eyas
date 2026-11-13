@@ -75,6 +75,12 @@ const LONG_RUNNING_TOOL_TIMEOUT_MS: Record<string, number> = {
 //   - falcon_update_exclusion / falcon_set_policy_precedence: no Eyas tool, but
 //     held back (a regex update would skip the create-time guard; precedence
 //     is fleet-wide).
+//   - falcon_create_message_center_case / falcon_add_message_center_case_comment
+//     / falcon_add_message_center_case_attachment (eyas-mcp 6f0b394): no Eyas
+//     tool, held back by user decision (2026-11-13). They open cases with
+//     Falcon Complete or Support, reply on them and upload files from the
+//     operator's account, and nobody needs them yet. The Message Center reads
+//     stay exposed.
 // The agent biases hard toward falcon_* names over extras_* regardless of
 // prompt steering, so suppression is the only reliable way to route to Eyas's
 // tool.
@@ -100,6 +106,9 @@ export const NATIVE_WRITE_SUPPRESS: ReadonlySet<string> = new Set<string>([
   "falcon_delete_policies",
   "falcon_set_policy_precedence",
   "falcon_create_data_security_entity",
+  "falcon_create_message_center_case",
+  "falcon_add_message_center_case_comment",
+  "falcon_add_message_center_case_attachment",
 ]);
 
 // Native reads kept hidden from the agent because an Eyas tool wraps them with
