@@ -33,6 +33,10 @@
 - **The two setup cards share one component.** The IR quarantine and Shadow-AI
   banned cards on `/config` were near-copies; they now keep only their own copy
   and rules. No visible change.
+- **The NGSIEM page no longer downloads every query.** The playbook list sent the
+  full text of about 100 CQL queries to the browser although the page never
+  shows them; the server now sends only the titles, tags and settings, and looks
+  the query up by id when one is run.
 - **Dead code removed.** Two unused home-panel views, an unused divider component,
   a handful of unused helpers and imports, and an unused wrapper around the
   settings cache are gone.
