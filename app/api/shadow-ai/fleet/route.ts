@@ -3,6 +3,7 @@ import { withFalconMcpClient } from "@/lib/mcp/falcon-client";
 import { makeEyasToolContext } from "@/lib/mcp/tool-bridge";
 import { fleetShadowAiEgress } from "@/lib/eyas-tools/shadow-ai/hunt";
 import { detectFalconError, parseConcatenatedJson } from "@/lib/mcp/parse";
+import { onlyAids } from "@/lib/falcon-ids";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -80,9 +81,7 @@ export async function GET(request: Request) {
       );
     }
 
-    const egressAids = Array.from(
-      new Set((egressPayload.items ?? []).map((r) => r.aid).filter(Boolean)),
-    );
+    const egressAids = onlyAids(new Set((egressPayload.items ?? []).map((r) => r.aid)));
     const aidToHost = new Map<string, HostRecord>();
     if (egressAids.length > 0) {
       try {

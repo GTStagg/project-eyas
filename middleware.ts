@@ -149,14 +149,17 @@ export async function middleware(req: NextRequest) {
   return res;
 }
 
-// Excludes Next's optimized asset routes plus static-asset extensions in
-// /public. Without the extension carve-out, image requests (e.g. icons
+// Excludes Next's optimized asset routes plus root-level static-asset files in
+// /public (one path segment, e.g. /logo.png). The carve-out is limited to a
+// single segment so a dynamic route such as /api/environments/<id> can't skip
+// authentication by being called with an id that ends in .png. Without the
+// extension carve-out, image requests (e.g. icons
 // referenced from /login + /register) hit the auth
 // middleware on unauthenticated pages, redirect to /login, and the browser
 // renders HTML in place of the image — visible as a broken-image placeholder
 // on the very first paint of the wizard.
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:png|jpg|jpeg|gif|svg|webp|ico|avif|woff|woff2|ttf|otf|eot)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|[^/]+\\.(?:png|jpg|jpeg|gif|svg|webp|ico|avif|woff|woff2|ttf|otf|eot)$).*)",
   ],
 };

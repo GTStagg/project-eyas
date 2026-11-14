@@ -2,6 +2,8 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  // No "X-Powered-By: Next.js" banner.
+  poweredByHeader: false,
   // Files Next.js's import tracer can't see, opted into the standalone bundle:
   //  - Migration .sql files are read via fs at boot.
   //  - The RTR script library (manifests + scripts) is read via fs when a
@@ -24,6 +26,23 @@ const nextConfig: NextConfig = {
   // in heavy parser/worker assets that are best resolved from node_modules at
   // runtime rather than traced into the webpack bundle.
   serverExternalPackages: ["better-sqlite3", "mammoth", "pdf-parse"],
+  // Browser hardening for every response. The console is never meant to be
+  // framed, and an approval card's Allow button is the target a framing page
+  // would aim at, so framing is refused outright (frame-ancestors is the
+  // modern control, X-Frame-Options covers older browsers).
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          { key: "Content-Security-Policy", value: "frame-ancestors 'none'" },
+          { key: "X-Frame-Options", value: "DENY" },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Referrer-Policy", value: "same-origin" },
+        ],
+      },
+    ];
+  },
   async redirects() {
     return [
       // /pivot consolidates artifact lookup + execution lineage. Old deep

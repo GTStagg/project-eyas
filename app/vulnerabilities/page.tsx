@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { withFalconMcpClient } from "@/lib/mcp/falcon-client";
 import { detectFalconError, parseConcatenatedJson } from "@/lib/mcp/parse";
+import { onlyAids } from "@/lib/falcon-ids";
 import { classifyPatchCoverage } from "@/lib/eyas-tools/rtr-tools";
 import AppShell from "@/components/AppShell";
 import VulnerabilitiesTable, {
@@ -233,7 +234,7 @@ async function fetchPerHostFanout(
     for (const h of managed) if (h.device_id) aidToHost.set(h.device_id, h);
     const aids = Array.from(aidToHost.keys());
     const fleetTruncated = aids.length > FANOUT_MAX_HOSTS;
-    const targetAids = fleetTruncated ? aids.slice(0, FANOUT_MAX_HOSTS) : aids;
+    const targetAids = onlyAids(fleetTruncated ? aids.slice(0, FANOUT_MAX_HOSTS) : aids);
 
     let next = 0;
     const allRows: Vulnerability[] = (

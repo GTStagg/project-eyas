@@ -9,6 +9,18 @@
   ... was found". Only a genuine miss says that now; other failures show their
   own message.
 
+### Security
+- **Browser hardening.** Responses now refuse to be framed (a framing page could
+  have aimed at an approval's Allow button), set `nosniff` and a same-origin
+  referrer policy, and no longer send `X-Powered-By`.
+- **Authentication can't be skipped by a file-like path.** The static-asset
+  carve-out in the login check now covers only single-segment paths, so a
+  dynamic route called with an id ending in `.png` still needs a session.
+- **Scheduler token check is constant-time**, matching the password check.
+- **Device ids are validated before they go into filters.** Ids that come back
+  from Falcon are checked as 32 hex characters on the Shadow-AI fleet,
+  at-risk hosts, vulnerabilities and patch-host paths; anything else is dropped.
+
 ### Changed
 - **Dead code removed.** Two unused home-panel views, an unused divider component,
   a handful of unused helpers and imports, and an unused wrapper around the
