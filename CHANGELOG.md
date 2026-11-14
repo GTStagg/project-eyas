@@ -3,6 +3,9 @@
 ## Unreleased
 
 ### Changed
+- **Dead code removed.** Two unused home-panel views, an unused divider component,
+  a handful of unused helpers and imports, and an unused wrapper around the
+  settings cache are gone. No behaviour changes.
 - **The Blueprint page reads in plain language.** Its starter questions, source
   cards, placeholder and header no longer use developer terms such as
   "sidecar", "MCP", "FalconPy" or "OAuth".

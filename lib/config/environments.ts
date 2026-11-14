@@ -1,7 +1,6 @@
 import "server-only";
 import {
   getSettings,
-  invalidateSettingsCache,
   mutateSettings,
   newId,
   prunePatchProfiles,
@@ -58,10 +57,6 @@ export function projectEnvironment(env: EnvironmentRecord): EnvironmentView {
     aidr_token_set: !!env.aidr?.token,
     aidr_base_url: env.aidr?.baseUrl ?? DEFAULT_AIDR_BASE_URL,
   };
-}
-
-export function invalidateEnvironmentsCache(): void {
-  invalidateSettingsCache();
 }
 
 export function listEnvironments(): EnvironmentView[] {

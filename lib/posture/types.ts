@@ -56,8 +56,6 @@ export type PostureMetrics = {
   };
 };
 
-export type PostureCategory = keyof PostureMetrics;
-
 // A stored snapshot, decoded from the DB row.
 export type PostureSnapshot = {
   id: number;
