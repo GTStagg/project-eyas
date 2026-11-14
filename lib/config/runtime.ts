@@ -3,7 +3,6 @@ import {
   getSettings,
   invalidateSettingsCache,
   mutateSettings,
-  settingsFilePath,
   type EnvironmentRecord,
   type PatchProfile,
   type SettingsFile,
@@ -238,8 +237,3 @@ export function invalidateConfigCache(): void {
   invalidateSettingsCache();
 }
 
-export function configFilePath(): string {
-  // Kept as a public helper for callers that surface the on-disk path
-  // (e.g. /status). Now points at settings.json.
-  return settingsFilePath();
-}

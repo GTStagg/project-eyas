@@ -122,7 +122,6 @@ Run dev with `npm run dev` (port 3000). Standalone notes live in a dedicated sec
 
 - Detections cluster into campaigns when they share a non-system process ancestor; unclustered detections fall into a separate list.
 - `identity_overlap` chip surfaces when a detection's user maps onto an identity hit; `falcon_intel_dashboard_shapes` normalization is applied (nested `{value}` objects flattened, epoch seconds rendered as dates).
-- Tuning chip (`fp_pattern` / `queue_drown`) opens a primer hand-off to chat with a Tune verb, not a new page.
 - Investigate chip on a row matches the chip on the same host's row in `/detections`, `/hosts`, `/vulnerabilities`.
 
 **Broken signals**

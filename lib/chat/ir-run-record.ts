@@ -473,9 +473,6 @@ export async function appendTurn(
     .run();
 }
 
-/** Excerpt utility re-exported only because TurnObserver below uses it. */
-export { excerpt as _excerpt };
-
 /** Live-build a TurnRecord from observed SSE events. Wrap the chat route's
  *  emit() so this observes everything the agent loop fires; finalize() returns
  *  a complete TurnRecord ready to pass to appendTurn(). */

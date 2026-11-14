@@ -7,7 +7,6 @@ import { countSnapshots, getRecentSnapshots } from "@/lib/posture/trend";
 import { getBuildInfo } from "@/lib/build-info";
 import {
   getHealthReport,
-  FIRST_LAUNCH_SETUP_MSG,
   type ProbeResult,
   type ProbeStatus,
 } from "@/lib/health";

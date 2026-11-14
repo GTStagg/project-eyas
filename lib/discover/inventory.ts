@@ -193,10 +193,6 @@ export function normalizeEntity<T>(
   return { total, items };
 }
 
-export function normalizeAssets(p: Record<string, unknown> | null) {
-  return normalizeEntity(p, (r) => normAsset(r));
-}
-
 /**
  * Assets come from two falcon_search_assets calls: `all` lists every entity
  * type with include_type_totals (tenant-wide total + per-type counts), and

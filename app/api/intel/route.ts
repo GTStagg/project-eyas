@@ -5,7 +5,6 @@ import {
   attributeFromDetections,
   canonicalActor,
   extractFromDetection,
-  prettyActor,
   readStringList,
   uniqueIndicatorsForLookup,
   type RawDetection,

@@ -1,7 +1,7 @@
 import "server-only";
 import crypto from "node:crypto";
 import { asc, desc, eq } from "drizzle-orm";
-import { db, dbFilePath, rawDb } from "../db/client";
+import { db, rawDb } from "../db/client";
 import { decryptColumn, encryptColumn } from "../db/crypto";
 import { environments, settings, settingsAudit } from "../db/schema";
 
@@ -525,17 +525,5 @@ function stripEmpties(file: SettingsFile): SettingsFile {
     if (Object.keys(a).length) out.anthropic = a;
   }
   return out;
-}
-
-// Backwards-compat: callers (runtime.ts) used these to render a "where is
-// my config" hint in error messages. They now point at the DB file rather
-// than the JSON. Keep them so the rest of the app doesn't change.
-
-export function settingsFilePath(): string {
-  return dbFilePath();
-}
-
-export function auditLogPath(): string {
-  return dbFilePath();
 }
 

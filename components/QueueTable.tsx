@@ -133,9 +133,6 @@ function hostTriagePrimer(rows: QueueRow[]): string {
   const host = lead.device?.hostname ?? "(unknown host)";
   const aid = lead.device?.device_id;
   const aidSuffix = aid ? ` (AID \`${aid}\`)` : "";
-  const ids = rows
-    .map((r) => r.composite_id ?? r.id)
-    .filter((s): s is string => Boolean(s));
   const lines = rows
     .map((r) => {
       const name = r.display_name ?? r.name ?? "(unnamed)";

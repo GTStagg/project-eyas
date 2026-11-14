@@ -282,10 +282,6 @@ export type UnattributedIndicator = {
   hosts: string[];
 };
 
-function lower(s: unknown): string {
-  return typeof s === "string" ? s.toLowerCase() : "";
-}
-
 function asString(v: unknown): string {
   return typeof v === "string" ? v : "";
 }

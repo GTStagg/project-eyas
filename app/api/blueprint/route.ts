@@ -1,6 +1,5 @@
 import "server-only";
 import { NextResponse } from "next/server";
-import type Anthropic from "@anthropic-ai/sdk";
 import { getAnthropicClient, getAnthropicModel } from "@/lib/llm/anthropic";
 import { streamMessage } from "@/lib/llm/messages";
 import { sseEncode } from "@/lib/chat/agent-loop";

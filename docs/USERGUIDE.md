@@ -56,14 +56,6 @@ Hands off to chat with a focused primer that includes the row context (composite
 
 Same hand-off shape, different action — kicks the agentic IR workflow (see IR analyst section). Endpoint rows run host IR; identity rows show **Identity IR** (the user-account workflow with an endpoint cascade). The chip is always present; it's only *live* on a host/user that can actually run it and when IR is configured — otherwise it's greyed with a reason (see the IR analyst section for the three states).
 
-### 6. **Tuning candidates** at the bottom
-
-Two signals:
-- **fp_pattern** (strongest) — ≥3 closed records, ≥2 hosts, ≥80% closed-as-FP, 0 TP closures
-- **queue_drown** — ≥10 fires, ≥3 hosts, max severity ≤ Medium, 0 closures
-
-Each candidate has a **Tune** button — chat primer asking for an exclusion proposal (ML / IOA / sensor-visibility) with risk analysis. Don't blindly approve; the proposal should land as a recommendation, not a write.
-
 ### Other Triage-group surfaces
 
 - **`/briefing`** — One-page send-to-stakeholder report. Print as PDF, post to a webhook, or schedule via the `SCHEDULES` env (`daily-briefing` job runs at the operator's chosen cadence). Not for interactive triage; use `/queue` for that.

@@ -138,16 +138,6 @@ const MATCHERS: Matcher[] = [
     },
   },
   {
-    test: /^Draft a tuning recommendation for rule `?([^`\n]+?)`?\./,
-    build: (m) => ({
-      kind: "tune",
-      title: `Draft a tuning recommendation for ${m[1]}`,
-      subtitle: `Rule ${m[1]}`,
-      description:
-        "Reviews the false-positive evidence and proposes a precise exclusion to cut the noise — for your approval.",
-    }),
-  },
-  {
     // Home dashboard "prevention posture gap" hand-off. Count-only; no ids in
     // the instruction, so the humanized copy needs no host/rule clause.
     test: /^Review the (\d+) detect-only prevention (?:policy|policies) and recommend/,
