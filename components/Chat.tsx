@@ -11,7 +11,6 @@ import type { PrimerAction } from "./primer";
 import PendingActionCard from "./PendingActionCard";
 import ConversationList from "./ConversationList";
 import SessionTtlPill from "./SessionTtlPill";
-import { SHOW_CROWDSTRIKE_LOCKUP } from "./attribution";
 
 type ToolUse = {
   id: string;
@@ -992,13 +991,9 @@ function AssistantBubble({ turn }: { turn: AssistantTurn }) {
             </div>
             <div className="flex items-center gap-4">
               <div className="text-right text-[9px] uppercase tracking-[0.18em] text-neutral-600">
-                <div>{SHOW_CROWDSTRIKE_LOCKUP ? "Data sourced from" : "Data sourced from CrowdStrike Falcon"}</div>
+                <div>Data sourced from CrowdStrike Falcon</div>
                 <div>Not an official CrowdStrike product</div>
               </div>
-              {SHOW_CROWDSTRIKE_LOCKUP && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src="/crowdstrike-lockup.png" alt="CrowdStrike" className="h-10 w-auto" />
-              )}
             </div>
           </div>
           <div className="markdown">
