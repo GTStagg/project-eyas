@@ -5,7 +5,12 @@
 ### Changed
 - **Dead code removed.** Two unused home-panel views, an unused divider component,
   a handful of unused helpers and imports, and an unused wrapper around the
-  settings cache are gone. No behaviour changes.
+  settings cache are gone.
+- **Tuning candidates code removed.** The tuning panel, its API route and the
+  candidate finder were not reachable from any page, along with three API routes
+  nothing called (conversation reset, conversation state, detection triage) and
+  the two exclusion-scope probes only the tuning panel used, which saves two Falcon
+  calls on each full health check. Exclusions stay available through chat.
 - **The Blueprint page reads in plain language.** Its starter questions, source
   cards, placeholder and header no longer use developer terms such as
   "sidecar", "MCP", "FalconPy" or "OAuth".

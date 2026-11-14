@@ -14,7 +14,7 @@ import { chatSessions } from "@/lib/db/schema";
 // `created_at`, used by the /chat left rail to list prior conversations.
 //
 // Pinned to globalThis so dev-mode per-route module duplication doesn't
-// fragment state across route files (/api/chat, /api/chat/reset, etc.).
+// fragment state across route files (/api/chat, /api/chat/sessions, etc.).
 
 export type IrMode = {
   aid: string;
@@ -212,19 +212,6 @@ export function bumpIrTurnCount(id: string): number {
   entry.lastTouched = Date.now();
   persist(id, entry);
   return entry.irMode.turnCount;
-}
-
-export function inspectConversation(id: string): {
-  turnCount: number;
-  idleMs: number;
-} | null {
-  const entry = hydrate(id);
-  if (!entry) return null;
-  let turnCount = 0;
-  for (const m of entry.messages) {
-    if (m.role === "user") turnCount++;
-  }
-  return { turnCount, idleMs: Date.now() - entry.lastTouched };
 }
 
 /** Set the conversation title. Set-once semantics: an existing non-empty

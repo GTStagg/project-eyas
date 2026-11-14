@@ -79,13 +79,6 @@ const CASES = [
     titleIncludes: "across 3 hosts",
   },
   {
-    name: "tune",
-    instruction:
-      'Draft a tuning recommendation for rule `Suspicious PowerShell`. Evidence: 9/10 closed as FP (90%), 4 hosts, max severity High. Sample composite_ids: ["x"].',
-    kind: "tune",
-    titleIncludes: "Draft a tuning recommendation for Suspicious PowerShell",
-  },
-  {
     name: "intel active hit",
     instruction:
       "Investigate the active intel hit on indicator `1.2.3.4` (ipv4). 5 fires across hosts: WIN-1. Actors: FANCY BEAR.",

@@ -61,7 +61,7 @@ const LONG_RUNNING_TOOL_TIMEOUT_MS: Record<string, number> = {
 // native tool offers no pre-write hook (only suppress / approval-gate /
 // post-result), so exposing the native would skip that check:
 //   - falcon_create_exclusion: extras_create_ioa_exclusion adds the
-//     single-quote reject-don't-escape guard and the /tuning primer wiring.
+//     single-quote reject-don't-escape guard.
 //   - falcon_create_host_group / falcon_create_policy: the provisioning flows
 //     add canonical naming and the {ok,id} auto-save.
 //   - falcon_perform_host_group_action: Eyas's extras_host_group_add_members /
