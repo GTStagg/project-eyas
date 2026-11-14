@@ -508,10 +508,14 @@ function AdoptGroupByName({
               </ul>
             </>
           ) : (
-            <>
-              No host group named &ldquo;{value.trim()}&rdquo; was found in this
-              tenant. Check the name, or create one with the action below.
-            </>
+            err && !/^no host group named/i.test(err) ? (
+              <>Couldn&rsquo;t look up that group: {err}</>
+            ) : (
+              <>
+                No host group named &ldquo;{value.trim()}&rdquo; was found in this
+                tenant. Check the name, or create one with the action below.
+              </>
+            )
           )}
         </div>
       )}
