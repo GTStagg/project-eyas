@@ -1,6 +1,6 @@
 // Types and labels for the curated NGSIEM playbooks. Kept apart from the
-// playbook data so client code can import them without pulling the queries
-// (about 85 KB) into the browser bundle.
+// playbook data so client code can import them without pulling the query
+// text into the browser bundle.
 
 export type PlaybookOs = "win" | "mac" | "lin";
 
