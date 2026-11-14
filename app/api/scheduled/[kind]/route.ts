@@ -1,3 +1,4 @@
+import { createHash, timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 import {
   fireJobNow,
@@ -15,7 +16,15 @@ function authorized(req: Request): boolean {
   const header = req.headers.get("x-scheduler-token") ?? "";
   const auth = req.headers.get("authorization") ?? "";
   const bearer = auth.toLowerCase().startsWith("bearer ") ? auth.slice(7).trim() : "";
-  return header === expected || bearer === expected;
+  return sameSecret(header, expected) || sameSecret(bearer, expected);
+}
+
+// Constant-time compare. Hashing first gives both sides the same length, which
+// timingSafeEqual requires, without revealing the token length.
+function sameSecret(given: string, expected: string): boolean {
+  const a = createHash("sha256").update(given).digest();
+  const b = createHash("sha256").update(expected).digest();
+  return timingSafeEqual(a, b);
 }
 
 function jobStatus(kind: string) {

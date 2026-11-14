@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { withFalconMcpClient } from "@/lib/mcp/falcon-client";
 import { detectFalconError, parseConcatenatedJson } from "@/lib/mcp/parse";
+import { onlyAids } from "@/lib/falcon-ids";
 import type { Host } from "@/components/HostsTable";
 
 export const runtime = "nodejs";
@@ -94,7 +95,7 @@ export async function GET() {
       // rtr_state, platform_name, os_product_name. Without this the action
       // buttons mis-classify hosts as "not RTR-eligible" because rtr_state
       // is undefined. One extra API call for all unique AIDs.
-      const aids = Array.from(byHost.keys());
+      const aids = onlyAids(byHost.keys());
       if (aids.length > 0) {
         const filterValue =
           "device_id:[" + aids.map((a) => `'${a}'`).join(",") + "]";

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { withFalconMcpClient } from "@/lib/mcp/falcon-client";
 import { detectFalconError, parseConcatenatedJson } from "@/lib/mcp/parse";
+import { onlyAids } from "@/lib/falcon-ids";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -40,9 +41,12 @@ type ManagedFilterResult = {
 };
 
 async function managedHostFilter(ids: string[]): Promise<ManagedFilterResult> {
-  if (ids.length === 0) return { managed: new Set(), unverified: new Set() };
+  // Only well-formed device ids go into the filter; anything else can't be a
+  // sensor-managed host and is left out of `managed`.
+  const valid = onlyAids(ids);
+  if (valid.length === 0) return { managed: new Set(), unverified: new Set() };
   const chunks: string[][] = [];
-  for (let i = 0; i < ids.length; i += CHUNK_SIZE) chunks.push(ids.slice(i, i + CHUNK_SIZE));
+  for (let i = 0; i < valid.length; i += CHUNK_SIZE) chunks.push(valid.slice(i, i + CHUNK_SIZE));
   const managed = new Set<string>();
   const unverified = new Set<string>();
 
