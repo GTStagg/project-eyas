@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### Fixed
+- **The "adopt existing group" form shows the real error.** On the IR quarantine and
+  Shadow-AI banned setup cards, any failure to look up a group (a busy agent,
+  a permission error, a network fault) was reported as "No host group named
+  ... was found". Only a genuine miss says that now; other failures show their
+  own message.
+
 ### Changed
 - **The Blueprint page reads in plain language.** Its starter questions, source
   cards, placeholder and header no longer use developer terms such as
