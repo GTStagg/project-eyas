@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { withFalconMcpClient } from "@/lib/mcp/falcon-client";
 import { detectFalconError, isScopeDenied, parseToolResultObjects } from "@/lib/mcp/parse";
 import { fail, serverError } from "@/lib/api/respond";
+import { mcpText } from "@/lib/mcp/text";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -47,7 +48,7 @@ export async function POST(req: Request) {
           : { ok: false, error: err };
       }
       if (r.isError) {
-        const text = content.map((c) => (c.type === "text" && c.text ? c.text : "")).join(" ");
+        const text = mcpText(content, " ");
         return { ok: false, error: text.trim() || "detection update failed" };
       }
       return { ok: true, requested: composite_ids.length, status: "in_progress" };

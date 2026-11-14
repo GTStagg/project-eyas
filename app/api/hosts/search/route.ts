@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { withFalconMcpClient } from "@/lib/mcp/falcon-client";
 import { detectFalconError, parseConcatenatedJson } from "@/lib/mcp/parse";
 import type { Host } from "@/components/HostsTable";
+import { mcpText } from "@/lib/mcp/text";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -35,9 +36,7 @@ export async function GET(request: Request) {
           sort: "last_seen.desc",
         },
       });
-      const text = (result.content as Array<{ type: string; text?: string }>)
-        .map((c) => (c.type === "text" && c.text ? c.text : ""))
-        .join("\n");
+      const text = mcpText(result.content);
       const parsed = parseConcatenatedJson<Host>(text);
       const upstreamErr = detectFalconError(parsed);
       if (upstreamErr) throw new Error(upstreamErr);

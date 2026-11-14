@@ -1,6 +1,7 @@
 import "server-only";
 import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { shapeNativePayload } from "@/lib/mcp/native-shape";
+import { mcpText } from "@/lib/mcp/text";
 
 // Call a native eyas-mcp search tool and shape the result into the payload
 // that deterministic consumers read:
@@ -19,6 +20,6 @@ export async function nativeSearchPayload(
     type: string;
     text?: string;
   }>;
-  const text = content.map((c) => (c.type === "text" && c.text ? c.text : "")).join("\n");
+  const text = mcpText(content);
   return shapeNativePayload(text);
 }

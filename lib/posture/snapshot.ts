@@ -26,6 +26,7 @@ import {
   metricsArePartial,
   type PostureMetrics,
 } from "./types";
+import { mcpText } from "@/lib/mcp/text";
 
 // Deterministic point-in-time capture of the tenant's posture, written to
 // posture_snapshots for trending. Pure data gathering — no LLM. Each of the
@@ -45,7 +46,7 @@ function toText(result: unknown): string {
     type: string;
     text?: string;
   }>;
-  return content.map((c) => (c.type === "text" && c.text ? c.text : "")).join("\n");
+  return mcpText(content);
 }
 
 // ---- detections -----------------------------------------------------------

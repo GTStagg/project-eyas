@@ -5,6 +5,7 @@ import { detectFalconError, parseConcatenatedJson } from "@/lib/mcp/parse";
 import { rankDetections, type RankInput, type QueueRow } from "@/lib/queue/rank";
 import { clusterCampaigns, type Campaign } from "@/lib/queue/campaigns";
 import type { Detection } from "@/components/DetectionsTable";
+import { mcpText } from "@/lib/mcp/text";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -80,9 +81,7 @@ async function fetchOpenEndpointDetections(cutoffIso: string): Promise<Detection
       name: "falcon_search_detections",
       arguments: { filter, limit: ENDPOINT_LIMIT, sort: "created_timestamp.desc" },
     });
-    const text = (result.content as Array<{ type: string; text?: string }>)
-      .map((c) => (c.type === "text" && c.text ? c.text : ""))
-      .join("\n");
+    const text = mcpText(result.content);
     const detections = parseConcatenatedJson<Detection>(text);
     // Promote a wrapped upstream error / structured scope-denial to a real
     // failure rather than rendering it as junk. detectFalconError (NOT

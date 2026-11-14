@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { withFalconMcpClient } from "@/lib/mcp/falcon-client";
 import { detectFalconError, parseConcatenatedJson } from "@/lib/mcp/parse";
 import { onlyAids } from "@/lib/falcon-ids";
+import { mcpText } from "@/lib/mcp/text";
 import type { Host } from "@/components/HostsTable";
 
 export const runtime = "nodejs";
@@ -49,11 +50,7 @@ export async function GET() {
           sort: "created_timestamp.desc",
         },
       });
-      const detText = (
-        detResult.content as Array<{ type: string; text?: string }>
-      )
-        .map((c) => (c.type === "text" && c.text ? c.text : ""))
-        .join("\n");
+      const detText = mcpText(detResult.content);
       const detections = parseConcatenatedJson<Detection>(detText);
       // Promote a wrapped upstream error / structured scope-denial (both arrive
       // as a single {error, details:{status_code}} object) to a real failure
@@ -103,11 +100,7 @@ export async function GET() {
           name: "falcon_search_hosts",
           arguments: { filter: filterValue, limit: aids.length },
         });
-        const hostsText = (
-          hostsResult.content as Array<{ type: string; text?: string }>
-        )
-          .map((c) => (c.type === "text" && c.text ? c.text : ""))
-          .join("\n");
+        const hostsText = mcpText(hostsResult.content);
         const hostRecords = parseConcatenatedJson<Host>(hostsText);
         for (const h of hostRecords) {
           if (!h.device_id) continue;

@@ -7,6 +7,7 @@ import { getRuntimeConfig } from "@/lib/config/runtime";
 import { withFalconMcpClient } from "@/lib/mcp/falcon-client";
 import { isScopeDenied } from "@/lib/mcp/parse";
 import { isRegistered } from "@/lib/auth/store";
+import { mcpText } from "@/lib/mcp/text";
 
 export type ProbeStatus = "ok" | "error" | "disabled" | "initializing";
 
@@ -157,9 +158,7 @@ async function probeFalconMcp(): Promise<ProbeResult> {
           arguments: { limit: 1 },
         })
         .then((r) => {
-          const text = (r.content as Array<{ type: string; text?: string }>)
-            .map((c) => (c.type === "text" && c.text ? c.text : ""))
-            .join("\n");
+          const text = mcpText(r.content);
           return !isScopeDenied(text);
         })
         .catch(() => true);
@@ -175,9 +174,7 @@ async function probeFalconMcp(): Promise<ProbeResult> {
           arguments: { limit: 1 },
         })
         .then((r) => {
-          const text = (r.content as Array<{ type: string; text?: string }>)
-            .map((c) => (c.type === "text" && c.text ? c.text : ""))
-            .join("\n");
+          const text = mcpText(r.content);
           return !isScopeDenied(text);
         })
         .catch(() => true);
@@ -189,9 +186,7 @@ async function probeFalconMcp(): Promise<ProbeResult> {
         client
           .callTool({ name, arguments: args })
           .then((r) => {
-            const text = (r.content as Array<{ type: string; text?: string }>)
-              .map((c) => (c.type === "text" && c.text ? c.text : ""))
-              .join("\n");
+            const text = mcpText(r.content);
             return !isScopeDenied(text);
           })
           .catch(() => true);

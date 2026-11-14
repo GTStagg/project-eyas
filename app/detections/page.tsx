@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowUpRight, ListChecks } from "lucide-react";
 import AppShell from "@/components/AppShell";
 import DetectionsTable, { type Detection } from "@/components/DetectionsTable";
+import { mcpText } from "@/lib/mcp/text";
 
 export const dynamic = "force-dynamic";
 
@@ -26,9 +27,7 @@ async function fetchDetections(
           sort: "created_timestamp.desc",
         },
       });
-      const text = (result.content as Array<{ type: string; text?: string }>)
-        .map((c) => (c.type === "text" && c.text ? c.text : ""))
-        .join("\n");
+      const text = mcpText(result.content);
       const parsed = parseConcatenatedJson<Detection>(text);
       const upstreamErr = detectFalconError(parsed);
       if (upstreamErr) throw new Error(upstreamErr);

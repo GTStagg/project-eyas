@@ -13,6 +13,7 @@
 
 import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { detectFalconError, isScopeDenied } from "@/lib/mcp/parse";
+import { mcpText } from "@/lib/mcp/text";
 
 type Obj = Record<string, unknown>;
 
@@ -128,7 +129,7 @@ export async function fetchPreventionPosture(mcp: Client): Promise<PosturePayloa
   try {
     const r = await mcp.callTool({ name: "falcon_get_prevention_posture", arguments: {} });
     const content = ((r as { content?: unknown }).content ?? []) as Array<{ type: string; text?: string }>;
-    return shapePosture(content.map((c) => (c.type === "text" && c.text ? c.text : "")).join("\n"));
+    return shapePosture(mcpText(content));
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : String(e) };
   }

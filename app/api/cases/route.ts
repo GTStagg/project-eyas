@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { withFalconMcpClient } from "@/lib/mcp/falcon-client";
 import { parseConcatenatedJson, detectFalconError, isScopeDenied } from "@/lib/mcp/parse";
 import { fail } from "@/lib/api/respond";
+import { mcpText } from "@/lib/mcp/text";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -103,9 +104,7 @@ export async function GET() {
         arguments: { limit: 200, sort: "created_timestamp.desc" },
       });
 
-      const text = (result.content as Array<{ type: string; text?: string }>)
-        .map((c) => (c.type === "text" && c.text ? c.text : ""))
-        .join("\n");
+      const text = mcpText(result.content);
 
       // Scope denial first. isScopeDenied keys on the structured signal
       // (details.status_code 403/401 or required_scopes) with a raw-text

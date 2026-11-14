@@ -8,6 +8,7 @@ import {
   type CustomIoc,
 } from "@/lib/intel/hunt";
 import type { Detection } from "@/components/DetectionsTable";
+import { mcpText } from "@/lib/mcp/text";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -60,9 +61,7 @@ export async function GET() {
         ]);
 
         const collect = <T>(resp: typeof indResp): T[] => {
-          const text = (resp.content as Array<{ type: string; text?: string }>)
-            .map((c) => (c.type === "text" && c.text ? c.text : ""))
-            .join("\n");
+          const text = mcpText(resp.content);
           return parseConcatenatedJson<T>(text);
         };
 

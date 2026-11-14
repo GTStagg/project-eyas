@@ -1,6 +1,7 @@
 import { withFalconMcpClient } from "@/lib/mcp/falcon-client";
 import { detectFalconError, parseConcatenatedJson } from "@/lib/mcp/parse";
 import { ok, serverError } from "@/lib/api/respond";
+import { mcpText } from "@/lib/mcp/text";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -25,9 +26,7 @@ export async function GET(request: Request) {
           sort: "created_timestamp.desc",
         },
       });
-      const text = (result.content as Array<{ type: string; text?: string }>)
-        .map((c) => (c.type === "text" && c.text ? c.text : ""))
-        .join("\n");
+      const text = mcpText(result.content);
       const parsed = parseConcatenatedJson<{ created_timestamp?: string }>(text);
       // Promote a wrapped upstream Falcon error (isError:false + {error} body)
       // to a real failure instead of rendering it as a single junk detection.

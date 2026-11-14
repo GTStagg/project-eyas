@@ -1,5 +1,6 @@
 import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { parseConcatenatedJson } from "@/lib/mcp/parse";
+import { mcpText } from "@/lib/mcp/text";
 
 // Per-row attachment: a single resolved adversary chip. Rows with no
 // adversary_ids leave `adversary` unset; rows with multiple ids attach
@@ -73,9 +74,7 @@ export async function resolveAdversaryNames(
       name: "falcon_search_actors",
       arguments: { filter, limit: Math.min(toFetch.length, 50) },
     })) as { content: Array<{ type: string; text?: string }> };
-    const text = resp.content
-      .map((c) => (c.type === "text" && c.text ? c.text : ""))
-      .join("\n");
+    const text = mcpText(resp.content);
     const records = parseConcatenatedJson<RawActor>(text);
     for (const rec of records) {
       const id = rec.id == null ? "" : String(rec.id);
