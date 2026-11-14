@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### Changed
+- **The CrowdStrike lockup switch is gone.** An always-off setting guarded an image
+  that was never shipped (the logo isn't redistributed). The pages already showed
+  text only; the setting and its image code are removed.
+
 ### Fixed
 - **The "adopt existing group" form shows the real error.** On the IR quarantine and
   Shadow-AI banned setup cards, any failure to look up a group (a busy agent,
