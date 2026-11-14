@@ -11,6 +11,7 @@ import {
   renderQuarantineContext,
   type QuarantineSummary,
 } from "@/lib/quarantine/review";
+import { mcpText } from "@/lib/mcp/text";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -36,9 +37,7 @@ async function fetchQuarantine(client: Client): Promise<FetchResult> {
     name: "falcon_search_quarantined_files",
     arguments: { limit: 500, sort: "date_updated|desc" },
   });
-  const text = (result.content as Array<{ type: string; text?: string }>)
-    .map((c) => (c.type === "text" && c.text ? c.text : ""))
-    .join("\n");
+  const text = mcpText(result.content);
 
   if (isScopeDenied(text)) {
     return {

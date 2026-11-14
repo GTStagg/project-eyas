@@ -10,6 +10,7 @@ import { useEffect, useRef, useState } from "react";
 import { Loader2, Square, CornerDownLeft, Wrench, ShieldQuestion } from "lucide-react";
 import SectionedMarkdown from "../SectionedMarkdown";
 import { PrintReportButton } from "../AgentArtifactActions";
+import { parseSSE } from "../sse";
 
 const SESSION_KEY = "eyas.control-chat.sessionId";
 
@@ -34,25 +35,6 @@ function loadSessionId(): string {
   }
 }
 
-type ParsedSSE = { event: string; data: string };
-function parseSSE(buffer: string): { events: ParsedSSE[]; rest: string } {
-  const events: ParsedSSE[] = [];
-  let rest = buffer;
-  while (true) {
-    const idx = rest.indexOf("\n\n");
-    if (idx === -1) break;
-    const block = rest.slice(0, idx);
-    rest = rest.slice(idx + 2);
-    let event = "message";
-    const dataLines: string[] = [];
-    for (const line of block.split("\n")) {
-      if (line.startsWith("event: ")) event = line.slice(7);
-      else if (line.startsWith("data: ")) dataLines.push(line.slice(6));
-    }
-    events.push({ event, data: dataLines.join("\n") });
-  }
-  return { events, rest };
-}
 
 type ToolView = {
   id: string;

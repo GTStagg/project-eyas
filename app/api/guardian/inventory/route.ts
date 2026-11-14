@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { withFalconMcpClient } from "@/lib/mcp/falcon-client";
 import { isScopeDenied } from "@/lib/mcp/parse";
+import { mcpText } from "@/lib/mcp/text";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -16,7 +17,7 @@ type ToolText = { type?: string; text?: string };
 function joinText(result: unknown): string {
   const content = (result as { content?: ToolText[] })?.content;
   if (!Array.isArray(content)) return "";
-  return content.map((c) => (c.type === "text" && c.text ? c.text : "")).join("\n");
+  return mcpText(content);
 }
 
 function parseJson(text: string): unknown {

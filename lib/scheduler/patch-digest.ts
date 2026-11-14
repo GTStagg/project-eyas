@@ -3,6 +3,7 @@ import { withFalconMcpClient } from "@/lib/mcp/falcon-client";
 import { detectFalconError, parseConcatenatedJson } from "@/lib/mcp/parse";
 import { runAgentLoop } from "@/lib/chat/agent-loop";
 import { deliverToWebhook, getOutboundWebhookUrl } from "@/lib/webhook/deliver";
+import { mcpText } from "@/lib/mcp/text";
 
 type RemediationEntity = {
   id?: string;
@@ -107,9 +108,7 @@ async function fetchAndGroup(): Promise<Bundle[] | { error: string }> {
           facet: ["cve", "host_info", "remediation"],
         },
       });
-      const text = (result.content as Array<{ type: string; text?: string }>)
-        .map((c) => (c.type === "text" && c.text ? c.text : ""))
-        .join("\n");
+      const text = mcpText(result.content);
       merged = parseConcatenatedJson<Vuln>(text);
       const upstreamErr = detectFalconError(merged);
       if (upstreamErr) throw new Error(upstreamErr);

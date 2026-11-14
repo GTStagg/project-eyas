@@ -27,6 +27,9 @@
   at-risk hosts, vulnerabilities and patch-host paths; anything else is dropped.
 
 ### Changed
+- **Shared helpers replace copy-pasted code.** The four chat and agent screens use
+  one stream parser, and about 30 places that joined an MCP result's text blocks
+  use one helper. No behaviour changes.
 - **Dead code removed.** Two unused home-panel views, an unused divider component,
   a handful of unused helpers and imports, and an unused wrapper around the
   settings cache are gone.

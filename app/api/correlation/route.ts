@@ -11,6 +11,7 @@ import {
   renderCorrelationContext,
   type CorrelationHealth,
 } from "@/lib/correlation/health";
+import { mcpText } from "@/lib/mcp/text";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -32,9 +33,7 @@ async function fetchCorrelation(client: Client, now: number): Promise<FetchResul
     name: "falcon_search_correlation_rules",
     arguments: { filter: "state:'published'", limit: 500, sort: "last_updated_on|desc" },
   });
-  const text = (result.content as Array<{ type: string; text?: string }>)
-    .map((c) => (c.type === "text" && c.text ? c.text : ""))
-    .join("\n");
+  const text = mcpText(result.content);
 
   if (isScopeDenied(text)) {
     return {

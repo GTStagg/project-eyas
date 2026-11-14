@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { withFalconMcpClient } from "@/lib/mcp/falcon-client";
 import { detectFalconError, parseConcatenatedJson } from "@/lib/mcp/parse";
 import { onlyAids } from "@/lib/falcon-ids";
+import { mcpText } from "@/lib/mcp/text";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -58,9 +59,7 @@ async function managedHostFilter(ids: string[]): Promise<ManagedFilterResult> {
           name: "falcon_search_hosts",
           arguments: { filter, limit: CHUNK_SIZE },
         });
-        const text = (result.content as Array<{ type: string; text?: string }>)
-          .map((c) => (c.type === "text" && c.text ? c.text : ""))
-          .join("\n");
+        const text = mcpText(result.content);
         const parsed = parseConcatenatedJson<{ device_id?: string }>(text);
         const upstreamErr = detectFalconError(parsed);
         if (upstreamErr) throw new Error(upstreamErr);
@@ -115,9 +114,7 @@ export async function POST(request: Request) {
         name: "falcon_search_vulnerabilities",
         arguments: { filter, facet: "host_info", limit: FETCH_LIMIT },
       });
-      const text = (result.content as Array<{ type: string; text?: string }>)
-        .map((c) => (c.type === "text" && c.text ? c.text : ""))
-        .join("\n");
+      const text = mcpText(result.content);
       const parsed = parseConcatenatedJson<Vuln>(text);
       const upstreamErr = detectFalconError(parsed);
       if (upstreamErr) throw new Error(upstreamErr);

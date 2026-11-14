@@ -4,6 +4,7 @@ import { makeEyasToolContext } from "@/lib/mcp/tool-bridge";
 import { fleetShadowAiEgress } from "@/lib/eyas-tools/shadow-ai/hunt";
 import { detectFalconError, parseConcatenatedJson } from "@/lib/mcp/parse";
 import { onlyAids } from "@/lib/falcon-ids";
+import { mcpText } from "@/lib/mcp/text";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -94,9 +95,7 @@ export async function GET(request: Request) {
               limit: Math.min(egressAids.length, 500),
             },
           });
-          const text = (result.content as Array<{ type: string; text?: string }>)
-            .map((c) => (c.type === "text" && c.text ? c.text : ""))
-            .join("\n");
+          const text = mcpText(result.content);
           const parsed = parseConcatenatedJson<HostRecord>(text);
           if (detectFalconError(parsed)) return [];
           return parsed;

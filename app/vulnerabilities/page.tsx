@@ -10,6 +10,7 @@ import VulnerabilitiesTable, {
   type FilterKey,
 } from "@/components/VulnerabilitiesTable";
 import VulnerabilityTriagePanel from "@/components/VulnerabilityTriagePanel";
+import { mcpText } from "@/lib/mcp/text";
 
 export const dynamic = "force-dynamic";
 
@@ -107,9 +108,7 @@ async function fetchAndEnrich(
           name: "falcon_search_hosts",
           arguments: { limit: 5000 },
         });
-        const text = (result.content as Array<{ type: string; text?: string }>)
-          .map((c) => (c.type === "text" && c.text ? c.text : ""))
-          .join("\n");
+        const text = mcpText(result.content);
         const parsed = parseConcatenatedJson<{ device_id?: string }>(text);
         const upstreamErr = detectFalconError(parsed);
         if (upstreamErr) throw new Error(upstreamErr);
@@ -127,9 +126,7 @@ async function fetchAndEnrich(
           name: "falcon_search_vulnerabilities",
           arguments: { ...baseArgs, facet: ["cve", "host_info", "remediation"] },
         });
-        const text = (result.content as Array<{ type: string; text?: string }>)
-          .map((c) => (c.type === "text" && c.text ? c.text : ""))
-          .join("\n");
+        const text = mcpText(result.content);
         const parsed = parseConcatenatedJson<Vulnerability>(text);
         const upstreamErr = detectFalconError(parsed);
         if (upstreamErr) throw new Error(upstreamErr);
@@ -221,9 +218,7 @@ async function fetchPerHostFanout(
         name: "falcon_search_hosts",
         arguments: { limit: 5000 },
       });
-      const text = (result.content as Array<{ type: string; text?: string }>)
-        .map((c) => (c.type === "text" && c.text ? c.text : ""))
-        .join("\n");
+      const text = mcpText(result.content);
       const parsed = parseConcatenatedJson<HostRecord>(text);
       const upstreamErr = detectFalconError(parsed);
       if (upstreamErr) throw new Error(upstreamErr);
@@ -256,9 +251,7 @@ async function fetchPerHostFanout(
                   facet: ["cve", "remediation"],
                 },
               });
-              const text = (result.content as Array<{ type: string; text?: string }>)
-                .map((c) => (c.type === "text" && c.text ? c.text : ""))
-                .join("\n");
+              const text = mcpText(result.content);
               const rows = parseConcatenatedJson<Vulnerability>(text);
               if (detectFalconError(rows)) return [];
               for (const r of rows) if (!r.aid) r.aid = aid;
@@ -505,9 +498,7 @@ async function fetchHeroStatsAll(): Promise<HeroStatsAll | { error: string }> {
           facet: ["cve", "remediation"],
         },
       });
-      const text = (result.content as Array<{ type: string; text?: string }>)
-        .map((c) => (c.type === "text" && c.text ? c.text : ""))
-        .join("\n");
+      const text = mcpText(result.content);
       const merged = parseConcatenatedJson<Vulnerability>(text);
       const upstreamErr = detectFalconError(merged);
       if (upstreamErr) throw new Error(upstreamErr);

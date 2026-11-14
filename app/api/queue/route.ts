@@ -14,6 +14,7 @@ import {
 import { clusterCampaigns, type Campaign } from "@/lib/queue/campaigns";
 import { enrichRowsWithAdversary } from "@/lib/intel/adversary";
 import type { Detection } from "@/components/DetectionsTable";
+import { mcpText } from "@/lib/mcp/text";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -131,9 +132,7 @@ async function fetchOpenEndpointDetections(
       sort: "created_timestamp.desc",
     },
   });
-  const text = (result.content as Array<{ type: string; text?: string }>)
-    .map((c) => (c.type === "text" && c.text ? c.text : ""))
-    .join("\n");
+  const text = mcpText(result.content);
   return parseConcatenatedJson<Detection>(text);
 }
 
@@ -248,11 +247,7 @@ async function enrichTopRowsWithIdentity(rows: QueueRow[]): Promise<number> {
               name: "falcon_correlate_host_identity",
               arguments: { device_id: aid },
             });
-            const text = (
-              result.content as Array<{ type: string; text?: string }>
-            )
-              .map((c) => (c.type === "text" && c.text ? c.text : ""))
-              .join("\n");
+            const text = mcpText(result.content);
             const payload = JSON.parse(text);
             // Native shape: { host, identity (camelCase) | null, identity_match,
             // idp_detections[] } — an error returns an { error } envelope.

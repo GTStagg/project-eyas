@@ -5,6 +5,7 @@ import { streamAgent, type Emit } from "@/lib/chat/stream-agent";
 import { parseConcatenatedJson, detectFalconError, isScopeDenied } from "@/lib/mcp/parse";
 import { projectIntelReport, projectIntelActor } from "@/lib/mcp/projections";
 import { reconPreviewArgs, summarizeReconPreview } from "@/lib/recon/preview";
+import { mcpText } from "@/lib/mcp/text";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -35,7 +36,7 @@ type ToolContent = { content: Array<{ type: string; text?: string }> };
 async function callList<T>(client: Client, name: string, args: Record<string, unknown>): Promise<T[]> {
   try {
     const resp = (await client.callTool({ name, arguments: args })) as ToolContent;
-    const text = resp.content.map((c) => (c.type === "text" && c.text ? c.text : "")).join("\n");
+    const text = mcpText(resp.content);
     return parseConcatenatedJson<T>(text);
   } catch {
     return [];
@@ -107,7 +108,7 @@ async function buildDossierBundle(
   if (previewArgs) {
     try {
       const resp = (await mcp.callTool({ name: "falcon_preview_recon_rule", arguments: previewArgs })) as ToolContent;
-      const text = resp.content.map((c) => (c.type === "text" && c.text ? c.text : "")).join("\n");
+      const text = mcpText(resp.content);
       const rows = parseConcatenatedJson<unknown>(text);
       corpusScopePending = isScopeDenied(text);
       corpusError = detectFalconError(rows);

@@ -9,6 +9,7 @@ import { parseConcatenatedJson } from "@/lib/mcp/parse";
 import { getAnthropicClient, getAnthropicModel } from "@/lib/llm/anthropic";
 import { streamMessage } from "@/lib/llm/messages";
 import { logUsage } from "@/lib/cost/log";
+import { mcpText } from "@/lib/mcp/text";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -132,9 +133,7 @@ async function resolveDeviceId(mcp: Client, hostname: string): Promise<string | 
       name: "falcon_search_hosts",
       arguments: { filter: `hostname:'${hostname}'`, limit: 1 },
     });
-    const text = (result.content as Array<{ type: string; text?: string }>)
-      .map((c) => (c.type === "text" && c.text ? c.text : ""))
-      .join("\n");
+    const text = mcpText(result.content);
     const id = parseConcatenatedJson<{ device_id?: string }>(text).find((r) => r.device_id)?.device_id;
     return id && /^[0-9a-f]{32}$/i.test(id) ? id : null;
   } catch {

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { withFalconMcpClient } from "@/lib/mcp/falcon-client";
 import { parseConcatenatedJson, detectFalconError, isScopeDenied } from "@/lib/mcp/parse";
+import { mcpText } from "@/lib/mcp/text";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -31,7 +32,7 @@ function toText(result: unknown): string {
     type: string;
     text?: string;
   }>;
-  return content.map((c) => (c.type === "text" && c.text ? c.text : "")).join("\n");
+  return mcpText(content);
 }
 
 type Page = { kind: "denied" } | { kind: "error"; error: string } | { kind: "ok"; rows: Record<string, unknown>[]; total: number | null };

@@ -11,6 +11,7 @@ import {
   type RawIndicator,
   type RawActor,
 } from "@/lib/intel/attribution";
+import { mcpText } from "@/lib/mcp/text";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -41,9 +42,7 @@ async function callTool<T>(
 ): Promise<T[]> {
   try {
     const resp = (await mcp.callTool({ name, arguments: args })) as DetectionsResp;
-    const text = resp.content
-      .map((c) => (c.type === "text" && c.text ? c.text : ""))
-      .join("\n");
+    const text = mcpText(resp.content);
     return parseConcatenatedJson<T>(text);
   } catch {
     return [];

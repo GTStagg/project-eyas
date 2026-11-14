@@ -1,6 +1,7 @@
 import "server-only";
 import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { parseConcatenatedJson, detectFalconError, isScopeDenied } from "@/lib/mcp/parse";
+import { mcpText } from "@/lib/mcp/text";
 
 // Paged reads over falcon_search_data_security_entities, shared by
 // /data-protection and the posture snapshot.
@@ -28,7 +29,7 @@ function toText(result: unknown): string {
     type: string;
     text?: string;
   }>;
-  return content.map((c) => (c.type === "text" && c.text ? c.text : "")).join("\n");
+  return mcpText(content);
 }
 
 function envelopeTotal(text: string): number | null {
