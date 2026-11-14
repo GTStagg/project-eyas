@@ -30,6 +30,9 @@
 - **Shared helpers replace copy-pasted code.** The four chat and agent screens use
   one stream parser, and about 30 places that joined an MCP result's text blocks
   use one helper. No behaviour changes.
+- **The two setup cards share one component.** The IR quarantine and Shadow-AI
+  banned cards on `/config` were near-copies; they now keep only their own copy
+  and rules. No visible change.
 - **Dead code removed.** Two unused home-panel views, an unused divider component,
   a handful of unused helpers and imports, and an unused wrapper around the
   settings cache are gone.
