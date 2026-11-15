@@ -3,8 +3,8 @@ services:
     # eyas-mcp built from source (no published image). The commit matches
     # versions.json "mcp-server-ref"; bump the two together.
     build:
-      context: https://github.com/GTStagg/eyas-mcp.git#6f0b394481797231184784a62d558ef872ab12a1
-    image: eyas-mcp:6f0b39448179
+      context: https://github.com/GTStagg/eyas-mcp.git#5723f499ff42e6795dfea3bece86cbf6b66ae63b
+    image: eyas-mcp:5723f499ff42
     container_name: falcon-mcp
     restart: unless-stopped
     command:
