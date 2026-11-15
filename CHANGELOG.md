@@ -3,6 +3,12 @@
 ## Unreleased
 
 ### Changed
+- **MCP server pinned to eyas-mcp 5723f49** (still 0.21.0), a security hardening
+  release. Five tools now refuse inputs they used to accept: removing indicators with
+  both ids and a filter, identity investigations over 100 entities or with unknown
+  types, read-only host commands that chain or redirect, actor names with quotes or
+  backslashes, and malformed case ids. The agent guidance and the Shadow-AI playbook
+  now say so. Nothing was renamed or removed.
 - **The CrowdStrike lockup switch is gone.** An always-off setting guarded an image
   that was never shipped (the logo isn't redistributed). The pages already showed
   text only; the setting and its image code are removed.

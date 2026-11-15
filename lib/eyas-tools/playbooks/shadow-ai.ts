@@ -42,7 +42,7 @@ export function shadowAiPlaybookText(aid: string, bannedGroupId: string): string
     ``,
     `**The IOC is the audit trail, not the enforcement.** Tell the operator explicitly: actual blocking belongs in NGFW / DNS proxy. Add \`claude.ai\`, \`api.anthropic.com\`, \`chat.deepseek.com\`, etc. to their DNS sinkhole / NGFW deny policy — Falcon IOC=detect surfaces telemetry, it does not drop the connection.`,
     ``,
-    `**If you need to remove an existing globally-scoped IOC and re-create it scoped (correcting a prior workflow's mistake): \`falcon_remove_iocs\` now returns a delete summary on success (\`{status: "deleted", deleted_ids: [...], count: N}\`). Confirm \`count\` matches the number of indicators you removed, then re-create them scoped with the \`host_groups\` arg set.**`,
+    `**If you need to remove an existing globally-scoped IOC and re-create it scoped (correcting a prior workflow's mistake): \`falcon_remove_iocs\` now returns a delete summary on success (\`{status: "deleted", deleted_ids: [...], count: N}\`). Pass either \`ids\` or \`filter\` to \`falcon_remove_iocs\`, never both (a call with both is refused). Confirm \`count\` matches the number of indicators you removed, then re-create them scoped with the \`host_groups\` arg set.**`,
     ``,
     `## Phase 5 — Verify + summarize`,
     `Re-run \`extras_host_shadow_ai_scan\` device_id=\`${aid}\` (same hours_back) to confirm the apps + MCP runtimes are gone. Egress domains may still appear in the window if they fired before the ban — note that as expected lag.`,
