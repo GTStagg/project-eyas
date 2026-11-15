@@ -3,12 +3,17 @@
 ## Unreleased
 
 ### Changed
-- **MCP server pinned to eyas-mcp 5723f49** (still 0.21.0), a security hardening
-  release. Five tools now refuse inputs they used to accept: removing indicators with
-  both ids and a filter, identity investigations over 100 entities or with unknown
-  types, read-only host commands that chain or redirect, actor names with quotes or
-  backslashes, and malformed case ids. The agent guidance and the Shadow-AI playbook
-  now say so. Nothing was renamed or removed.
+- **MCP server pinned to eyas-mcp d8c7166** (still 0.21.0). Five tools now refuse
+  inputs they used to accept: removing indicators with both ids and a filter, identity
+  investigations over 100 entities or with unknown types, read-only host commands that
+  chain or redirect, actor names with quotes or backslashes, and malformed case ids.
+  The agent guidance and the Shadow-AI playbook now say so. 46 tools are new: host
+  online, network and login history, hidden hosts, the containment allowlist, case
+  files, Falcon Sandbox, on-demand scans, CVE, malware-family and rule intel,
+  installed patches, the audit log, and users and roles. The agent can use all of them
+  except the five user-account writes (create, update, delete, reset credentials,
+  manage roles), which are held back; every new write needs approval. Several need
+  scopes the tenant may not have granted and fail with a 403 naming the missing one.
 - **The CrowdStrike lockup switch is gone.** An always-off setting guarded an image
   that was never shipped (the logo isn't redistributed). The pages already showed
   text only; the setting and its image code are removed.

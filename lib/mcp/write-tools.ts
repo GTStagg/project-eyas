@@ -95,6 +95,35 @@ export const REQUIRES_APPROVAL: ReadonlySet<string> = new Set<string>([
   "falcon_delete_policies",
   "falcon_perform_policy_action",
   "falcon_set_policy_precedence",
+  // eyas-mcp d8c7166 host, containment-allowlist, case-file, Sandbox and
+  // on-demand-scan writes. ADOPTED (exposed, gated); no Eyas twin.
+  // falcon_get_rtr_file_metadata only reads a file's details but opens an RTR
+  // session on the host, so it gates like a write.
+  "falcon_hide_hosts",
+  "falcon_unhide_hosts",
+  "falcon_delete_hosts",
+  "falcon_create_containment_allowlist_rules",
+  "falcon_update_containment_allowlist_labels",
+  "falcon_delete_containment_allowlist_rules",
+  "falcon_get_rtr_file_metadata",
+  "falcon_retrieve_rtr_file_to_case",
+  "falcon_add_rtr_session_file_to_case",
+  "falcon_delete_rtr_session_file",
+  "falcon_submit_to_sandbox",
+  "falcon_upload_sandbox_sample",
+  "falcon_delete_sandbox_report",
+  "falcon_delete_sandbox_sample",
+  "falcon_start_ods_scan",
+  "falcon_cancel_ods_scans",
+  "falcon_delete_ods_scheduled_scans",
+  // eyas-mcp d8c7166 user-management writes. SUPPRESSED (held back, like the
+  // Message Center writes): Falcon account administration is outside the
+  // operator-console scope. Gated here as the fail-closed backstop.
+  "falcon_manage_user_roles",
+  "falcon_reset_user_credentials",
+  "falcon_create_user",
+  "falcon_update_user",
+  "falcon_delete_user",
   // Falcon Complete Message Center writes (eyas-mcp 6f0b394). SUPPRESSED by
   // user decision — held back in NATIVE_WRITE_SUPPRESS; gated here as the
   // fail-closed backstop if they're ever exposed.

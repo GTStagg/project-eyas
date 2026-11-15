@@ -109,6 +109,11 @@ export const NATIVE_WRITE_SUPPRESS: ReadonlySet<string> = new Set<string>([
   "falcon_create_message_center_case",
   "falcon_add_message_center_case_comment",
   "falcon_add_message_center_case_attachment",
+  "falcon_manage_user_roles",
+  "falcon_reset_user_credentials",
+  "falcon_create_user",
+  "falcon_update_user",
+  "falcon_delete_user",
 ]);
 
 // Native reads kept hidden from the agent because an Eyas tool wraps them with

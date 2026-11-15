@@ -117,6 +117,12 @@ NATIVE_WRITES=(
   "falcon_create_message_center_case"
   "falcon_add_message_center_case_comment"
   "falcon_add_message_center_case_attachment"
+  # eyas-mcp d8c7166 user-management writes — held back (outside console scope).
+  "falcon_manage_user_roles"
+  "falcon_reset_user_credentials"
+  "falcon_create_user"
+  "falcon_update_user"
+  "falcon_delete_user"
 )
 
 # The adopted natives â€” exposed to the agent (NOT in NATIVE_WRITE_SUPPRESS) and
@@ -151,6 +157,24 @@ NATIVE_ADOPTED=(
   # tool; the bridge forces probe="runscript", and each attempt uploads a
   # script + runs it in an admin session, so it gates like the other RTR paths.
   "falcon_wait_for_rtr_sessions"
+  # eyas-mcp d8c7166 host / containment-allowlist / case-file / Sandbox / ODS writes.
+  "falcon_hide_hosts"
+  "falcon_unhide_hosts"
+  "falcon_delete_hosts"
+  "falcon_create_containment_allowlist_rules"
+  "falcon_update_containment_allowlist_labels"
+  "falcon_delete_containment_allowlist_rules"
+  "falcon_get_rtr_file_metadata"
+  "falcon_retrieve_rtr_file_to_case"
+  "falcon_add_rtr_session_file_to_case"
+  "falcon_delete_rtr_session_file"
+  "falcon_submit_to_sandbox"
+  "falcon_upload_sandbox_sample"
+  "falcon_delete_sandbox_report"
+  "falcon_delete_sandbox_sample"
+  "falcon_start_ods_scan"
+  "falcon_cancel_ods_scans"
+  "falcon_delete_ods_scheduled_scans"
 )
 
 BRIDGE_FILE="lib/mcp/tool-bridge.ts"
