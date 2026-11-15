@@ -1,6 +1,6 @@
 {
-  "mcp-server": "0.21.0",
+  "mcp-server": "0.22.0",
   "mcp-server-package": "eyas-mcp",
   "mcp-server-git": "https://github.com/GTStagg/eyas-mcp.git",
-  "mcp-server-ref": "d8c7166c294df5591b16bc7b064ad6e93840c645"
+  "mcp-server-ref": "bbe0e862abf6640baca6745f417e59c7ca97af14"
 }

@@ -3,7 +3,7 @@
 ## Unreleased
 
 ### Changed
-- **MCP server pinned to eyas-mcp d8c7166** (still 0.21.0). Five tools now refuse
+- **MCP server pinned to eyas-mcp 0.22.0 (bbe0e86)**. Five tools now refuse
   inputs they used to accept: removing indicators with both ids and a filter, identity
   investigations over 100 entities or with unknown types, read-only host commands that
   chain or redirect, actor names with quotes or backslashes, and malformed case ids.
