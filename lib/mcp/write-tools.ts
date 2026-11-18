@@ -124,6 +124,19 @@ export const REQUIRES_APPROVAL: ReadonlySet<string> = new Set<string>([
   "falcon_create_user",
   "falcon_update_user",
   "falcon_delete_user",
+  // eyas-mcp 131adb5 Seraphic Enterprise Browser writes. SUPPRESSED (held back
+  // until Eyas wants browser response actions); gated as the fail-closed backstop.
+  "falcon_activate_browser_agents",
+  "falcon_deactivate_browser_agents",
+  "falcon_run_browser_agent_tasks",
+  "falcon_set_browser_rule_status",
+  "falcon_update_browser_rule_extensions",
+  "falcon_create_browser_destination_group",
+  "falcon_update_browser_destination_group",
+  "falcon_delete_browser_destination_group",
+  "falcon_create_browser_data_profile",
+  "falcon_update_browser_data_profile",
+  "falcon_delete_browser_data_profile",
   // Falcon Complete Message Center writes (eyas-mcp 6f0b394). SUPPRESSED by
   // user decision — held back in NATIVE_WRITE_SUPPRESS; gated here as the
   // fail-closed backstop if they're ever exposed.
