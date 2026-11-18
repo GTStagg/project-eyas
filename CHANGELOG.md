@@ -3,7 +3,7 @@
 ## Unreleased
 
 ### Changed
-- **MCP server pinned to eyas-mcp 0.22.0 (bbe0e86)**. Five tools now refuse
+- **MCP server pinned to eyas-mcp 0.22.0 (131adb5)**. Five tools now refuse
   inputs they used to accept: removing indicators with both ids and a filter, identity
   investigations over 100 entities or with unknown types, read-only host commands that
   chain or redirect, actor names with quotes or backslashes, and malformed case ids.
@@ -12,7 +12,7 @@
   files, Falcon Sandbox, on-demand scans, CVE, malware-family and rule intel,
   installed patches, the audit log, and users and roles. The agent can use all of them
   except the five user-account writes (create, update, delete, reset credentials,
-  manage roles), which are held back; every new write needs approval. Several need
+  manage roles), which are held back, as are the 11 browser-policy writes from the new Seraphic Enterprise Browser module (its 10 read tools reach the agent); every new write needs approval. Several need
   scopes the tenant may not have granted and fail with a 403 naming the missing one.
 - **The CrowdStrike lockup switch is gone.** An always-off setting guarded an image
   that was never shipped (the logo isn't redistributed). The pages already showed

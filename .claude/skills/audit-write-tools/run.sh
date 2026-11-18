@@ -123,6 +123,18 @@ NATIVE_WRITES=(
   "falcon_create_user"
   "falcon_update_user"
   "falcon_delete_user"
+  # eyas-mcp 131adb5 Seraphic Enterprise Browser writes — held back; no Eyas tool.
+  "falcon_activate_browser_agents"
+  "falcon_deactivate_browser_agents"
+  "falcon_run_browser_agent_tasks"
+  "falcon_set_browser_rule_status"
+  "falcon_update_browser_rule_extensions"
+  "falcon_create_browser_destination_group"
+  "falcon_update_browser_destination_group"
+  "falcon_delete_browser_destination_group"
+  "falcon_create_browser_data_profile"
+  "falcon_update_browser_data_profile"
+  "falcon_delete_browser_data_profile"
 )
 
 # The adopted natives â€” exposed to the agent (NOT in NATIVE_WRITE_SUPPRESS) and
